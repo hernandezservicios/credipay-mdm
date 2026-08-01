@@ -54,6 +54,26 @@ let cachedSnapshot: InovaGuardSnapshot | null = null;
 let snapshotDirty = true; // arranca sucio para forzar la primera carga real
 let snapshotInFlight: Promise<InovaGuardSnapshot> | null = null;
 
+// Caché persistente: la precarga sobrevive a recargas de página (F5)
+const SNAPSHOT_STORAGE_KEY = 'credipay-mdm-inovaguard-snapshot';
+
+function hydrateSnapshotFromStorage(): void {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as InovaGuardSnapshot;
+      if (parsed && Array.isArray(parsed.devices) && parsed.balance && parsed.licences) {
+        cachedSnapshot = parsed;
+        snapshotDirty = true; // hidratado -> primer refresh silencioso consulta la red
+      }
+    }
+  } catch {
+    localStorage.removeItem(SNAPSHOT_STORAGE_KEY);
+  }
+}
+
+hydrateSnapshotFromStorage();
+
 /** Marca la caché como obsoleta (debe llamarse tras acciones mutadoras). */
 export function invalidateInovaGuardCache(): void {
   snapshotDirty = true;
@@ -102,6 +122,11 @@ async function loadSnapshot(
           fetchedAt: Date.now(),
         };
         snapshotDirty = false;
+        try {
+          localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(cachedSnapshot));
+        } catch {
+          // almacenamiento lleno o bloqueado -> la caché sigue en memoria
+        }
         return cachedSnapshot;
       })
       .finally(() => {
@@ -481,7 +506,7 @@ export async function lockInovaGuardDevice(
 ): Promise<{ err: boolean; message: string; isSimulated: boolean }> {
   const fallbackResponse: InovaGuardStandardResponse = {
     err: false,
-    message: `Dispositivo ID #${id} bloqueado existosamente mediante orden MDM InovaGuard.`,
+    message: `Dispositivo bloqueado exitosamente mediante orden MDM InovaGuard.`,
   };
 
   const res = await fetchInovaGuard<InovaGuardStandardResponse>(
@@ -509,7 +534,7 @@ export async function unlockInovaGuardDevice(
 ): Promise<{ err: boolean; message: string; isSimulated: boolean }> {
   const fallbackResponse: InovaGuardStandardResponse = {
     err: false,
-    message: `Dispositivo ID #${id} desbloqueado exitosamente tras el pago. Acceso restaurado.`,
+    message: `Dispositivo desbloqueado exitosamente tras el pago. Acceso restaurado.`,
   };
 
   const res = await fetchInovaGuard<InovaGuardStandardResponse>(
@@ -577,7 +602,7 @@ export async function removeInovaGuardDevice(
 ): Promise<{ err: boolean; message: string; isSimulated: boolean }> {
   const fallbackResponse: InovaGuardStandardResponse = {
     err: false,
-    message: `Dispositivo ID #${id} desvinculado y removido de la plataforma InovaGuard.`,
+    message: `Dispositivo desvinculado y removido de la plataforma InovaGuard.`,
   };
 
   const res = await fetchInovaGuard<InovaGuardStandardResponse>(

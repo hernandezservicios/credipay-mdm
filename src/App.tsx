@@ -198,7 +198,7 @@ export default function App() {
             cli.device.imei,
             'LOCK',
             trigger,
-            `${reason} ${cli.device.inovaguardId ? `(InovaGuard ID: #${cli.device.inovaguardId})` : ''}`
+            `${reason} ${cli.device.unlockCode ? `(InovaGuard ID: ${cli.device.unlockCode})` : ''}`
           );
           showNotification(
             `🔒 MDM LOCK EJECUTADO: Celular ${cli.device.model} del cliente ${cli.fullName} ha sido bloqueado.`,
@@ -255,7 +255,7 @@ export default function App() {
             cli.device.imei,
             'UNLOCK',
             trigger,
-            `${reason} ${cli.device.inovaguardId ? `(InovaGuard ID: #${cli.device.inovaguardId})` : ''}`
+            `${reason} ${cli.device.unlockCode ? `(InovaGuard ID: ${cli.device.unlockCode})` : ''}`
           );
           showNotification(
             `🔓 MDM UNLOCK EJECUTADO: Celular ${cli.device.model} del cliente ${cli.fullName} desbloqueado exitosamente.`,
@@ -290,9 +290,7 @@ export default function App() {
     }
 
     const deviceId = target.device.inovaguardId || target.device.imei.slice(-4);
-    const res = await generateInovaGuardUnlockCode(mdmConfig, deviceId);
-
-    setClients((prev) =>
+    const res = await generateInovaGuardUnlockCode(mdmConfig, deviceId);    setClients((prev) =>
       prev.map((cli) => {
         if (cli.id !== clientId) return cli;
         return {
@@ -312,7 +310,7 @@ export default function App() {
       target.device.imei,
       'UNLOCK_CODE',
       'MANUAL_OPERATOR',
-      `Generado Código de Desbloqueo Offline (#${res.code}) para InovaGuard ID #${deviceId}.`
+      `Generado Código de Desbloqueo Offline (#${res.code}) para InovaGuard ID: ${target.device.unlockCode || target.device.imei.slice(-4)}.`
     );
 
     showNotification(
@@ -360,7 +358,7 @@ export default function App() {
       target.device.imei,
       'REMOVE',
       'MANUAL_OPERATOR',
-      `Dispositivo removido de la plataforma InovaGuard (ID #${deviceId}).`
+      `Dispositivo removido de la plataforma InovaGuard (InovaGuard ID: ${target.device.unlockCode || target.device.imei.slice(-4)}).`
     );
 
     showNotification(
@@ -391,6 +389,7 @@ export default function App() {
             device: {
               ...cli.device,
               inovaguardId: remoteDevice.id,
+              unlockCode: remoteDevice.unlockCode,
               mdmStatus: remoteDevice.status,
               lastMdmSync: `Sincronizado vía InovaGuard /devices (${new Date().toLocaleTimeString()})`,
             },
@@ -1062,6 +1061,7 @@ export default function App() {
                 model: pendingLoanDevice.model,
                 imei: pendingLoanDevice.imei,
                 inovaguardId: pendingLoanDevice.id,
+                unlockCode: pendingLoanDevice.unlockCode,
                 deviceName: pendingLoanDevice.deviceName,
               }
             : null
@@ -1081,13 +1081,15 @@ export default function App() {
         onClose={() => setSelectedClientForAi(null)}
       />
 
-      <PaymentModal
-        clients={clients}
-        client={paymentModal?.client ?? null}
-        initialInstallmentId={paymentModal?.installmentId}
-        onClose={() => setPaymentModal(null)}
-        onConfirm={handleCascadePayment}
-      />
+      {paymentModal && (
+        <PaymentModal
+          clients={clients}
+          client={paymentModal?.client ?? null}
+          initialInstallmentId={paymentModal?.installmentId}
+          onClose={() => setPaymentModal(null)}
+          onConfirm={handleCascadePayment}
+        />
+      )}
 
       <HostingerSqlModal
         isOpen={isHostingerSqlModalOpen}

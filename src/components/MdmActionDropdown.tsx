@@ -60,7 +60,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
           {/* Bloqueo y Desbloqueo MDM */}
           <div className="py-1.5">
             <div className="px-3 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-              Control de Dispositivo MDM ({device.inovaguardId ? `InovaGuard #${device.inovaguardId}` : 'Generic'})
+              Control de Dispositivo MDM ({device.unlockCode ? `InovaGuard ID: ${device.unlockCode}` : 'Generic'})
             </div>
             {isLocked ? (
               <button

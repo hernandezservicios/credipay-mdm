@@ -18,7 +18,8 @@ export interface Installment {
 
 export interface MobileDevice {
   id: string;
-  inovaguardId?: string;    // ID numérico de InovaGuard (ej. "4177", "3168")
+  inovaguardId?: string;    // ID interno de InovaGuard (oculto en la UI, ej. "4177")
+  unlockCode?: string;      // Código de enrolamiento visible en la plataforma (ej. "735208")
   deviceName?: string;      // Nombre descriptivo del dispositivo en MDM (ej. "S24-Carlos-Mendoza")
   brand: string;
   model: string;

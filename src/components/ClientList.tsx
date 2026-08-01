@@ -189,9 +189,9 @@ export const ClientList: React.FC<ClientListProps> = ({
                           </span>
                         )}
 
-                        {client.device.inovaguardId && (
+                        {client.device.unlockCode && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            InovaGuard #{client.device.inovaguardId}
+                            InovaGuard ID: {client.device.unlockCode}
                           </span>
                         )}
 

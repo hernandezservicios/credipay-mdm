@@ -9,6 +9,7 @@ export interface LoanDevicePreselection {
   imei: string;
   serialNumber?: string;
   inovaguardId?: string;
+  unlockCode?: string;
   deviceName?: string;
 }
 
@@ -98,6 +99,7 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
       ...(initialDevice?.inovaguardId
         ? {
             inovaguardId: initialDevice.inovaguardId,
+            unlockCode: initialDevice.unlockCode,
             deviceName: initialDevice.deviceName,
           }
         : {}),
@@ -221,7 +223,11 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
               <div className="mb-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-900 flex items-start space-x-2">
                 <Link2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
-                  Dispositivo vinculado desde <strong>Parque InovaGuard # {initialDevice.inovaguardId}</strong>{' '}
+                  Dispositivo vinculado desde{' '}
+                  <strong>
+                    Parque InovaGuard ID:{' '}
+                    {initialDevice.unlockCode || initialDevice.inovaguardId}
+                  </strong>{' '}
                   ({initialDevice.deviceName}). Los datos del equipo provienen del MDM y no pueden
                   modificarse; al crear el préstamo quedará asignado a este cliente.
                 </span>

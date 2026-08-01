@@ -77,12 +77,13 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
   // Modal states
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [qrData, setQrData] = useState<{ qrUrl: string; enrollmentToken: string } | null>(null);
-  const [codeModal, setCodeModal] = useState<{ isOpen: boolean; deviceName: string; code: string; deviceId: string } | null>(null);
+  const [codeModal, setCodeModal] = useState<{ isOpen: boolean; deviceName: string; code: string; unlockCode?: string } | null>(null);
 
-  // Cargar datos en vivo. Con `force` muestra el loader; sin `force` es un
-  // refresco silencioso en segundo plano que actualiza la vista si hay cambios.
-  const loadInovaGuardData = async (force = false) => {
-    if (force) setIsLoading(true);
+  // Cargar datos en vivo. `force` omite la caché y consulta la red (siempre en
+  // refrescos); `showLoader` controla el spinner (los refrescos en segundo plano
+  // pasan `false` para no parpadear la pantalla).
+  const loadInovaGuardData = async (force = false, showLoader = force) => {
+    if (showLoader) setIsLoading(true);
     try {
       const [devRes, balRes, licRes] = await Promise.all([
         getInovaGuardDevices(mdmConfig, { force }),
@@ -104,18 +105,57 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
   useEffect(() => {
     const cached = getInovaGuardCachedData();
     if (cached) {
-      // Datos ya cargados -> render instantáneo y refresh silencioso detrás
+      // Datos ya cargados -> render instantáneo y refresh real en segundo plano
       setDevices(cached.devices);
       setTotalDevices(cached.totalDevices);
       setIsSimulated(cached.isSimulated);
       setBalance(cached.balance);
       setLicences(cached.licences);
       setIsLoading(false);
-      loadInovaGuardData(false);
+      loadInovaGuardData(true, false);
     } else {
       // Primera vez -> loader y consulta real a la API
-      loadInovaGuardData(true);
+      loadInovaGuardData(true, true);
     }
+  }, [mdmConfig]);
+
+  // Polling cada 5s solo con la vista visible: cambios desde la plataforma
+  // Inova (bloqueos, enrolamientos) se reflejan casi al instante. Al ocultar
+  // la pestaña se detiene y al volver se refresca de inmediato.
+  useEffect(() => {
+    const isVisible = () => document.visibilityState === 'visible';
+    let timer: number | undefined;
+
+    const startPolling = () => {
+      if (!isVisible()) return;
+      loadInovaGuardData(true, false);
+      timer = window.setInterval(() => {
+        loadInovaGuardData(true, false);
+      }, 5000);
+    };
+
+    const stopPolling = () => {
+      if (timer !== undefined) {
+        clearInterval(timer);
+        timer = undefined;
+      }
+    };
+
+    const onVisibility = () => {
+      if (isVisible()) {
+        stopPolling();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    startPolling();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [mdmConfig]);
 
   // Manejar sincronización manual (spinner + datos frescos del API)
@@ -145,7 +185,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       icon: <Lock className="w-5 h-5" />,
       tone: 'rose',
       title: 'Confirmar Bloqueo MDM',
-      message: `¿BLOQUEAR MDM el dispositivo ${device.deviceName} (#${device.id})?\n\nSe enviará el comando de bloqueo y el cliente no podrá usar el equipo.`,
+      message: `¿BLOQUEAR MDM el dispositivo ${device.deviceName} (InovaGuard ID: ${device.unlockCode || '—'})?\n\nSe enviará el comando de bloqueo y el cliente no podrá usar el equipo.`,
       confirmLabel: 'Sí, Bloquear',
     });
     if (!ok) return;
@@ -166,7 +206,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       icon: <Unlock className="w-5 h-5" />,
       tone: 'emerald',
       title: 'Confirmar Desbloqueo MDM',
-      message: `¿DESBLOQUEAR MDM el dispositivo ${device.deviceName} (#${device.id})?\n\nSe reenviará el comando de desbloqueo y el cliente recuperará el acceso.`,
+      message: `¿DESBLOQUEAR MDM el dispositivo ${device.deviceName} (InovaGuard ID: ${device.unlockCode || '—'})?\n\nSe reenviará el comando de desbloqueo y el cliente recuperará el acceso.`,
       confirmLabel: 'Sí, Desbloquear',
     });
     if (!ok) return;
@@ -187,7 +227,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       icon: <KeyRound className="w-5 h-5" />,
       tone: 'indigo',
       title: 'Generar Código de Desbloqueo Offline',
-      message: `¿GENERAR código de desbloqueo offline para ${device.deviceName} (#${device.id})?\n\nEl cliente podrá desbloquear el equipo sin internet usando ese PIN temporal.`,
+      message: `¿GENERAR código de desbloqueo offline para ${device.deviceName} (InovaGuard ID: ${device.unlockCode || '—'})?\n\nEl cliente podrá desbloquear el equipo sin internet usando ese PIN temporal.`,
       confirmLabel: 'Sí, Generar Código',
     });
     if (!ok) return;
@@ -201,7 +241,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       setCodeModal({
         isOpen: true,
         deviceName: device.deviceName,
-        deviceId: device.id,
+        unlockCode: device.unlockCode,
         code: res.code,
       });
     }
@@ -213,7 +253,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       icon: <Trash2 className="w-5 h-5" />,
       tone: 'rose',
       title: 'Desvincular Dispositivo del MDM',
-      message: `¿DESVINCULAR el dispositivo InovaGuard #${device.id} (${device.deviceName})?\n\nEl equipo dejará de estar monitoreado por MDM y la acción NO se puede deshacer.`,
+      message: `¿DESVINCULAR el dispositivo InovaGuard ID: ${device.unlockCode || '—'} (${device.deviceName})?\n\nEl equipo dejará de estar monitoreado por MDM y la acción NO se puede deshacer.`,
       confirmLabel: 'Sí, Desvincular',
     });
     if (!ok) return;
@@ -374,7 +414,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar por IMEI, ID InovaGuard, PIN MDM, Cliente, Marca o Modelo..."
+              placeholder="Buscar por IMEI, ID InovaGuard, Código, Cliente, Marca o Modelo..."
               className="w-full pl-10 pr-4 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50"
             />
           </div>
@@ -475,7 +515,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2 min-w-0">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
-                          #{device.id}
+                          Código: {device.unlockCode || '—'}
                         </span>
                         <h3 className="font-bold text-slate-900 text-sm truncate min-w-0">
                           {device.deviceName}
@@ -523,14 +563,6 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                         </span>
                       </div>
                     )}
-                    {device.unlockCode && (
-                      <div className="flex items-center justify-between text-xs gap-2">
-                        <span className="text-slate-500 shrink-0">PIN MDM:</span>
-                        <span className="font-mono font-bold text-indigo-700">
-                          {device.unlockCode}
-                        </span>
-                      </div>
-                    )}
                     {device.dueDate && (
                       <div className="flex items-center justify-between text-xs gap-2">
                         <span className="text-slate-500 shrink-0">Vence Licencia:</span>
@@ -545,6 +577,10 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                         </span>
                       </div>
                     )}
+                    <div className="flex items-center justify-between text-xs gap-2 border-t border-slate-200/80 pt-1.5">
+                      <span className="text-slate-400 shrink-0">ID Interno:</span>
+                      <span className="font-mono text-slate-500 truncate">{device.id}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -663,7 +699,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                     className="col-span-2 px-3 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 text-xs font-medium flex items-center justify-center space-x-1.5 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                    <span>Desvincular (Remove ID #{device.id})</span>
+                    <span>Desvincular del MDM</span>
                   </button>
                 </div>
               </div>
@@ -742,7 +778,8 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                 Código de Desbloqueo Offline
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Para el dispositivo <strong>{codeModal.deviceName}</strong> (ID #{codeModal.deviceId})
+                Para el dispositivo <strong>{codeModal.deviceName}</strong>{' '}
+                {codeModal.unlockCode ? `(InovaGuard ID: ${codeModal.unlockCode})` : ''}
               </p>
             </div>
 
