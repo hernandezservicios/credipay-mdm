@@ -1,0 +1,6 @@
+{
+  "name": "CrediPay MDM",
+  "description": "Sistema de Crédito y Cobranza de Celulares con Bloqueo MDM en Pesos Dominicanos (RD$)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
