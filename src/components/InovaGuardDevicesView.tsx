@@ -277,6 +277,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       device.deviceName.toLowerCase().includes(q) ||
       device.id.includes(q) ||
       device.imei.toLowerCase().includes(q) ||
+      (device.serie && device.serie.toLowerCase().includes(q)) ||
       device.brand.toLowerCase().includes(q) ||
       device.model.toLowerCase().includes(q) ||
       (device.unlockCode && device.unlockCode.includes(q)) ||
@@ -414,7 +415,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar por IMEI, ID InovaGuard, Código, Cliente, Marca o Modelo..."
+              placeholder="Buscar por IMEI, Serie, ID InovaGuard, Código, Cliente, Marca o Modelo..."
               className="w-full pl-10 pr-4 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50"
             />
           </div>

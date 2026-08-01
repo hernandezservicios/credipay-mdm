@@ -182,7 +182,7 @@ function normalizeDevice(raw: RawInovaDevice): InovaGuardDeviceItem {
     deviceName: assigned && ownerName ? `${baseName} - ${ownerName}` : baseName,
     brand: brand || 'Desconocido',
     model: model || 'N/D',
-    imei: clean(raw.imei) || 'N/D',
+    imei: clean(raw.imei) || clean(raw.serie) || 'N/D',
     status: STATUS_MAP[Number(raw.status)] ?? 'UNLOCKED',
     lastSeen: clean(raw.due_date)
       ? new Date(`${raw.due_date}T00:00:00`).toISOString()
