@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Database, Activity, Menu } from 'lucide-react';
+import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu } from 'lucide-react';
 
 export type MainViewTab = 'CLIENTS' | 'DEVICES' | 'FINANCE' | 'ANALYTICS' | 'LOGS';
 
@@ -14,7 +14,6 @@ interface NavbarProps {
   activeTab?: MainViewTab;
   onSelectTab?: (tab: MainViewTab) => void;
   onToggleMobileSidebar?: () => void;
-  onOpenHostingerSql?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -28,7 +27,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab = 'CLIENTS',
   onSelectTab,
   onToggleMobileSidebar,
-  onOpenHostingerSql,
 }) => {
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
@@ -94,18 +92,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
                 <span className="hidden sm:inline">Sync InovaGuard</span>
-              </button>
-            )}
-
-            {/* Botón Esquema MySQL Hostinger DDL */}
-            {onOpenHostingerSql && (
-              <button
-                onClick={onOpenHostingerSql}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-indigo-900/80 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 transition-colors shadow-xs"
-                title="Ver Esquema MySQL (DDL) y Backend Node.js para Hostinger"
-              >
-                <Database className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="hidden md:inline">MySQL Hostinger</span>
               </button>
             )}
 

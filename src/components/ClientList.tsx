@@ -88,12 +88,18 @@ export const ClientList: React.FC<ClientListProps> = ({
       overall.status === filterStatus;
 
     const query = searchQuery.toLowerCase();
+    const qDigits = query.replace(/\D/g, '');
+    const matchesContact =
+      qDigits.length >= 3 &&
+      (client.cedulaOrId.replace(/\D/g, '').includes(qDigits) ||
+        client.phone.replace(/\D/g, '').includes(qDigits));
     const matchesSearch =
       client.fullName.toLowerCase().includes(query) ||
       client.cedulaOrId.toLowerCase().includes(query) ||
       client.device.model.toLowerCase().includes(query) ||
       client.device.imei.includes(query) ||
-      client.phone.includes(query);
+      client.phone.includes(query) ||
+      matchesContact;
 
     return matchesFilter && matchesSearch;
   });
@@ -109,7 +115,7 @@ export const ClientList: React.FC<ClientListProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por cliente, cédula, modelo de celular o IMEI..."
+            placeholder="Buscar por cliente, cédula, teléfono, modelo de celular o IMEI..."
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-colors"
           />
         </div>

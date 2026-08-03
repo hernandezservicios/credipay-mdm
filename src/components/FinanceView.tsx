@@ -31,6 +31,7 @@ interface PaymentRecord {
   date: string;
   clientName: string;
   clientPhone: string;
+  clientCedula: string;
   deviceModel: string;
   installmentNum: number;
   baseAmount: number;
@@ -120,6 +121,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           date: inst.paidDate || inst.dueDate,
           clientName: c.fullName,
           clientPhone: c.phone,
+          clientCedula: c.cedulaOrId,
           deviceModel: c.device.model,
           installmentNum: inst.number,
           baseAmount: inst.amount,
@@ -139,6 +141,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             date: inst.dueDate,
             clientName: c.fullName,
             clientPhone: c.phone,
+            clientCedula: c.cedulaOrId,
             deviceModel: c.device.model,
             installmentNum: inst.number,
             baseAmount: inst.amount,
@@ -157,10 +160,17 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
   // Filtrar cobros
   const filteredPayments = samplePayments.filter((p) => {
+    const sq = searchQuery.toLowerCase();
+    const sqDigits = sq.replace(/\D/g, '');
+    const matchesContact =
+      sqDigits.length >= 3 &&
+      (p.clientCedula.replace(/\D/g, '').includes(sqDigits) ||
+        p.clientPhone.replace(/\D/g, '').includes(sqDigits));
     const matchesSearch =
-      p.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.deviceModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.id.toLowerCase().includes(searchQuery.toLowerCase());
+      p.clientName.toLowerCase().includes(sq) ||
+      p.deviceModel.toLowerCase().includes(sq) ||
+      p.id.toLowerCase().includes(sq) ||
+      matchesContact;
     const matchesMethod = selectedMethod === 'ALL' || p.method === selectedMethod;
     return matchesSearch && matchesMethod;
   });
@@ -592,7 +602,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por cliente, recibo o modelo..."
+            placeholder="Buscar por cliente, recibo, modelo, cédula o teléfono..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 focus:bg-white transition-all"

@@ -273,6 +273,13 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
     );
 
     const q = searchQuery.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g, '');
+    const deviceCedula = clientInfo ? clientInfo.cedulaOrId : device.assignedClientId;
+    const devicePhone = clientInfo ? clientInfo.phone : device.ownerPhone;
+    const matchesContact =
+      qDigits.length >= 3 &&
+      ((deviceCedula && deviceCedula.replace(/\D/g, '').includes(qDigits)) ||
+        (devicePhone && devicePhone.replace(/\D/g, '').includes(qDigits)));
     const matchesSearch =
       device.deviceName.toLowerCase().includes(q) ||
       device.id.includes(q) ||
@@ -282,7 +289,8 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       device.model.toLowerCase().includes(q) ||
       (device.unlockCode && device.unlockCode.includes(q)) ||
       (device.assignedClientName &&
-        device.assignedClientName.toLowerCase().includes(q));
+        device.assignedClientName.toLowerCase().includes(q)) ||
+      matchesContact;
 
     if (!matchesSearch) return false;
 
@@ -415,7 +423,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar por IMEI, Serie, ID InovaGuard, Código, Cliente, Marca o Modelo..."
+              placeholder="Buscar por IMEI, Serie, Cédula, Teléfono, ID InovaGuard, Código, Cliente, Marca o Modelo..."
               className="w-full pl-10 pr-4 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50"
             />
           </div>

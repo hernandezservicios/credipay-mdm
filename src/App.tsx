@@ -30,7 +30,6 @@ import { InstallmentsModal } from './components/InstallmentsModal';
 import { MdmApiConfigModal } from './components/MdmApiConfigModal';
 import { NewCreditModal } from './components/NewCreditModal';
 import { AiCobranzaModal } from './components/AiCobranzaModal';
-import { HostingerSqlModal } from './components/HostingerSqlModal';
 import { FinanceView } from './components/FinanceView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { PaymentModal, CascadePaymentPayload } from './components/PaymentModal';
@@ -82,7 +81,6 @@ export default function App() {
     useState<ClientCredit | null>(null);
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [isNewCreditModalOpen, setIsNewCreditModalOpen] = useState(false);
-  const [isHostingerSqlModalOpen, setIsHostingerSqlModalOpen] = useState(false);
   const [pendingLoanDevice, setPendingLoanDevice] = useState<InovaGuardDeviceItem | null>(null);
   const [paymentModal, setPaymentModal] = useState<{
     client: ClientCredit | null;
@@ -832,7 +830,6 @@ export default function App() {
       <Navbar
         onOpenNewCredit={() => setIsNewCreditModalOpen(true)}
         onOpenApiConfig={() => setIsApiModalOpen(true)}
-        onOpenHostingerSql={() => setIsHostingerSqlModalOpen(true)}
         autoEngineActive={autoEngineActive}
         onToggleAutoEngine={() => setAutoEngineActive(!autoEngineActive)}
         onRunEngineNow={runAutoEngineNow}
@@ -855,7 +852,6 @@ export default function App() {
           onRunEngineNow={runAutoEngineNow}
           onOpenNewCredit={() => setIsNewCreditModalOpen(true)}
           onOpenApiConfig={() => setIsApiModalOpen(true)}
-          onOpenHostingerSql={() => setIsHostingerSqlModalOpen(true)}
           onSyncInovaGuard={handleSyncInovaGuard}
           mdmConfigEnabled={mdmConfig.enabled}
           isCollapsed={isSidebarCollapsed}
@@ -1090,11 +1086,6 @@ export default function App() {
           onConfirm={handleCascadePayment}
         />
       )}
-
-      <HostingerSqlModal
-        isOpen={isHostingerSqlModalOpen}
-        onClose={() => setIsHostingerSqlModalOpen(false)}
-      />
     </div>
   );
 }

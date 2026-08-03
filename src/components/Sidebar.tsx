@@ -15,7 +15,6 @@ import {
   Unlock,
   AlertTriangle,
   ExternalLink,
-  Database,
   DollarSign,
   BarChart3,
 } from 'lucide-react';
@@ -34,7 +33,6 @@ interface SidebarProps {
   onOpenApiConfig: () => void;
   onSyncInovaGuard?: () => void;
   mdmConfigEnabled: boolean;
-  onOpenHostingerSql?: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   isOpenMobile: boolean;
@@ -54,7 +52,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenApiConfig,
   onSyncInovaGuard,
   mdmConfigEnabled,
-  onOpenHostingerSql,
   isCollapsed,
   onToggleCollapse,
   isOpenMobile,
@@ -257,23 +254,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Cpu className="w-4 h-4 shrink-0 text-amber-400" />
                 {!isCollapsed && <span>Evaluar Atrasos (3 Días)</span>}
               </button>
-
-              {/* Esquema MySQL / Hostinger */}
-              {onOpenHostingerSql && (
-                <button
-                  onClick={() => {
-                    onOpenHostingerSql();
-                    onCloseMobile();
-                  }}
-                  className={`w-full flex items-center px-3 py-2 rounded-xl bg-indigo-950 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-800/60 text-xs transition-all ${
-                    isCollapsed ? 'justify-center' : 'space-x-3'
-                  }`}
-                  title="Ver Esquema MySQL para Hostinger y Servicio API Node.js"
-                >
-                  <Database className="w-4 h-4 shrink-0 text-indigo-400" />
-                  {!isCollapsed && <span>MySQL Hostinger / DDL</span>}
-                </button>
-              )}
             </div>
           </div>
         </div>
