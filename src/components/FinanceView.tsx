@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   DollarSign,
   TrendingUp,
@@ -16,9 +16,12 @@ import {
   AlertCircle,
   Printer,
   X,
-  ExternalLink
+  ExternalLink,
+  FileSpreadsheet,
+  Users,
 } from 'lucide-react';
 import { ClientCredit, Installment } from '../types';
+import { apiExportPaymentsCsv, apiGetPaymentStats, errorMessage, type PaymentStats } from '../services/api';
 
 interface FinanceViewProps {
   clients: ClientCredit[];
@@ -50,6 +53,32 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL');
   const [showPdfReportModal, setShowPdfReportModal] = useState(false);
+  const [stats, setStats] = useState<PaymentStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGetPaymentStats()
+      .then((res) => {
+        if (!cancelled) setStats(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setStats(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const [exportMsg, setExportMsg] = useState('');
+  const handleExportCsv = async () => {
+    setExportMsg('');
+    try {
+      await apiExportPaymentsCsv();
+      setExportMsg('CSV exportado');
+    } catch (err) {
+      setExportMsg(errorMessage(err));
+    }
+  };
 
   // Helper para determinar el estado general del cliente
   const getClientStatus = (c: ClientCredit): {
@@ -516,6 +545,17 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             <span>Exportar Reporte PDF</span>
           </button>
           <button
+            onClick={handleExportCsv}
+            className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-xl flex items-center space-x-2 shadow-sm transition-all cursor-pointer"
+            title="Exportar pagos a CSV (servidor)"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Exportar CSV</span>
+          </button>
+          {exportMsg && (
+            <span className="text-xs font-medium text-emerald-700">{exportMsg}</span>
+          )}
+          <button
             onClick={onOpenPayment}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl flex items-center space-x-2 shadow-sm transition-all cursor-pointer"
           >
@@ -595,6 +635,71 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Dashboard de Mora & Morosidad (stats del servidor) */}
+      {stats && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                MORA & MOROSIDAD
+              </span>
+              <span className="text-xs text-slate-500">
+                Cálculos del servidor (GET /payments/stats)
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+              <span className="text-[10px] font-bold uppercase text-amber-700 flex items-center">
+                <AlertCircle className="w-3.5 h-3.5 mr-1" /> Clientes morosos
+              </span>
+              <p className="text-xl font-black text-amber-800 mt-1">
+                {stats.morosidad.clientesAtrasados}
+              </p>
+              <p className="text-[10px] text-amber-600">
+                Deuda atrasada: RD$ {stats.morosidad.deudaAtrasada.toLocaleString()}
+              </p>
+            </div>
+            <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+              <span className="text-[10px] font-bold uppercase text-indigo-700 flex items-center">
+                <Calendar className="w-3.5 h-3.5 mr-1" /> Mes actual
+              </span>
+              <p className="text-xl font-black text-indigo-800 mt-1">
+                RD$ {stats.mesActual.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-indigo-600">
+                {stats.totalPagos} pagos registrados
+              </p>
+            </div>
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+              <span className="text-[10px] font-bold uppercase text-emerald-700 flex items-center">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Efectividad
+              </span>
+              <p className="text-xl font-black text-emerald-800 mt-1">{stats.efectividad.pct}%</p>
+              <p className="text-[10px] text-emerald-600">
+                {stats.efectividad.cuotasPagadas} de {stats.efectividad.cuotasTotal} cuotas pagadas
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <span className="text-[10px] font-bold uppercase text-slate-600 flex items-center">
+                <Users className="w-3.5 h-3.5 mr-1" /> Métodos de pago
+              </span>
+              <div className="mt-1 space-y-0.5">
+                {stats.porMetodo.length === 0 && (
+                  <p className="text-[10px] text-slate-400">Sin pagos</p>
+                )}
+                {stats.porMetodo.slice(0, 3).map((m) => (
+                  <p key={m.method} className="text-[11px] font-semibold text-slate-700">
+                    {m.method}: <span className="font-mono">RD$ {m.total.toLocaleString()}</span>{' '}
+                    <span className="text-slate-400">({m.count})</span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Barra de Filtros y Búsqueda */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Lock,
   Unlock,
@@ -7,20 +7,20 @@ import {
   AlertTriangle,
   CalendarClock,
   Cpu,
+  Loader2,
 } from 'lucide-react';
 import {
   ClientCredit,
   InstallmentStatus,
+  MdmStatus,
   MdmApiConfig,
   MdmApiLog,
   SystemMetrics,
   InovaGuardDeviceItem,
+  Installment,
+  MobileDevice,
 } from './types';
-import {
-  INITIAL_CLIENTS,
-  INITIAL_MDM_CONFIG,
-  INITIAL_LOGS,
-} from './data/initialData';
+import { INITIAL_MDM_CONFIG } from './data/initialData';
 import { Navbar, MainViewTab } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { DashboardStats } from './components/DashboardStats';
@@ -34,51 +34,192 @@ import { FinanceView } from './components/FinanceView';
 import { AnalyticsView } from './components/AnalyticsView';
 import { PaymentModal, CascadePaymentPayload } from './components/PaymentModal';
 import { useConfirm } from './components/ConfirmDialog';
+import { LoginScreen } from './components/LoginScreen';
+import {
+  apiFetchMe,
+  apiLogout,
+  apiListClients,
+  apiGetClient,
+  apiCreateClient,
+  apiCreateCredit,
+  apiCreateDevice,
+  apiPatchInstallment,
+  apiCascadePayment,
+  apiSyncDevice,
+  apiGetMdmConfig,
+  apiPutMdmConfig,
+  apiGetDeviceEvents,
+  errorMessage,
+  type Session,
+  type ClientFullRow,
+  type DeviceEventRow,
+} from './services/api';
 import {
   lockInovaGuardDevice,
   unlockInovaGuardDevice,
   generateInovaGuardUnlockCode,
   removeInovaGuardDevice,
   getInovaGuardDevices,
-  loginInovaGuard,
 } from './services/inovaGuardApi';
 
-// Persistencia local de la configuración MDM (credenciales + token renovado)
-const MDM_CONFIG_STORAGE_KEY = 'credipay-mdm-config';
+// ---------------------------------------------------------------------------
+// Helpers de mapeo servidor (snake_case + Date de mysql2) -> tipos del frontend
+// ---------------------------------------------------------------------------
 
-const loadStoredMdmConfig = (): MdmApiConfig => {
-  try {
-    const raw = localStorage.getItem(MDM_CONFIG_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<MdmApiConfig>;
-      if (parsed && typeof parsed === 'object' && parsed.baseUrl && parsed.appClient) {
-        return { ...INITIAL_MDM_CONFIG, ...parsed };
-      }
-    }
-  } catch (err) {
-    console.warn('No se pudo leer la configuración MDM guardada:', err);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const toDateStr = (v: unknown): string => {
+  if (!v) return '';
+  if (typeof v === 'string') return v.slice(0, 10);
+  if (v instanceof Date) {
+    return `${v.getFullYear()}-${pad2(v.getMonth() + 1)}-${pad2(v.getDate())}`;
   }
-  return INITIAL_MDM_CONFIG;
+  return String(v).slice(0, 10);
 };
+
+const toDateTimeStr = (v: unknown): string => {
+  if (!v) return '';
+  const d = v instanceof Date ? v : new Date(v as string | number);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(
+    d.getMinutes()
+  )}:${pad2(d.getSeconds())}`;
+};
+
+const num = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const mapClient = (row: ClientFullRow): ClientCredit => {
+  const credit = row.credits?.[0];
+  const dev = row.devices?.[0];
+  const installments: Installment[] = (row.installments ?? [])
+    .filter((ci) => ci.status !== 'CANCELADO')
+    .map((ci) => ({
+      id: String(ci.id),
+      clientId: String(row.id),
+      number: num(ci.installment_number),
+      amount: num(ci.amount),
+      dueDate: toDateStr(ci.due_date),
+      status: (['PENDIENTE', 'VENCIDO', 'ATRASADO', 'PAGADO'].includes(ci.status)
+        ? ci.status
+        : 'PENDIENTE') as InstallmentStatus,
+      penaltyAmount: num(ci.penalty_amount),
+      totalAmount: num(ci.total_amount),
+      paidAmount: num(ci.paid_amount) || undefined,
+      paidDate: toDateStr(ci.paid_date) || undefined,
+      paymentRef: ci.payment_reference || undefined,
+    }));
+
+  const device: MobileDevice = dev
+    ? {
+        id: String(dev.id),
+        inovaguardId: dev.inovaguard_id || undefined,
+        unlockCode: dev.unlock_code || undefined,
+        deviceName: dev.device_name || undefined,
+        brand: dev.brand || 'N/D',
+        model: dev.model || 'N/D',
+        imei: dev.imei || 'N/D',
+        serialNumber: dev.serial_number || '',
+        mdmStatus: (['UNLOCKED', 'LOCKED', 'PENDING_LOCK', 'PENDING_UNLOCK'].includes(
+          dev.mdm_status
+        )
+          ? dev.mdm_status
+          : 'UNLOCKED') as MdmStatus,
+        lastMdmSync: dev.last_mdm_sync_note
+          ? dev.last_mdm_sync_note
+          : dev.last_mdm_sync_at
+          ? `Sincronizado: ${toDateTimeStr(dev.last_mdm_sync_at)}`
+          : 'Sin sincronización MDM',
+        remoteLockSupported: !!dev.remote_lock_supported,
+      }
+    : {
+        id: `DEV-${row.id}`,
+        brand: '—',
+        model: '—',
+        imei: '—',
+        serialNumber: '',
+        mdmStatus: 'UNLOCKED' as MdmStatus,
+        lastMdmSync: 'Sin dispositivo registrado',
+        remoteLockSupported: false,
+      };
+
+  return {
+    id: String(row.id),
+    fullName: row.full_name,
+    cedulaOrId: row.cedula_or_id || '—',
+    phone: row.phone || '—',
+    email: row.email || '',
+    address: row.address || '',
+    avatarUrl: row.avatar_url || undefined,
+    creditStartDate: toDateStr(credit?.start_date),
+    totalCreditAmount: num(credit?.total_amount),
+    monthlyInstallmentAmount: num(credit?.monthly_amount),
+    totalInstallmentsCount: num(credit?.installments_count) || installments.length,
+    device,
+    installments,
+    notes: row.notes || undefined,
+  };
+};
+
+const ACTION_MAP: Record<string, MdmApiLog['action']> = {
+  LOCK: 'LOCK',
+  UNLOCK: 'UNLOCK',
+  UNLOCK_CODE: 'UNLOCK_CODE',
+  REMOVE: 'REMOVE',
+  PAYMENT_REC: 'PAYMENT_REC',
+  SYNC_DEVICES: 'SYNC_DEVICES',
+  STATUS_CHECK: 'STATUS_CHECK',
+  LOGIN: 'LOGIN',
+  BALANCE: 'BALANCE',
+  QR_ENROLLMENT: 'QR_ENROLLMENT',
+  CONFIG_UPDATE: 'CONFIG_UPDATE',
+};
+
+const TRIGGER_MAP: Record<string, MdmApiLog['trigger']> = {
+  AUTOMATIC_PAYMENT: 'AUTOMATIC_PAYMENT',
+  AUTOMATIC_OVERDUE: 'AUTOMATIC_OVERDUE',
+  MANUAL: 'MANUAL_OPERATOR',
+  SYSTEM_SYNC: 'SYSTEM_SYNC',
+};
+
+const mapEvent = (e: DeviceEventRow): MdmApiLog => ({
+  id: String(e.id),
+  timestamp: toDateTimeStr(e.created_at),
+  clientId: e.client_id != null ? String(e.client_id) : '—',
+  clientName: e.client_name || e.device_name || '—',
+  imei: e.imei || '—',
+  action: ACTION_MAP[e.action] ?? 'STATUS_CHECK',
+  trigger: TRIGGER_MAP[e.trigger_source ?? ''] ?? 'MANUAL_OPERATOR',
+  status: e.status === 'FAILED' ? 'FAILED' : e.status === 'SIMULATED' ? 'SIMULATED' : 'SUCCESS',
+  details: e.details || '',
+});
 
 export default function App() {
   const confirmDialog = useConfirm();
+
+  // Sesión y RBAC
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Datos del tenant (Fase 3: servidos por la API)
+  const [clients, setClients] = useState<ClientCredit[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [mdmConfig, setMdmConfig] = useState<MdmApiConfig>(INITIAL_MDM_CONFIG);
+  const [logs, setLogs] = useState<MdmApiLog[]>([]);
+
+  // Estados de interfaz y modales
   const [activeTab, setActiveTab] = useState<MainViewTab>('CLIENTS');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
-  const [clients, setClients] = useState<ClientCredit[]>(INITIAL_CLIENTS);
-  const [mdmConfig, setMdmConfig] = useState<MdmApiConfig>(loadStoredMdmConfig);
-  const [logs, setLogs] = useState<MdmApiLog[]>(INITIAL_LOGS);
-
-  // Estados de interfaz y modales
   const [filterStatus, setFilterStatus] = useState<
     'ALL' | 'PENDIENTE' | 'VENCIDO' | 'ATRASADO' | 'PAGADO'
   >('ALL');
   const [autoEngineActive, setAutoEngineActive] = useState(true);
   const [selectedClientForInstallments, setSelectedClientForInstallments] =
     useState<ClientCredit | null>(null);
-  const [selectedClientForAi, setSelectedClientForAi] =
-    useState<ClientCredit | null>(null);
+  const [selectedClientForAi, setSelectedClientForAi] = useState<ClientCredit | null>(null);
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [isNewCreditModalOpen, setIsNewCreditModalOpen] = useState(false);
   const [pendingLoanDevice, setPendingLoanDevice] = useState<InovaGuardDeviceItem | null>(null);
@@ -87,7 +228,7 @@ export default function App() {
     installmentId?: string;
   } | null>(null);
 
-  // Toast / Banner de notificación para feedback de acciones MDM
+  // Toast / Banner de notificación para feedback de acciones
   const [notification, setNotification] = useState<{
     text: string;
     type: 'LOCK' | 'UNLOCK' | 'INFO';
@@ -103,62 +244,111 @@ export default function App() {
     }, 4500);
   };
 
-  // AL ARRANCAR: renovar token Bearer automáticamente (los tokens viejos
-  // devuelven datos demo de otra cuenta). El token fresco queda en mdmConfig.
+  const has = (perm: string) => session?.permissions.includes(perm) ?? false;
+
+  const guard = (perm: string, fn: () => void) => () => {
+    if (!has(perm)) {
+      showNotification(`⛔ Acción denegada: falta el permiso "${perm}"`, 'LOCK');
+      return;
+    }
+    fn();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Carga de datos desde la API
+  // ---------------------------------------------------------------------------
+
+  const reloadMdmConfig = useCallback(async () => {
+    try {
+      const res = await apiGetMdmConfig();
+      setMdmConfig(res.data);
+    } catch (err) {
+      console.warn('No se pudo cargar la configuración MDM:', err);
+    }
+  }, []);
+
+  const reloadClients = useCallback(async () => {
+    setClientsLoading(true);
+    try {
+      const list = await apiListClients({ perPage: 200 });
+      const full = await Promise.all(list.data.map((c) => apiGetClient(c.id)));
+      const mapped = full.map((res) => mapClient(res.data));
+      setClients(mapped);
+      setSelectedClientForInstallments((prev) =>
+        prev ? (mapped.find((c) => c.id === prev.id) ?? null) : null
+      );
+    } catch (err) {
+      console.warn('No se pudieron cargar los clientes:', err);
+    } finally {
+      setClientsLoading(false);
+    }
+  }, []);
+
+  const reloadLogs = useCallback(async () => {
+    try {
+      const res = await apiGetDeviceEvents({ perPage: 200 });
+      setLogs(res.data.map(mapEvent));
+    } catch (err) {
+      console.warn('No se pudieron cargar los eventos MDM:', err);
+    }
+  }, []);
+
+  const reloadAll = useCallback(async () => {
+    await Promise.all([reloadMdmConfig(), reloadClients(), reloadLogs()]);
+  }, [reloadMdmConfig, reloadClients, reloadLogs]);
+
+  const handleSelectTab = useCallback(
+    (tab: MainViewTab) => {
+      setActiveTab(tab);
+      if (tab === 'LOGS') void reloadLogs();
+    },
+    [reloadLogs]
+  );
+
+  // AL ARRANCAR: validar la sesión existente (cookie httpOnly)
   useEffect(() => {
-    if (!mdmConfig.enabled || !mdmConfig.liveMode) return;
     let cancelled = false;
     (async () => {
       try {
-        const res = await loginInovaGuard(mdmConfig);
-        if (!cancelled && !res.err && res.token) {
-          setMdmConfig((prev) =>
-            prev.bearerToken === res.token ? prev : { ...prev, bearerToken: res.token }
-          );
-        }
-      } catch (err) {
-        console.warn('[MDM] No se pudo renovar el token al arrancar:', err);
+        const s = await apiFetchMe();
+        if (!cancelled) setSession(s);
+      } catch {
+        if (!cancelled) setSession(null);
+      } finally {
+        if (!cancelled) setAuthLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persistir la configuración MDM (credenciales + token) entre recargas
+  // Al autenticarse: cargar configuración, cartera y auditoría
   useEffect(() => {
-    try {
-      localStorage.setItem(MDM_CONFIG_STORAGE_KEY, JSON.stringify(mdmConfig));
-    } catch (err) {
-      console.warn('No se pudo persistir la configuración MDM:', err);
-    }
-  }, [mdmConfig]);
+    if (!session) return;
+    void reloadMdmConfig();
+    void reloadClients();
+    void reloadLogs();
+  }, [session, reloadMdmConfig, reloadClients, reloadLogs]);
 
-  // Helper de log API
-  const addLog = (
-    clientId: string,
-    clientName: string,
-    imei: string,
-    action: MdmApiLog['action'],
-    trigger: MdmApiLog['trigger'],
-    details: string
-  ) => {
-    const newLog: MdmApiLog = {
-      id: 'LOG-' + Date.now(),
-      timestamp: new Date().toISOString().split('T')[0] + ' ' + new Date().toLocaleTimeString(),
-      clientId,
-      clientName,
-      imei,
-      action,
-      trigger,
-      status: 'SUCCESS',
-      details,
-    };
-    setLogs((prev) => [newLog, ...prev]);
+  // ---------------------------------------------------------------------------
+  // Sesión
+  // ---------------------------------------------------------------------------
+
+  const handleLogout = async () => {
+    try {
+      await apiLogout();
+    } catch (err) {
+      console.warn('Error al cerrar sesión:', err);
+    }
+    setSession(null);
+    setClients([]);
+    setLogs([]);
   };
 
+  // ---------------------------------------------------------------------------
   // ACCIÓN MDM: BLOQUEAR CELULAR
+  // ---------------------------------------------------------------------------
   const handleLockDevice = async (
     clientId: string,
     reason: string,
@@ -179,40 +369,18 @@ export default function App() {
     }
     if (target.device.inovaguardId) {
       try {
-        await lockInovaGuardDevice(mdmConfig, target.device.inovaguardId);
+        const res = await lockInovaGuardDevice(mdmConfig, target.device.inovaguardId);
+        showNotification(
+          `🔒 MDM ${res.isSimulated ? 'LOCK (SIMULADO)' : 'LOCK EJECUTADO'}: Celular ${target.device.model} de ${target.fullName} bloqueado.`,
+          'LOCK'
+        );
       } catch (err) {
-        console.warn('Error al llamar a InovaGuard Lock', err);
+        showNotification(`❌ Error en el bloqueo: ${errorMessage(err)}`, 'LOCK');
       }
+    } else {
+      showNotification(`⚠️ El dispositivo de ${target.fullName} no tiene ID InovaGuard.`, 'INFO');
     }
-
-    setClients((prev) =>
-      prev.map((cli) => {
-        if (cli.id !== clientId) return cli;
-        const wasLocked = cli.device.mdmStatus === 'LOCKED';
-        if (!wasLocked) {
-          addLog(
-            cli.id,
-            cli.fullName,
-            cli.device.imei,
-            'LOCK',
-            trigger,
-            `${reason} ${cli.device.unlockCode ? `(InovaGuard ID: ${cli.device.unlockCode})` : ''}`
-          );
-          showNotification(
-            `🔒 MDM LOCK EJECUTADO: Celular ${cli.device.model} del cliente ${cli.fullName} ha sido bloqueado.`,
-            'LOCK'
-          );
-        }
-        return {
-          ...cli,
-          device: {
-            ...cli.device,
-            mdmStatus: 'LOCKED',
-            lastMdmSync: 'Hace unos segundos (Bloqueo enviado)',
-          },
-        };
-      })
-    );
+    await reloadClients();
   };
 
   // ACCIÓN MDM: DESBLOQUEAR CELULAR
@@ -236,40 +404,19 @@ export default function App() {
     }
     if (target.device.inovaguardId) {
       try {
-        await unlockInovaGuardDevice(mdmConfig, target.device.inovaguardId);
+        const res = await unlockInovaGuardDevice(mdmConfig, target.device.inovaguardId);
+        showNotification(
+          `🔓 MDM ${res.isSimulated ? 'UNLOCK (SIMULADO)' : 'UNLOCK EJECUTADO'}: Celular ${target.device.model} de ${target.fullName} desbloqueado.`,
+          'UNLOCK'
+        );
       } catch (err) {
-        console.warn('Error al llamar a InovaGuard Unlock', err);
+        showNotification(`❌ Error en el desbloqueo: ${errorMessage(err)}`, 'LOCK');
       }
+    } else {
+      showNotification(`⚠️ El dispositivo de ${target.fullName} no tiene ID InovaGuard.`, 'INFO');
     }
-
-    setClients((prev) =>
-      prev.map((cli) => {
-        if (cli.id !== clientId) return cli;
-        const wasLocked = cli.device.mdmStatus === 'LOCKED';
-        if (wasLocked) {
-          addLog(
-            cli.id,
-            cli.fullName,
-            cli.device.imei,
-            'UNLOCK',
-            trigger,
-            `${reason} ${cli.device.unlockCode ? `(InovaGuard ID: ${cli.device.unlockCode})` : ''}`
-          );
-          showNotification(
-            `🔓 MDM UNLOCK EJECUTADO: Celular ${cli.device.model} del cliente ${cli.fullName} desbloqueado exitosamente.`,
-            'UNLOCK'
-          );
-        }
-        return {
-          ...cli,
-          device: {
-            ...cli.device,
-            mdmStatus: 'UNLOCKED',
-            lastMdmSync: 'Hace unos segundos (Desbloqueado)',
-          },
-        };
-      })
-    );
+    await reloadClients();
+    void reloadLogs();
   };
 
   // ACCIÓN MDM: GENERAR CÓDIGO OFFLINE DE INOVAGUARD
@@ -287,34 +434,40 @@ export default function App() {
       if (!ok) return;
     }
 
-    const deviceId = target.device.inovaguardId || target.device.imei.slice(-4);
-    const res = await generateInovaGuardUnlockCode(mdmConfig, deviceId);    setClients((prev) =>
-      prev.map((cli) => {
-        if (cli.id !== clientId) return cli;
-        return {
-          ...cli,
-          device: {
-            ...cli.device,
-            lastUnlockCode: res.code,
-            lastMdmSync: `Código generado: ${res.code}`,
-          },
-        };
-      })
-    );
+    if (!target.device.inovaguardId) {
+      showNotification(`⚠️ El dispositivo de ${target.fullName} no tiene ID InovaGuard.`, 'INFO');
+      return;
+    }
 
-    addLog(
-      target.id,
-      target.fullName,
-      target.device.imei,
-      'UNLOCK_CODE',
-      'MANUAL_OPERATOR',
-      `Generado Código de Desbloqueo Offline (#${res.code}) para InovaGuard ID: ${target.device.unlockCode || target.device.imei.slice(-4)}.`
-    );
-
-    showNotification(
-      `🔑 CÓDIGO OFFLINE GENERADO (#${res.code}): Puedes dar este código al cliente para desbloqueo manual sin internet.`,
-      'INFO'
-    );
+    try {
+      const res = await generateInovaGuardUnlockCode(mdmConfig, target.device.inovaguardId);
+      if (res.code) {
+        setClients((prev) =>
+          prev.map((cli) =>
+            cli.id === clientId
+              ? {
+                  ...cli,
+                  device: {
+                    ...cli.device,
+                    lastUnlockCode: res.code,
+                    lastMdmSync: `Código generado: ${res.code}`,
+                  },
+                }
+              : cli
+          )
+        );
+        showNotification(
+          `🔑 CÓDIGO OFFLINE GENERADO (#${res.code}): Puedes dar este código al cliente para desbloqueo manual sin internet.`,
+          'INFO'
+        );
+      } else {
+        showNotification(`⚠️ ${res.message}`, 'INFO');
+      }
+    } catch (err) {
+      showNotification(`❌ Error al generar el código: ${errorMessage(err)}`, 'LOCK');
+    }
+    await reloadClients();
+    void reloadLogs();
   };
 
   // ACCIÓN MDM: DESVINCULAR DISPOSITIVO (REMOVE)
@@ -332,220 +485,137 @@ export default function App() {
       if (!ok) return;
     }
 
-    const deviceId = target.device.inovaguardId || target.device.imei.slice(-4);
-    await removeInovaGuardDevice(mdmConfig, deviceId);
-
-    setClients((prev) =>
-      prev.map((cli) => {
-        if (cli.id !== clientId) return cli;
-        return {
-          ...cli,
-          device: {
-            ...cli.device,
-            mdmStatus: 'UNLOCKED',
-            inovaguardId: undefined,
-            lastMdmSync: 'Desvinculado (Remove MDM InovaGuard)',
-          },
-        };
-      })
-    );
-
-    addLog(
-      target.id,
-      target.fullName,
-      target.device.imei,
-      'REMOVE',
-      'MANUAL_OPERATOR',
-      `Dispositivo removido de la plataforma InovaGuard (InovaGuard ID: ${target.device.unlockCode || target.device.imei.slice(-4)}).`
-    );
-
-    showNotification(
-      `🗑️ DISPOSITIVO DESVINCULADO: El celular ${target.device.model} ha sido eliminado de la consola MDM.`,
-      'INFO'
-    );
+    if (target.device.inovaguardId) {
+      try {
+        const res = await removeInovaGuardDevice(mdmConfig, target.device.inovaguardId);
+        showNotification(
+          `🗑️ DISPOSITIVO DESVINCULADO: ${res.isSimulated ? '(SIMULADO) ' : ''}El celular ${target.device.model} fue eliminado de la consola MDM.`,
+          'INFO'
+        );
+      } catch (err) {
+        showNotification(`❌ Error al desvincular: ${errorMessage(err)}`, 'LOCK');
+      }
+    } else {
+      showNotification(`⚠️ El dispositivo de ${target.fullName} no tiene ID InovaGuard.`, 'INFO');
+    }
+    await reloadClients();
   };
 
-  // ACCIÓN MDM: SYNC INOVAGUARD DEVICES (/devices)
+  // ACCIÓN MDM: SYNC INOVAGUARD DEVICES (/devices + persistencia local)
   const handleSyncInovaGuard = async () => {
     showNotification('🔄 Sincronizando dispositivos en vivo desde InovaGuard API...', 'INFO');
     try {
-      const { devices, isSimulated, totalDevices } = await getInovaGuardDevices(mdmConfig, {
+      const { isSimulated, totalDevices } = await getInovaGuardDevices(mdmConfig, {
         force: true,
       });
       let updatedCount = 0;
-
-      setClients((prev) =>
-        prev.map((cli) => {
-          const remoteDevice = devices.find(
-            (d) => d.id === cli.device.inovaguardId || d.imei === cli.device.imei
-          );
-          if (!remoteDevice) return cli;
-
-          updatedCount++;
-          return {
-            ...cli,
-            device: {
-              ...cli.device,
-              inovaguardId: remoteDevice.id,
-              unlockCode: remoteDevice.unlockCode,
-              mdmStatus: remoteDevice.status,
-              lastMdmSync: `Sincronizado vía InovaGuard /devices (${new Date().toLocaleTimeString()})`,
-            },
-          };
+      await Promise.all(
+        clients.map(async (cli) => {
+          if (!cli.device.inovaguardId) return;
+          const devId = Number(cli.device.id);
+          if (!Number.isInteger(devId)) return;
+          try {
+            await apiSyncDevice(devId);
+            updatedCount++;
+          } catch {
+            // dispositivo sin enlace MDM en el servidor: se ignora
+          }
         })
       );
-
-      addLog(
-        'SYS-SYNC',
-        'Motor de Sincronización',
-        'GLOBAL-MDM',
-        'SYNC_DEVICES',
-        'SYSTEM_SYNC',
-        `Sincronización masiva de ${totalDevices} dispositivos en InovaGuard API (${mdmConfig.baseUrl}/devices).`
-      );
-
+      await reloadAll();
       showNotification(
         isSimulated
-          ? `⚠️ SYNC SIMULADO: La API no respondió; se usaron ${totalDevices} dispositivos demo. Revisa credenciales/CORS.`
+          ? `⚠️ SYNC SIMULADO: La API no respondió; se usaron ${totalDevices} dispositivos demo. Revisa las credenciales en la configuración MDM.`
           : `✅ SYNC INOVAGUARD COMPLETO: Se sincronizaron ${totalDevices} dispositivos reales y se actualizaron ${updatedCount} clientes en la consola.`,
         'INFO'
       );
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
-      showNotification(`❌ Error al sincronizar con InovaGuard: ${errorMsg}`, 'LOCK');
+    } catch (err) {
+      showNotification(`❌ Error al sincronizar con InovaGuard: ${errorMessage(err)}`, 'LOCK');
     }
   };
 
-  // ACCIÓN: CHECK STATUS API
-  const handleCheckStatus = (clientId: string) => {
+  // ACCIÓN: CHECK STATUS API (sync puntual del dispositivo)
+  const handleCheckStatus = async (clientId: string) => {
     const cli = clients.find((c) => c.id === clientId);
     if (!cli) return;
-    addLog(
-      cli.id,
-      cli.fullName,
-      cli.device.imei,
-      'STATUS_CHECK',
-      'MANUAL_OPERATOR',
-      `Comprobación de conectividad con la API Externa en ${mdmConfig.baseUrl}. Equipo operando normal.`
-    );
+    const devId = Number(cli.device.id);
+    if (cli.device.inovaguardId && Number.isInteger(devId)) {
+      try {
+        const res = await apiSyncDevice(devId);
+        await reloadClients();
+        showNotification(
+          res.data.isSimulated
+            ? `⚠️ Status MDM (SIMULADO): ${cli.device.model} (IMEI: ${cli.device.imei}).`
+            : `✅ Conexión API Externa OK: El dispositivo ${cli.device.model} (IMEI: ${cli.device.imei}) responde correctamente.`,
+          'INFO'
+        );
+        return;
+      } catch (err) {
+        showNotification(`❌ Error al verificar el dispositivo: ${errorMessage(err)}`, 'LOCK');
+        return;
+      }
+    }
     showNotification(
       `🌐 Conexión API Externa OK: El dispositivo ${cli.device.model} (IMEI: ${cli.device.imei}) responde correctamente.`,
       'INFO'
     );
   };
 
-  // REGISTRAR PAGO EN CASCADA (distribuye el monto entre las cuotas pendientes,
-  // registra abonos parciales y desbloquea automáticamente si no quedan atrasos)
-  const handleCascadePayment = (payload: CascadePaymentPayload) => {
-    const target = clients.find((c) => c.id === payload.clientId);
-    if (!target) return;
+  // ---------------------------------------------------------------------------
+  // REGISTRAR PAGO EN CASCADA (el servidor distribuye, desbloquea y audita)
+  // ---------------------------------------------------------------------------
+  const handleCascadePayment = async (payload: CascadePaymentPayload) => {
+    try {
+      const result = await apiCascadePayment({
+        clientId: Number(payload.clientId),
+        amount: payload.amountApplied,
+        method: payload.method,
+        bank: payload.bank,
+        received: payload.received,
+        change: payload.change,
+      });
+      await reloadAll();
 
-    const affectedIds = new Set(payload.affected.map((a) => a.installment.id));
-    const fullyPaidNumbers = payload.affected
-      .filter((a) => a.becamePaid)
-      .map((a) => a.installment.number);
-    const abonoNumbers = payload.affected
-      .filter((a) => !a.becamePaid)
-      .map((a) => a.installment.number);
+      const d = result.data as {
+        amountApplied?: number;
+        change?: number;
+        unlock?: { success?: boolean; simulated?: boolean; message?: string } | null;
+      };
+      const applied = d.amountApplied ?? payload.amountApplied;
+      const change = d.change ?? payload.change;
+      const fullyPaidNumbers = payload.affected
+        .filter((a) => a.becamePaid)
+        .map((a) => a.installment.number);
+      const abonoNumbers = payload.affected
+        .filter((a) => !a.becamePaid)
+        .map((a) => a.installment.number);
 
-    // Desbloqueo automático si con este pago no queda NINGÚN atraso
-    const hadOverdue = target.installments.some((i) => i.status === 'ATRASADO');
-    const overdueLeft = target.installments.some(
-      (i) => i.status === 'ATRASADO' && !affectedIds.has(i.id)
-    );
-    const willUnlock = hadOverdue && !overdueLeft;
+      let msg = `💵 PAGO EN CASCADA REGISTRADO: RD$${applied.toLocaleString()} aplicados a ${payload.clientName}.`;
+      if (fullyPaidNumbers.length > 0) {
+        msg += ` Cuota${fullyPaidNumbers.length > 1 ? 's' : ''} ${fullyPaidNumbers
+          .map((n) => `#${n}`)
+          .join(', ')} pagada${fullyPaidNumbers.length > 1 ? 's' : ''}.`;
+      }
+      if (abonoNumbers.length > 0) {
+        msg += ` Abono${abonoNumbers.length > 1 ? 's' : ''} en cuota${abonoNumbers.length > 1 ? 's' : ''} ${abonoNumbers
+          .map((n) => `#${n}`)
+          .join(', ')}.`;
+      }
+      if (change > 0) msg += ` Vuelto a entregar: RD$${change.toLocaleString()}.`;
+      showNotification(msg, 'INFO');
 
-    // Registro en auditoría por cada cuota afectada (fuera del updater)
-    payload.affected.forEach((a) => {
-      const before = a.installment.paidAmount || 0;
-      addLog(
-        target.id,
-        target.fullName,
-        target.device.imei,
-        'PAYMENT_REC',
-        'MANUAL_OPERATOR',
-        `Pago en cascada (${payload.method}${payload.bank ? ` · ${payload.bank}` : ''}): RD$${a.applied.toLocaleString()} → cuota #${a.installment.number}${a.becamePaid ? ' COMPLETADA' : ` (abono total RD$${(before + a.applied).toLocaleString()}, restan RD$${a.remainingAfter.toLocaleString()})`}.${payload.change > 0 ? ` Vuelto entregado: RD$${payload.change.toLocaleString()}.` : ''}`
-      );
-    });
-
-    if (willUnlock) {
-      addLog(
-        target.id,
-        target.fullName,
-        target.device.imei,
-        'UNLOCK',
-        'AUTOMATIC_PAYMENT',
-        `Pago en cascada recibido. Sin atrasos pendientes -> Desbloqueo MDM ejecutado automáticamente vía ${mdmConfig.baseUrl}.`
-      );
-    }
-
-    setClients((prev) =>
-      prev.map((cli) => {
-        if (cli.id !== payload.clientId) return cli;
-
-        const nextInstallments = cli.installments.map((inst) => {
-          const aff = payload.affected.find((a) => a.installment.id === inst.id);
-          if (!aff) return inst;
-          const paidAmount = (inst.paidAmount || 0) + aff.applied;
-          if (aff.becamePaid) {
-            return {
-              ...inst,
-              paidAmount,
-              status: 'PAGADO' as InstallmentStatus,
-              paidDate: new Date().toISOString().split('T')[0],
-              paymentRef: 'REC-' + Math.floor(10000 + Math.random() * 90000),
-            };
-          }
-          return { ...inst, paidAmount };
-        });
-
-        let nextDevice = { ...cli.device };
-        if (willUnlock && cli.device.mdmStatus === 'LOCKED' && mdmConfig.autoUnlockOnPaid) {
-          nextDevice = {
-            ...cli.device,
-            mdmStatus: 'UNLOCKED',
-            lastMdmSync: 'Hace unos instantes (Desbloqueado al recibir pago en cascada)',
-          };
-        }
-
-        const updatedClient = {
-          ...cli,
-          device: nextDevice,
-          installments: nextInstallments,
-        };
-
-        if (selectedClientForInstallments && selectedClientForInstallments.id === cli.id) {
-          setSelectedClientForInstallments(updatedClient);
-        }
-
-        return updatedClient;
-      })
-    );
-
-    const paidLabel =
-      fullyPaidNumbers.length > 0
-        ? `cuota${fullyPaidNumbers.length > 1 ? 's' : ''} ${fullyPaidNumbers.map((n) => `#${n}`).join(', ')} pagada${fullyPaidNumbers.length > 1 ? 's' : ''}`
-        : '';
-    const abonoLabel =
-      abonoNumbers.length > 0
-        ? `${paidLabel ? ' y ' : ''}abono${abonoNumbers.length > 1 ? 's' : ''} en cuota${abonoNumbers.length > 1 ? 's' : ''} ${abonoNumbers.map((n) => `#${n}`).join(', ')}`
-        : '';
-    const changeLabel = payload.change > 0 ? ` · Vuelto a entregar: RD$${payload.change.toLocaleString()}` : '';
-
-    showNotification(
-      `💵 PAGO EN CASCADA: ${paidLabel}${abonoLabel} de ${target.fullName} (RD$${payload.amountApplied.toLocaleString()} aplicados).${changeLabel}`,
-      'INFO'
-    );
-
-    if (willUnlock && target.device.mdmStatus === 'LOCKED') {
-      showNotification(
-        `🎉 DESBLOQUEO AUTOMÁTICO: El celular de ${target.fullName} fue desbloqueado por MDM al quedar al día con el pago en cascada.`,
-        'UNLOCK'
-      );
+      if (d.unlock?.success) {
+        showNotification(
+          `🎉 DESBLOQUEO AUTOMÁTICO: El celular de ${payload.clientName} fue desbloqueado por MDM al quedar al día con el pago en cascada.`,
+          'UNLOCK'
+        );
+      }
+    } catch (err) {
+      showNotification(`❌ Error al registrar el pago: ${errorMessage(err)}`, 'LOCK');
     }
   };
 
-  // SIMULAR QUE UNA CUOTA SE ATRASA 3 DÍAS (>3 DÍAS) PARA PROBAR LA MORA DE $200 Y BLOQUEO MDM AUTOMÁTICO
+  // SIMULAR QUE UNA CUOTA SE ATRASA 3 DÍAS (persistido vía API)
   const handleSimulateOverdue = async (clientId: string, installmentId: string) => {
     const cli = clients.find((c) => c.id === clientId);
     if (!cli) return;
@@ -558,61 +628,37 @@ export default function App() {
     });
     if (!ok) return;
 
-    let lockedClientName = '';
-    setClients((prev) =>
-      prev.map((cli) => {
-        if (cli.id !== clientId) return cli;
-        lockedClientName = cli.fullName;
-
-        const nextInstallments = cli.installments.map((inst) => {
-          if (inst.id !== installmentId) return inst;
-          return {
-            ...inst,
-            status: 'ATRASADO' as InstallmentStatus,
-            penaltyAmount: 200, // Mora fija de 200 pesos sin aumento
-            totalAmount: inst.amount + 200,
-          };
-        });
-
-        let nextDevice = { ...cli.device };
-        if (cli.device.mdmStatus !== 'LOCKED' && mdmConfig.autoLockOnOverdue) {
-          nextDevice = {
-            ...cli.device,
-            mdmStatus: 'LOCKED',
-            lastMdmSync: 'Hace un momento (Bloqueado por cuota ATRASADO +3 días)',
-          };
-          addLog(
-            cli.id,
-            cli.fullName,
-            cli.device.imei,
-            'LOCK',
-            'AUTOMATIC_OVERDUE',
-            `Simulación: Cuota superó 3 días de vencida. Mora de $200 fija aplicada. Bloqueo MDM emitido automáticamente.`
-          );
+    try {
+      await apiPatchInstallment(Number(installmentId), {
+        status: 'ATRASADO',
+        penaltyAmount: 200,
+      });
+      let locked = false;
+      if (
+        mdmConfig.autoLockOnOverdue &&
+        cli.device.mdmStatus !== 'LOCKED' &&
+        cli.device.inovaguardId
+      ) {
+        try {
+          const res = await lockInovaGuardDevice(mdmConfig, cli.device.inovaguardId);
+          locked = !res.err;
+        } catch {
+          locked = false;
         }
-
-        const updatedClient = {
-          ...cli,
-          device: nextDevice,
-          installments: nextInstallments,
-        };
-
-        if (selectedClientForInstallments && selectedClientForInstallments.id === cli.id) {
-          setSelectedClientForInstallments(updatedClient);
-        }
-
-        return updatedClient;
-      })
-    );
-
-    showNotification(
-      `⚠️ CUOTA ATRASADA EN SIMULACIÓN: Se aplicó mora fija de $200 a ${lockedClientName} y se ordenó el BLOQUEO MDM automático.`,
-      'LOCK'
-    );
+      }
+      await reloadAll();
+      showNotification(
+        `⚠️ CUOTA ATRASADA EN SIMULACIÓN: Mora fija de RD$200 aplicada a ${cli.fullName}${
+          locked ? ' y BLOQUEO MDM automático enviado.' : '.'
+        }`,
+        'LOCK'
+      );
+    } catch (err) {
+      showNotification(`❌ Error al simular el atraso: ${errorMessage(err)}`, 'LOCK');
+    }
   };
 
-  // EVALUAR ESTADOS DE TODAS LAS CUOTAS (Motor Automático)
-  // Revisa cuotas VENCIDO y si pasaron >3 días las convierte en ATRASADO (+200 pesos mora y BLOQUEO MDM)
+  // MOTOR AUTOMÁTICO: evaluar toda la cartera (PENDIENTE->VENCIDO->ATRASADO + lock)
   const runAutoEngineNow = async () => {
     const ok = await confirmDialog({
       icon: <Cpu className="w-5 h-5" />,
@@ -624,75 +670,66 @@ export default function App() {
     });
     if (!ok) return;
 
-    let lockedCount = 0;
-    setClients((prev) =>
-      prev.map((cli) => {
-        let needsLock = false;
-        const nextInstallments = cli.installments.map((inst) => {
-          // Si estaba en PENDIENTE o VENCIDO pero por fecha ya pasó a más de 3 días de atraso -> ATRASADO
-          const todayDate = new Date();
-          const dueDateObj = new Date(inst.dueDate);
-          const diffTime = todayDate.getTime() - dueDateObj.getTime();
-          const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+    const DAY = 24 * 3600 * 1000;
+    const patches: { id: number; status: string; penaltyAmount?: number }[] = [];
+    const locks: { inovaguardId: string }[] = [];
 
-          if (inst.status !== 'PAGADO' && inst.status !== 'ATRASADO' && diffDays >= 3) {
-            needsLock = true;
-            return {
-              ...inst,
-              status: 'ATRASADO' as InstallmentStatus,
-              penaltyAmount: 200,
-              totalAmount: inst.amount + 200,
-            };
-          }
-          if (inst.status === 'PENDIENTE' && diffDays >= 0 && diffDays < 3) {
-            return {
-              ...inst,
-              status: 'VENCIDO' as InstallmentStatus,
-            };
-          }
-          return inst;
-        });
+    for (const cli of clients) {
+      let needsLock = false;
+      for (const inst of cli.installments) {
+        const due = new Date(`${inst.dueDate}T00:00:00`).getTime();
+        const diffDays = Math.floor((Date.now() - due) / DAY);
 
-        let nextDevice = { ...cli.device };
-        if (needsLock && cli.device.mdmStatus !== 'LOCKED' && mdmConfig.autoLockOnOverdue) {
-          lockedCount++;
-          nextDevice = {
-            ...cli.device,
-            mdmStatus: 'LOCKED',
-            lastMdmSync: 'Automático por motor de control (>3 días de atraso)',
-          };
-          addLog(
-            cli.id,
-            cli.fullName,
-            cli.device.imei,
-            'LOCK',
-            'AUTOMATIC_OVERDUE',
-            `Motor Automático detectó cuota con >= 3 días después del vencimiento. Mora $200 fija + Bloqueo MDM aplicados.`
-          );
+        if (inst.status !== 'PAGADO' && inst.status !== 'ATRASADO' && diffDays >= 3) {
+          patches.push({ id: Number(inst.id), status: 'ATRASADO', penaltyAmount: 200 });
+          needsLock = true;
+        } else if (inst.status === 'PENDIENTE' && diffDays >= 0 && diffDays < 3) {
+          patches.push({ id: Number(inst.id), status: 'VENCIDO' });
         }
+      }
+      if (
+        needsLock &&
+        cli.device.mdmStatus !== 'LOCKED' &&
+        mdmConfig.autoLockOnOverdue &&
+        cli.device.inovaguardId
+      ) {
+        locks.push({ inovaguardId: cli.device.inovaguardId });
+      }
+    }
 
-        return {
-          ...cli,
-          device: nextDevice,
-          installments: nextInstallments,
-        };
-      })
-    );
-
-    if (lockedCount > 0) {
-      showNotification(
-        `⚙️ MOTOR MDM EJECUTADO: Se detectaron cuotas atrasadas (>3 días), se aplicó mora fija de $200 y se bloquearon ${lockedCount} dispositivos automáticamente.`,
-        'LOCK'
+    try {
+      await Promise.all(
+        patches.map((p) =>
+          apiPatchInstallment(p.id, { status: p.status, penaltyAmount: p.penaltyAmount })
+        )
       );
-    } else {
-      showNotification(
-        `⚙️ MOTOR MDM EVALUADO: Todos los créditos verificados. No hubo nuevos atrasos mayores a 3 días.`,
-        'INFO'
-      );
+      let lockedCount = 0;
+      for (const l of locks) {
+        try {
+          const res = await lockInovaGuardDevice(mdmConfig, l.inovaguardId);
+          if (!res.err) lockedCount++;
+        } catch {
+          // falla individual no detiene el motor
+        }
+      }
+      await reloadAll();
+      if (lockedCount > 0 || patches.length > 0) {
+        showNotification(
+          `⚙️ MOTOR MDM EJECUTADO: ${patches.length} cuota(s) actualizada(s), ${lockedCount} dispositivo(s) bloqueado(s) automáticamente.`,
+          lockedCount > 0 ? 'LOCK' : 'INFO'
+        );
+      } else {
+        showNotification(
+          `⚙️ MOTOR MDM EVALUADO: Todos los créditos verificados. No hubo nuevos atrasos mayores a 3 días.`,
+          'INFO'
+        );
+      }
+    } catch (err) {
+      showNotification(`❌ Error del motor automático: ${errorMessage(err)}`, 'LOCK');
     }
   };
 
-  // SIMULADOR: ADELANTAR FECHAS DE VENCIMIENTO 3 DÍAS (Para probar fácilmente toda la regla de negocio)
+  // SIMULADOR: ADELANTAR FECHAS DE VENCIMIENTO 3 DÍAS
   const handleSimulateDayPass = async () => {
     const ok = await confirmDialog({
       icon: <CalendarClock className="w-5 h-5" />,
@@ -704,65 +741,117 @@ export default function App() {
     });
     if (!ok) return;
 
-    setClients((prev) =>
-      prev.map((cli) => {
-        const nextInstallments = cli.installments.map((inst) => {
-          if (inst.status === 'PAGADO') return inst;
-          // Si era PENDIENTE y adelantamos 3 días, pasa a VENCIDO
-          if (inst.status === 'PENDIENTE') {
-            return {
-              ...inst,
-              status: 'VENCIDO' as InstallmentStatus,
-              dueDate: new Date().toISOString().split('T')[0],
-            };
-          }
-          // Si ya estaba en VENCIDO, al pasar 3 días pasa a ATRASADO con $200 mora
-          if (inst.status === 'VENCIDO') {
-            return {
-              ...inst,
-              status: 'ATRASADO' as InstallmentStatus,
-              penaltyAmount: 200, // Mora de 200 fija sin aumento
-              totalAmount: inst.amount + 200,
-            };
-          }
-          return inst;
-        });
+    const patches: { id: number; status: string; penaltyAmount?: number }[] = [];
+    const locks: { inovaguardId: string }[] = [];
 
-        // Si ahora tiene cuotas en ATRASADO, el dispositivo debe BLOQUEARSE
-        const hasOverdue = nextInstallments.some((i) => i.status === 'ATRASADO');
-        let nextDevice = { ...cli.device };
-
-        if (hasOverdue && cli.device.mdmStatus !== 'LOCKED' && mdmConfig.autoLockOnOverdue) {
-          nextDevice = {
-            ...cli.device,
-            mdmStatus: 'LOCKED',
-            lastMdmSync: 'Hace instantes (Simulación: +3 días transcurridos)',
-          };
-          addLog(
-            cli.id,
-            cli.fullName,
-            cli.device.imei,
-            'LOCK',
-            'AUTOMATIC_OVERDUE',
-            'Simulación de avance en tiempo: Cuotas vencidas superaron 3 días de gracia. Mora $200 + Bloqueo MDM ordenado.'
-          );
+    for (const cli of clients) {
+      let hasOverdue = false;
+      for (const inst of cli.installments) {
+        if (inst.status === 'PAGADO') continue;
+        if (inst.status === 'PENDIENTE') {
+          patches.push({ id: Number(inst.id), status: 'VENCIDO' });
+        } else if (inst.status === 'VENCIDO') {
+          patches.push({ id: Number(inst.id), status: 'ATRASADO', penaltyAmount: 200 });
+          hasOverdue = true;
+        } else if (inst.status === 'ATRASADO') {
+          hasOverdue = true;
         }
+      }
+      if (
+        hasOverdue &&
+        cli.device.mdmStatus !== 'LOCKED' &&
+        mdmConfig.autoLockOnOverdue &&
+        cli.device.inovaguardId
+      ) {
+        locks.push({ inovaguardId: cli.device.inovaguardId });
+      }
+    }
 
-        return {
-          ...cli,
-          device: nextDevice,
-          installments: nextInstallments,
-        };
-      })
-    );
-
-    showNotification(
-      `📅 SIMULACIÓN DE AVANCE EN TIEMPO (+3 DÍAS): Cuotas vencidas han pasado a ATRASADO con $200 de mora y bloqueo automático MDM activado.`,
-      'LOCK'
-    );
+    try {
+      await Promise.all(
+        patches.map((p) =>
+          apiPatchInstallment(p.id, { status: p.status, penaltyAmount: p.penaltyAmount })
+        )
+      );
+      let lockedCount = 0;
+      for (const l of locks) {
+        try {
+          const res = await lockInovaGuardDevice(mdmConfig, l.inovaguardId);
+          if (!res.err) lockedCount++;
+        } catch {
+          // continúa con el resto
+        }
+      }
+      await reloadAll();
+      showNotification(
+        `📅 SIMULACIÓN DE AVANCE EN TIEMPO (+3 DÍAS): Cuotas actualizadas (${patches.length}) y ${lockedCount} bloqueo(s) MDM automático(s) aplicados.`,
+        lockedCount > 0 ? 'LOCK' : 'INFO'
+      );
+    } catch (err) {
+      showNotification(`❌ Error en la simulación: ${errorMessage(err)}`, 'LOCK');
+    }
   };
 
-  // CÁLCULO DE METRICAS DEL SISTEMA
+  // ---------------------------------------------------------------------------
+  // NUEVO CRÉDITO (cliente -> crédito -> dispositivo)
+  // ---------------------------------------------------------------------------
+  const handleCreateCredit = async (newClient: ClientCredit) => {
+    try {
+      const client = await apiCreateClient({
+        fullName: newClient.fullName,
+        cedulaOrId: newClient.cedulaOrId !== '—' ? newClient.cedulaOrId : undefined,
+        phone: newClient.phone !== '—' ? newClient.phone : undefined,
+        email: newClient.email,
+        address: newClient.address,
+        notes: newClient.notes,
+      });
+      await apiCreateCredit({
+        clientId: client.data.id,
+        totalAmount: newClient.totalCreditAmount,
+        monthlyAmount: newClient.monthlyInstallmentAmount,
+        installmentsCount: newClient.totalInstallmentsCount,
+      });
+      const dev = newClient.device;
+      if (dev.imei && dev.imei !== '—') {
+        await apiCreateDevice({
+          clientId: client.data.id,
+          brand: dev.brand,
+          model: dev.model,
+          imei: dev.imei,
+          serialNumber: dev.serialNumber,
+          inovaguardId: dev.inovaguardId,
+          unlockCode: dev.unlockCode,
+          deviceName: dev.deviceName,
+          mdmStatus: 'UNLOCKED',
+        });
+      }
+      setPendingLoanDevice(null);
+      await reloadAll();
+      showNotification(
+        `✅ Nuevo crédito y celular ${dev.model} registrados para ${newClient.fullName}.`,
+        'INFO'
+      );
+    } catch (err) {
+      showNotification(`❌ Error al crear el crédito: ${errorMessage(err)}`, 'LOCK');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // CONFIGURACIÓN MDM (se guarda en el servidor — los secretos no viven en el navegador)
+  // ---------------------------------------------------------------------------
+  const handleSaveMdmConfig = async (cfg: MdmApiConfig) => {
+    try {
+      const res = await apiPutMdmConfig(cfg);
+      setMdmConfig(res.data);
+      showNotification('✅ Configuración MDM guardada en el servidor.', 'INFO');
+    } catch (err) {
+      showNotification(`❌ Error al guardar la configuración MDM: ${errorMessage(err)}`, 'LOCK');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Métricas del sistema
+  // ---------------------------------------------------------------------------
   const metrics: SystemMetrics = useMemo(() => {
     const totalClients = clients.length;
     const activeCredits = clients.length;
@@ -807,6 +896,25 @@ export default function App() {
     };
   }, [clients]);
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto mb-3" />
+          <p className="text-sm font-medium text-slate-500">Cargando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen onAuthenticated={(s) => setSession(s)} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
       {/* Toast de Notificación flotante */}
@@ -828,31 +936,34 @@ export default function App() {
 
       {/* Header */}
       <Navbar
-        onOpenNewCredit={() => setIsNewCreditModalOpen(true)}
-        onOpenApiConfig={() => setIsApiModalOpen(true)}
+        onOpenNewCredit={guard('credits.create', () => setIsNewCreditModalOpen(true))}
+        onOpenApiConfig={guard('mdm.config', () => setIsApiModalOpen(true))}
         autoEngineActive={autoEngineActive}
         onToggleAutoEngine={() => setAutoEngineActive(!autoEngineActive)}
-        onRunEngineNow={runAutoEngineNow}
+        onRunEngineNow={guard('installments.edit', runAutoEngineNow)}
         mdmConfigEnabled={mdmConfig.enabled}
-        onSyncInovaGuard={handleSyncInovaGuard}
+        onSyncInovaGuard={guard('devices.view', handleSyncInovaGuard)}
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        userName={session.user.name}
+        userEmail={session.user.email}
+        onLogout={handleLogout}
       />
 
       {/* Contenedor Principal con Sidebar Lateral */}
       <div className="flex flex-1 w-full min-h-[calc(100vh-4rem)] relative">
         <Sidebar
           activeTab={activeTab}
-          onSelectTab={setActiveTab}
+          onSelectTab={handleSelectTab}
           clientsCount={clients.length}
           logsCount={logs.length}
           autoEngineActive={autoEngineActive}
           onToggleAutoEngine={() => setAutoEngineActive(!autoEngineActive)}
-          onRunEngineNow={runAutoEngineNow}
-          onOpenNewCredit={() => setIsNewCreditModalOpen(true)}
-          onOpenApiConfig={() => setIsApiModalOpen(true)}
-          onSyncInovaGuard={handleSyncInovaGuard}
+          onRunEngineNow={guard('installments.edit', runAutoEngineNow)}
+          onOpenNewCredit={guard('credits.create', () => setIsNewCreditModalOpen(true))}
+          onOpenApiConfig={guard('mdm.config', () => setIsApiModalOpen(true))}
+          onSyncInovaGuard={guard('devices.view', handleSyncInovaGuard)}
           mdmConfigEnabled={mdmConfig.enabled}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -862,152 +973,158 @@ export default function App() {
 
         {/* Contenido Principal según Pestaña Activa */}
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full overflow-x-hidden">
-        {activeTab === 'CLIENTS' && (
-          <>
-            <DashboardStats
-              metrics={metrics}
-              onSimulateDayPass={handleSimulateDayPass}
-              onOpenInstallmentsFilter={(s) => setFilterStatus(s)}
-            />
-
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">
-                    Cartera de Clientes & Control MDM de Celulares
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Gestiona créditos, verifica estados de cuotas y ejecuta bloqueos o desbloqueos instantáneos o por API
-                  </p>
-                </div>
-              </div>
-
-              <ClientList
-                clients={clients}
-                filterStatus={filterStatus}
-                onSelectClientForInstallments={(client) =>
-                  setSelectedClientForInstallments(client)
-                }
-                onSelectClientForAi={(client) => setSelectedClientForAi(client)}
-                onLockDevice={handleLockDevice}
-                onUnlockDevice={handleUnlockDevice}
-                onCheckStatus={handleCheckStatus}
-                onFilterChange={(s) => setFilterStatus(s)}
-                onGenerateUnlockCode={handleGenerateUnlockCode}
-                onRemoveDevice={handleRemoveDevice}
+          {clientsLoading && clients.length === 0 && activeTab === 'CLIENTS' && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600 mb-3" />
+              <p className="text-sm font-medium">Cargando cartera de clientes desde el servidor...</p>
+            </div>
+          )}
+          {activeTab === 'CLIENTS' && !(clientsLoading && clients.length === 0) && (
+            <>
+              <DashboardStats
+                metrics={metrics}
+                onSimulateDayPass={guard('installments.edit', handleSimulateDayPass)}
+                onOpenInstallmentsFilter={(s) => setFilterStatus(s)}
               />
-            </div>
-          </>
-        )}
 
-        {activeTab === 'DEVICES' && (
-          <InovaGuardDevicesView
-            mdmConfig={mdmConfig}
-            clients={clients}
-            onLockDevice={handleLockDevice}
-            onUnlockDevice={handleUnlockDevice}
-            onGenerateCode={handleGenerateUnlockCode}
-            onRemoveDevice={handleRemoveDevice}
-            onSelectClient={(clientId) => {
-              const matched = clients.find(c => c.id === clientId);
-              if (matched) {
-                setSelectedClientForInstallments(matched);
-                setActiveTab('CLIENTS');
-              }
-            }}
-            onCreateLoanForDevice={(device) => {
-              setPendingLoanDevice(device);
-              setIsNewCreditModalOpen(true);
-            }}
-            onSyncComplete={handleSyncInovaGuard}
-          />
-        )}
-
-        {activeTab === 'FINANCE' && (
-          <FinanceView
-            clients={clients}
-            onOpenPayment={() => setPaymentModal({ client: null })}
-            onOpenNewCredit={() => setIsNewCreditModalOpen(true)}
-          />
-        )}
-
-        {activeTab === 'ANALYTICS' && (
-          <AnalyticsView clients={clients} />
-        )}
-
-        {activeTab === 'LOGS' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 border-b border-slate-100 pb-4 gap-3">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">
-                    Auditoría Completa de Órdenes MDM & Sincronizaciones InovaGuard
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Historial y traza inmutable de todos los comandos de bloqueo, mora, códigos offline y sync REST
-                  </p>
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">
+                      Cartera de Clientes & Control MDM de Celulares
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Gestiona créditos, verifica estados de cuotas y ejecuta bloqueos o desbloqueos instantáneos o por API
+                    </p>
+                  </div>
                 </div>
-                <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full self-start sm:self-center">
-                  {logs.length} Eventos Registrados
-                </span>
-              </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-xs font-bold uppercase text-slate-400 bg-slate-50/70">
-                      <th className="py-3 px-4">Fecha & Hora</th>
-                      <th className="py-3 px-4">Cliente</th>
-                      <th className="py-3 px-4">IMEI / Dispositivo</th>
-                      <th className="py-3 px-4">Acción MDM</th>
-                      <th className="py-3 px-4">Origen / Trigger</th>
-                      <th className="py-3 px-4">Detalle Técnico</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    {logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
-                          {log.timestamp}
-                        </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900">
-                          {log.clientName}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-slate-600">
-                          {log.imei}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
-                              log.action === 'LOCK'
-                                ? 'bg-rose-100 text-rose-800'
-                                : log.action === 'UNLOCK'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : log.action === 'UNLOCK_CODE'
-                                ? 'bg-indigo-100 text-indigo-800'
-                                : log.action === 'REMOVE'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-800'
-                            }`}
-                          >
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-slate-600 font-medium">
-                          {log.trigger}
-                        </td>
-                        <td className="py-3 px-4 text-slate-700 max-w-sm">
-                          {log.details}
-                        </td>
+                <ClientList
+                  clients={clients}
+                  filterStatus={filterStatus}
+                  onSelectClientForInstallments={(client) =>
+                    setSelectedClientForInstallments(client)
+                  }
+                  onSelectClientForAi={(client) => setSelectedClientForAi(client)}
+                  onLockDevice={handleLockDevice}
+                  onUnlockDevice={handleUnlockDevice}
+                  onCheckStatus={handleCheckStatus}
+                  onFilterChange={(s) => setFilterStatus(s)}
+                  onGenerateUnlockCode={handleGenerateUnlockCode}
+                  onRemoveDevice={handleRemoveDevice}
+                />
+              </div>
+            </>
+          )}
+
+          {activeTab === 'DEVICES' && (
+            <InovaGuardDevicesView
+              mdmConfig={mdmConfig}
+              clients={clients}
+              onLockDevice={handleLockDevice}
+              onUnlockDevice={handleUnlockDevice}
+              onGenerateCode={handleGenerateUnlockCode}
+              onRemoveDevice={handleRemoveDevice}
+              onSelectClient={(clientId) => {
+                const matched = clients.find(c => c.id === clientId);
+                if (matched) {
+                  setSelectedClientForInstallments(matched);
+                  setActiveTab('CLIENTS');
+                }
+              }}
+              onCreateLoanForDevice={(device) => {
+                setPendingLoanDevice(device);
+                setIsNewCreditModalOpen(true);
+              }}
+              onSyncComplete={handleSyncInovaGuard}
+            />
+          )}
+
+          {activeTab === 'FINANCE' && (
+            <FinanceView
+              clients={clients}
+              onOpenPayment={() => setPaymentModal({ client: null })}
+              onOpenNewCredit={() => setIsNewCreditModalOpen(true)}
+            />
+          )}
+
+          {activeTab === 'ANALYTICS' && (
+            <AnalyticsView clients={clients} />
+          )}
+
+          {activeTab === 'LOGS' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 border-b border-slate-100 pb-4 gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">
+                      Auditoría Completa de Órdenes MDM & Sincronizaciones InovaGuard
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Historial y traza inmutable de todos los comandos de bloqueo, mora, códigos offline y sync REST
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full self-start sm:self-center">
+                    {logs.length} Eventos Registrados
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-xs font-bold uppercase text-slate-400 bg-slate-50/70">
+                        <th className="py-3 px-4">Fecha & Hora</th>
+                        <th className="py-3 px-4">Cliente</th>
+                        <th className="py-3 px-4">IMEI / Dispositivo</th>
+                        <th className="py-3 px-4">Acción MDM</th>
+                        <th className="py-3 px-4">Origen / Trigger</th>
+                        <th className="py-3 px-4">Detalle Técnico</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
+                            {log.timestamp}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-900">
+                            {log.clientName}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-slate-600">
+                            {log.imei}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                                log.action === 'LOCK'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : log.action === 'UNLOCK'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : log.action === 'UNLOCK_CODE'
+                                  ? 'bg-indigo-100 text-indigo-800'
+                                  : log.action === 'REMOVE'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-slate-100 text-slate-800'
+                              }`}
+                            >
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 font-medium">
+                            {log.trigger}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 max-w-sm">
+                            {log.details}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
       </div>
 
       {/* Pie de página */}
@@ -1039,7 +1156,7 @@ export default function App() {
         isOpen={isApiModalOpen}
         onClose={() => setIsApiModalOpen(false)}
         config={mdmConfig}
-        onSaveConfig={(newCfg) => setMdmConfig(newCfg)}
+        onSaveConfig={handleSaveMdmConfig}
         logs={logs}
         onClearLogs={() => setLogs([])}
       />
@@ -1062,14 +1179,7 @@ export default function App() {
               }
             : null
         }
-        onCreateCredit={(newClient) => {
-          setClients((prev) => [newClient, ...prev]);
-          setPendingLoanDevice(null);
-          showNotification(
-            `✅ Nuevo crédito y celular ${newClient.device.model} registrados para ${newClient.fullName}.`,
-            'INFO'
-          );
-        }}
+        onCreateCredit={handleCreateCredit}
       />
 
       <AiCobranzaModal

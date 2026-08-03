@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu } from 'lucide-react';
+import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu, LogOut } from 'lucide-react';
 
 export type MainViewTab = 'CLIENTS' | 'DEVICES' | 'FINANCE' | 'ANALYTICS' | 'LOGS';
 
@@ -14,6 +14,9 @@ interface NavbarProps {
   activeTab?: MainViewTab;
   onSelectTab?: (tab: MainViewTab) => void;
   onToggleMobileSidebar?: () => void;
+  userName?: string;
+  userEmail?: string;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -27,6 +30,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab = 'CLIENTS',
   onSelectTab,
   onToggleMobileSidebar,
+  userName,
+  userEmail,
+  onLogout,
 }) => {
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
@@ -121,6 +127,34 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
+        {/* Fila inferior: sesión del usuario */}
+        {userName && (
+          <div className="hidden md:flex items-center justify-between border-t border-slate-800 mt-2 pt-2 pb-1">
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 flex items-center justify-center text-[11px] font-bold shrink-0">
+                {userName.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="min-w-0 leading-tight">
+                <span className="block text-xs font-semibold text-slate-200 truncate">
+                  {userName}
+                </span>
+                {userEmail && (
+                  <span className="block text-[10px] text-slate-400 truncate">{userEmail}</span>
+                )}
+              </div>
+            </div>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 transition-colors"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Salir</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

@@ -1,20 +1,132 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# CrediPay MDM
 
-# Run and deploy your AI Studio app
+Sistema integral de préstamos para celulares con **bloqueo MDM (InovaGuard)** en Pesos Dominicanos (RD$).
+Créditos por cuotas, mora fija por atraso (+3 días), bloqueo/desbloqueo automático del equipo, pagos en cascada y consola de administración multi-rol.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/9174b92e-f086-4ff3-a952-c753a7d49527
+| Capa | Tecnología |
+|------|-----------|
+| Frontend | React 18 + Vite + TypeScript + Tailwind CSS (sin librería UI; componentes propios) |
+| Backend | Node.js + Express + TypeScript (`tsx`) |
+| Base de datos | MySQL 8 (WAMP) con migraciones SQL versionadas |
+| Autenticación | Sesiones httpOnly (`sid`) + CSRF token + RBAC por roles y permisos |
+| Tests | Playwright (E2E visual) + scripts PowerShell smoke (API) |
 
-## Run Locally
+## Requisitos
 
-**Prerequisites:**  Node.js
+- Node.js 18+ (probado con Node 25)
+- MySQL 8 (probado con WAMP `C:\wamp64\bin\mysql\mysql8.4.7`)
+- Navegador Chromium para los tests E2E
 
+## Configuración
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1. **Base de datos**: crea la base `credipay_mdm` y un usuario con privilegios (o usa `root` local):
+   ```sql
+   CREATE DATABASE credipay_mdm CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+2. **Variables de entorno** — copia `server/.env.example` a `server/.env` y ajusta:
+   ```
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=credipay
+   DB_PASS=cambiar-esta-password
+   DB_NAME=credipay_mdm
+   APP_PORT=4000
+   APP_URL=http://localhost:4000
+   WEB_ORIGIN=http://localhost:3000
+   SESSION_SECRET=<cadena aleatoria >= 32 caracteres>
+   COOKIE_SECURE=false
+   ```
+
+3. **Instalar dependencias**:
+   ```bash
+   npm install
+   npm --prefix server install
+   ```
+
+4. **Migraciones + seed demo** (crea el esquema, datos de ejemplo y credenciales canónicas):
+   ```bash
+   npm run migrate
+   ```
+
+5. **Arrancar** (dos procesos; el frontend en :3000 y la API en :4000):
+   ```bash
+   npm run dev
+   # o por separado:
+   npm run dev:web      # Vite en :3000
+   npm --prefix server run dev   # API en :4000
+   ```
+
+## Credenciales demo
+
+| Cuenta | Contraseña | Cambio obligatorio | Rol |
+|--------|-----------|--------------------|-----|
+| `admin@credipay.local` | `7xs8G8GJrTze9S` | Sí (al primer ingreso) | SUPER_ADMIN (global) |
+| `demo.admin@credipay.local` | `Fase2Test2026!` | No | ADMIN |
+| `demo.operador@credipay.local` | `Fase2Test2026!` | No | OPERADOR (sin permisos de edición) |
+| `demo.gestor@credipay.local` | `7xs8G8GJrTze9S` | No | GESTOR |
+| `demo.consulta@credipay.local` | `NuevaClave2026!` | No | CONSULTA (solo lectura) |
+
+> Estas credenciales se restablecen con `npm run migrate` (migración `0007_credenciales_demo.sql`),
+> junto con la configuración MDM InovaGuard del tenant demo.
+
+## Scripts
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Frontend + backend a la vez (concurrently) |
+| `npm run dev:web` | Vite en :3000 |
+| `npm --prefix server run dev` | API en :4000 (watch) |
+| `npm run migrate` | Aplica migraciones SQL pendientes + seed de usuarios |
+| `npm run typecheck` | Typecheck frontend + backend |
+| `npm run build` | Build de producción del frontend (Vite) |
+| `npm run test:server` | Tests unitarios del backend (vitest) |
+| `npm run test:e2e` | Suite E2E visual (Playwright, `e2e/visual.spec.ts`) |
+
+## Tests
+
+### E2E visual (Playwright)
+La suite `e2e/visual.spec.ts` valida los flujos reales en navegador contra la API viva:
+login y RBAC, cambio de contraseña obligatorio, flujo MDM completo (bloquear → desbloquear →
+código offline → auditoría), pago en cascada, alta de préstamo, config MDM y renderizado de vistas.
+
+Requisitos: servidor API en :4000, Vite en :3000 y Chromium instalado (`npx playwright install chromium`).
+La suite respalda la BD antes (`mysqldump`) y la restaura al final (estado semilla intacto).
+
+> Si el `loginLimiter` del servidor bloquea la suite (muchos logins rápidos), reinicia el servidor
+> con `LOGIN_RATE_LIMIT=100 node --import tsx server/src/server.ts`.
+
+### Smoke API (PowerShell)
+- `test_fase2.ps1` — multitenant, pagos en cascada y proxy MDM simulado.
+  Respalda y restaura `tenant_settings.mdm_config` completo (credenciales InovaGuard incluidas).
+- `test_fase3.ps1` — reconexión frontend ↔ API: clientes, dispositivos, MDM, RBAC y CSRF (22/22 PASS).
+
+## Arquitectura
+
+```
+src/                  Frontend React (Vite, :3000)
+  components/         Vistas y modales (ClientList, FinanceView, MdmApiConfigModal, ...)
+  services/api.ts     Cliente HTTP con sesión + CSRF
+  services/inovaGuardApi.ts   Proxy hacia /api/v1/mdm/* del servidor
+server/               Backend Express (tsx, :4000)
+  migraciones/        0001_schema → 0007_credenciales_demo
+  src/routes/v1/      auth, clients, credits, installments, payments, mdm, devices, logs, audit
+  src/services/       authService, paymentService (cascada + desbloqueo automático),
+                      inovaGuardService (modo simulado/real), repoService, tenantService
+  src/middleware/     auth (sesión + RBAC), csrf, rateLimits, tenant (multitenant)
+e2e/                  Suite Playwright (visual.spec.ts)
+```
+
+### Flujo MDM (bloqueo por mora)
+1. Cuota vence → `PENDIENTE` → `VENCIDO` (días 0-2) → `ATRASADO` (+3 días).
+2. Al pasar 3 días de atraso se aplica mora fija RD$200 y el motor envía orden **LOCK** a InovaGuard.
+3. El pago en cascada del total adeudado dispara el **UNLOCK** automático (`autoUnlockOnPaid`),
+   registrando `device_events`, `device_locks`/`device_unlocks` y auditoría.
+
+## Estado
+
+- Fase 1 (núcleo + cartera + MDM simulado): completada
+- Fase 2 (multitenant + pagos en cascada + proxy MDM): completada
+- Fase 3 (backend real + reconexión frontend): completada — smoke 22/22 y E2E visual 8/8

@@ -1,8 +1,25 @@
+# Dependencias
 node_modules/
-build/
+server/node_modules/
+
+# Builds
 dist/
-coverage/
-.DS_Store
+server/dist/
+
+# Secretos y entorno local
+.env
+server/.env
+*.local
+
+# Respaldos / datos
+backups/
+*.sql.gz
+*.dump
+
+# Logs
 *.log
-.env*
-!.env.example
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db
