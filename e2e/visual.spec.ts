@@ -400,3 +400,64 @@ test('SaaS: Panel Comercial del Super Admin lista empresas y entra de la lista',
 
   expect(errors).toEqual([]);
 });
+
+// ---------------------------------------------------------------------------
+// Fase 6: Motor de cobranza automática + IA de mensajería
+// ---------------------------------------------------------------------------
+
+test('F6: Motor IA genera recordatorio desde una cuota atrasada y se marca como enviado', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+
+  execSync(
+    dbClient(
+      `SET @cid = (SELECT id FROM clients WHERE tenant_id = 1 AND deleted_at IS NULL ORDER BY id LIMIT 1);
+       SET @iid = (SELECT ci.id FROM credit_installments ci
+                    JOIN credits c ON c.id = ci.credit_id
+                   WHERE c.client_id = @cid AND ci.status = 'PENDIENTE' AND ci.deleted_at IS NULL
+                   ORDER BY ci.id LIMIT 1);
+       UPDATE credit_installments SET status = 'ATRASADO', penalty_amount = 200, total_amount = amount + 200
+        WHERE id = @iid;`
+    )
+  );
+
+  await login(page, ADMIN.email, ADMIN.password);
+  await page.getByRole('button', { name: /Cobranza Inteligente IA/ }).click();
+  await expect(page.getByText('Cobranza Inteligente (IA)', { exact: true })).toBeVisible({ timeout: 30_000 });
+
+  await expect(page.getByText(/En riesgo \(Atrasado\)/).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ejecutar Motor de Cobranza' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Ejecutar Motor de Cobranza' }).click();
+  await expect(toast(page).getByText(/Motor de cobranza ejecutado/)).toBeVisible({ timeout: 30_000 });
+
+  const sendBtn = page.getByRole('button', { name: 'Marcar Enviado' }).first();
+  await expect(sendBtn).toBeVisible({ timeout: 30_000 });
+  await sendBtn.click();
+  await expect(toast(page).getByText(/Recordatorio enviado a/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Enviado', { exact: true }).first()).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+test('F6: RBAC - OPERADOR ve el motor pero no puede ejecutarlo (403 forbidden)', async ({ request }) => {
+  const loginRes = await request.post('/api/v1/auth/login', {
+    data: { email: OPERADOR.email, password: OPERADOR.password, remember: false },
+  });
+  expect(loginRes.ok()).toBeTruthy();
+  const state = await request.storageState();
+  const csrf = state.cookies.find((c) => c.name === 'csrf')?.value;
+
+  const summaryRes = await request.get('/api/v1/collection/summary');
+  expect(summaryRes.ok()).toBeTruthy();
+  const summaryBody = await summaryRes.json();
+  expect(typeof summaryBody.data.installments).toBe('object');
+
+  const runRes = await request.post('/api/v1/collection/run', {
+    headers: { 'X-CSRF-Token': csrf ?? '' },
+    data: { source: 'MANUAL' },
+  });
+  expect(runRes.status()).toBe(403);
+  const runBody = await runRes.json();
+  expect(runBody.error).toBe('forbidden');
+});

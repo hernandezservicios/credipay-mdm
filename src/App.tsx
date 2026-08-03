@@ -37,6 +37,7 @@ import { useConfirm } from './components/ConfirmDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { SaaSAvView } from './components/SaaSAvView';
 import { PlatformAdminView } from './components/PlatformAdminView';
+import { CollectionsView } from './components/CollectionsView';
 import {
   apiFetchMe,
   apiLogout,
@@ -62,6 +63,11 @@ import {
   apiGetGateways,
   apiSetGateway,
   apiPlatformOverview,
+  apiCollectionSummary,
+  apiCollectionRun,
+  apiCollectionReminders,
+  apiCollectionSendReminder,
+  apiCollectionRuns,
   errorMessage,
   type Session,
   type ClientFullRow,
@@ -73,6 +79,9 @@ import {
   type BillingPaymentRow,
   type GatewayRow,
   type PlatformTenantRow,
+  type CollectionSummaryRow,
+  type CollectionReminderRow,
+  type CollectionRunRow,
 } from './services/api';
 import {
   lockInovaGuardDevice,
@@ -345,6 +354,10 @@ export default function App() {
   const [saasPreferredGateway, setSaasPreferredGateway] = useState<string | null>(null);
   const [platformTenants, setPlatformTenants] = useState<PlatformTenantRow[]>([]);
   const [platformLoading, setPlatformLoading] = useState(false);
+  const [collectionSummary, setCollectionSummary] = useState<CollectionSummaryRow | null>(null);
+  const [collectionReminders, setCollectionReminders] = useState<CollectionReminderRow[]>([]);
+  const [collectionRuns, setCollectionRuns] = useState<CollectionRunRow[]>([]);
+  const [collectionLoading, setCollectionLoading] = useState(false);
 
   const reloadSaas = useCallback(async () => {
     if (!has('subscriptions.view') || session?.activeTenantId === null) return;
@@ -378,6 +391,58 @@ export default function App() {
       setPlatformLoading(false);
     }
   }, [session]);
+
+  const reloadCollection = useCallback(async () => {
+    if (!has('collection.view') || session?.activeTenantId === null) return;
+    try {
+      const [summary, reminders, runs] = await Promise.all([
+        apiCollectionSummary(),
+        apiCollectionReminders('ALL', 100),
+        apiCollectionRuns(),
+      ]);
+      setCollectionSummary(summary.data);
+      setCollectionReminders(reminders.data);
+      setCollectionRuns(runs.data);
+    } catch (err) {
+      console.warn('No se pudo cargar el motor de cobranza:', err);
+    }
+  }, [session]);
+
+  const handleCollectionRun = useCallback(async () => {
+    setCollectionLoading(true);
+    try {
+      const res = await apiCollectionRun('MANUAL');
+      showNotification(
+        `🤖 Motor de cobranza ejecutado: ${res.data.total} recordatorio(s) generados.`,
+        'INFO'
+      );
+      await reloadCollection();
+    } catch (err) {
+      showNotification(`❌ No se pudo ejecutar el motor: ${errorMessage(err)}`, 'LOCK');
+    } finally {
+      setCollectionLoading(false);
+    }
+  }, [reloadCollection]);
+
+  const handleCollectionSend = useCallback(
+    async (id: number) => {
+      try {
+        const res = await apiCollectionSendReminder(id);
+        showNotification(
+          `💬 Recordatorio enviado a ${res.data.full_name} (${res.data.status}).`,
+          'INFO'
+        );
+        await reloadCollection();
+      } catch (err) {
+        showNotification(`❌ No se pudo enviar: ${errorMessage(err)}`, 'LOCK');
+      }
+    },
+    [reloadCollection]
+  );
+
+  const handleCollectionRefresh = useCallback(() => {
+    void reloadCollection();
+  }, [reloadCollection]);
 
   const handleChangePlan = useCallback(
     async (planId: number) => {
@@ -430,8 +495,9 @@ export default function App() {
       setActiveTab(tab);
       if (tab === 'LOGS') void reloadLogs();
       if (tab === 'BILLING') void reloadSaas();
+      if (tab === 'COLLECTIONS') void reloadCollection();
     },
-    [reloadLogs, reloadSaas]
+    [reloadLogs, reloadSaas, reloadCollection]
   );
 
   // AL ARRANCAR: validar la sesión existente (cookie httpOnly)
@@ -463,7 +529,8 @@ export default function App() {
     void reloadClients();
     void reloadLogs();
     void reloadSaas();
-  }, [session, reloadTenants, reloadPlatform, reloadMdmConfig, reloadClients, reloadLogs, reloadSaas]);
+    void reloadCollection();
+  }, [session, reloadTenants, reloadPlatform, reloadMdmConfig, reloadClients, reloadLogs, reloadSaas, reloadCollection]);
 
   // ---------------------------------------------------------------------------
   // Sesión
@@ -1281,6 +1348,22 @@ export default function App() {
               onChangePlan={handleChangePlan}
               onRenew={handleRenewSubscription}
               onSetGateway={handleSetGateway}
+            />
+          )}
+
+          {activeTab === 'COLLECTIONS' && session.activeTenantId !== null && (
+            <CollectionsView
+              summary={collectionSummary}
+              reminders={collectionReminders}
+              runs={collectionRuns}
+              loading={collectionLoading}
+              permits={{
+                run: has('collection.run'),
+                send: has('collection.send'),
+              }}
+              onRun={handleCollectionRun}
+              onSend={handleCollectionSend}
+              onRefresh={handleCollectionRefresh}
             />
           )}
           </>

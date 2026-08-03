@@ -628,3 +628,82 @@ export function apiSetGateway(preferredGateway: string | null): Promise<{
 export function apiPlatformOverview(): Promise<{ data: PlatformTenantRow[] }> {
   return request('GET', '/saas/platform/overview');
 }
+
+// ---------------------------------------------------------------------------
+// Motor de Cobranza Automática + IA (Fase 6)
+// ---------------------------------------------------------------------------
+
+export type CollectionReminderType = 'RECORDATORIO' | 'ALERTA_BLOQUEO' | 'CONFIRMACION_PAGO';
+export type CollectionRisk = 'BAJO' | 'MEDIO' | 'ALTO';
+
+export interface CollectionSummaryRow {
+  installments: { pendiente: number; vencido: number; atrasado: number; pagado: number };
+  overdueAmount: number;
+  clientsAtRisk: number;
+  reminders: { pending: number; sent: number };
+  riskDistribution: Record<CollectionRisk, number>;
+  lastRun: {
+    id: number;
+    status: string;
+    totalReminders: number;
+    startedAt: number | null;
+    finishedAt: number | null;
+  } | null;
+}
+
+export interface CollectionReminderRow {
+  id: number;
+  run_id: number | null;
+  client_id: number;
+  reminder_type: CollectionReminderType;
+  channel: string;
+  status: string;
+  risk_level: CollectionRisk;
+  risk_score: number;
+  subject: string | null;
+  message: string;
+  scheduled_at: string;
+  sent_at: string | null;
+  created_at: string;
+  full_name: string;
+  phone: string;
+  device_model: string | null;
+}
+
+export interface CollectionRunRow {
+  id: number;
+  source: string;
+  status: string;
+  totalReminders: number;
+  sentNow: number;
+  startedAt: number;
+  finishedAt: number | null;
+  error: string | null;
+}
+
+export interface CollectionRunReport {
+  runId: number;
+  total: number;
+  byType: Record<CollectionReminderType, number>;
+  byRisk: Record<CollectionRisk, number>;
+}
+
+export function apiCollectionSummary(): Promise<{ data: CollectionSummaryRow }> {
+  return request('GET', '/collection/summary');
+}
+
+export function apiCollectionRun(source = 'MANUAL'): Promise<{ data: CollectionRunReport }> {
+  return request('POST', '/collection/run', { source });
+}
+
+export function apiCollectionReminders(status = 'ALL', limit = 100): Promise<{ data: CollectionReminderRow[] }> {
+  return request('GET', `/collection/reminders?status=${status}&limit=${limit}`);
+}
+
+export function apiCollectionSendReminder(id: number): Promise<{ data: CollectionReminderRow }> {
+  return request('POST', `/collection/reminders/${id}/send`);
+}
+
+export function apiCollectionRuns(): Promise<{ data: CollectionRunRow[] }> {
+  return request('GET', '/collection/runs');
+}

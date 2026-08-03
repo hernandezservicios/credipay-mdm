@@ -16,6 +16,7 @@ import mdmRoutes from './routes/v1/mdm.routes.js';
 import tenantsRoutes from './routes/v1/tenants.routes.js';
 import logsRoutes from './routes/v1/logs.routes.js';
 import saasRoutes from './routes/v1/saas.routes.js';
+import collectionRoutes from './routes/v1/collection.routes.js';
 import { ApiError } from './utils/http.js';
 
 export const app = express();
@@ -66,6 +67,7 @@ app.use('/api/v1/mdm', mdmRoutes);
 app.use('/api/v1/tenants', tenantsRoutes);
 app.use('/api/v1/logs', logsRoutes);
 app.use('/api/v1/saas', saasRoutes);
+app.use('/api/v1/collection', collectionRoutes);
 
 app.use('/api/v1/docs', (_req: Request, res: Response) => {
   res.json({

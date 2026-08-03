@@ -18,6 +18,7 @@ import {
   DollarSign,
   BarChart3,
   CreditCard,
+  BrainCircuit,
 } from 'lucide-react';
 import { MainViewTab } from './Navbar';
 
@@ -106,6 +107,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: CreditCard,
       badge: 'SaaS',
       badgeColor: 'bg-violet-500/20 text-violet-300 border border-violet-500/30',
+    },
+    {
+      id: 'COLLECTIONS' as MainViewTab,
+      label: 'Cobranza Inteligente IA',
+      description: 'Motor automático y recordatorios',
+      icon: BrainCircuit,
+      badge: 'IA',
+      badgeColor: 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30',
     },
   ];
 
