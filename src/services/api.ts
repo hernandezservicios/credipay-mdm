@@ -472,3 +472,159 @@ export function apiGetPayments(params?: {
   qs.set('perPage', String(params?.perPage ?? 200));
   return request('GET', `/payments?${qs.toString()}`);
 }
+
+// ---------------------------------------------------------------------------
+// SaaS Comercial (Fase 5): planes, suscripción, facturación y pasarelas
+// ---------------------------------------------------------------------------
+
+export type BillingCycle = 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL';
+
+export interface PlanFeatureRow {
+  plan_id: number;
+  feature_key: string;
+  feature_name: string;
+  feature_value: string | null;
+  is_enabled: number;
+}
+
+export interface PlanRow {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  billing_cycle: BillingCycle;
+  price: string;
+  setup_fee: string;
+  currency_code: string;
+  max_users: number;
+  max_clients: number;
+  max_credits: number;
+  max_devices: number;
+  storage_mb: number;
+  api_rate_limit_per_min: number;
+  max_webhooks: number;
+  status: string;
+  is_default: number;
+  sort_order: number;
+  features: PlanFeatureRow[];
+}
+
+export interface SubscriptionRow {
+  subscription_id: number;
+  status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELED' | 'EXPIRED';
+  starts_at: string;
+  current_period_start: string;
+  current_period_end: string;
+  canceled_at: string | null;
+  ends_at: string | null;
+  auto_renew: number;
+  plan_id: number;
+  plan_name: string;
+  plan_slug: string;
+  billing_cycle: BillingCycle;
+  price: string;
+  setup_fee: string;
+  currency_code: string;
+  description: string | null;
+  max_users: number;
+  max_clients: number;
+  max_credits: number;
+  max_devices: number;
+  storage_mb: number;
+  api_rate_limit_per_min: number;
+  max_webhooks: number;
+}
+
+export interface SubscriptionUsage {
+  clients: number;
+  credits: number;
+  devices: number;
+  users: number;
+}
+
+export interface BillingPaymentRow {
+  id: number;
+  amount: string;
+  currency_code: string;
+  status: string;
+  payment_method: string | null;
+  reference: string | null;
+  description: string | null;
+  paid_at: string | null;
+  created_at: string;
+  plan_name: string | null;
+}
+
+export interface GatewayRow {
+  id: number;
+  code: string;
+  name: string;
+  is_active: number;
+}
+
+export interface PlatformTenantRow {
+  tenant_id: number;
+  name: string;
+  slug: string;
+  tenant_status: string;
+  currency_code: string;
+  subscription_id: number | null;
+  subscription_status: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  canceled_at: string | null;
+  auto_renew: number | null;
+  plan_name: string | null;
+  plan_slug: string | null;
+  billing_cycle: BillingCycle | null;
+  price: string | null;
+  max_clients: number;
+  max_devices: number;
+  max_users: number;
+  client_count: number;
+}
+
+export function apiListPlans(): Promise<{ data: PlanRow[] }> {
+  return request('GET', '/saas/plans');
+}
+
+export function apiSubscriptionCurrent(): Promise<{
+  data: { subscription: SubscriptionRow | null; usage: SubscriptionUsage };
+}> {
+  return request('GET', '/saas/subscriptions/current');
+}
+
+export function apiChangePlan(planId: number): Promise<{
+  data: { subscriptionId: number; planId: number; planName: string };
+}> {
+  return request('POST', '/saas/subscriptions/change', { planId });
+}
+
+export function apiRenewSubscription(): Promise<{
+  data: { paymentId: number; planName: string; periodEnd: string };
+}> {
+  return request('POST', '/saas/subscriptions/renew');
+}
+
+export function apiBillingPayments(): Promise<{ data: BillingPaymentRow[] }> {
+  return request('GET', '/saas/billing/payments');
+}
+
+export function apiGetGateways(): Promise<{
+  data: {
+    gateways: GatewayRow[];
+    config: { preferredGateway: string | null; gateways: Record<string, unknown>[] };
+  };
+}> {
+  return request('GET', '/saas/billing/gateways');
+}
+
+export function apiSetGateway(preferredGateway: string | null): Promise<{
+  data: { preferredGateway: string | null; gateways: Record<string, unknown>[] };
+}> {
+  return request('POST', '/saas/billing/gateways', { preferredGateway });
+}
+
+export function apiPlatformOverview(): Promise<{ data: PlatformTenantRow[] }> {
+  return request('GET', '/saas/platform/overview');
+}

@@ -3,6 +3,7 @@ import { authRequired, csrfProtect, requirePermission, type AuthRequest } from '
 import { requireTenant, type TenantRequest } from '../../middleware/tenant.js';
 import { cancelCredit, createCredit, getCredit, listCredits } from '../../services/repoService.js';
 import { recordActivity, recordAudit } from '../../services/auditService.js';
+import { assertPlanLimit } from '../../services/planService.js';
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.post('/', requirePermission('credits.create'), async (req: TenantRequest,
     res.status(400).json({ error: 'invalid_client', message: 'El cliente es obligatorio' });
     return;
   }
+  await assertPlanLimit(req.ctx!.tenantId, 'credits');
   const created = await createCredit(req.ctx!.tenantId, req.auth!.userId, {
     clientId: body.clientId,
     totalAmount: Number(body.totalAmount) || 0,

@@ -17,6 +17,7 @@ import {
   ExternalLink,
   DollarSign,
   BarChart3,
+  CreditCard,
 } from 'lucide-react';
 import { MainViewTab } from './Navbar';
 
@@ -97,6 +98,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Activity,
       badge: logsCount,
       badgeColor: 'bg-slate-700 text-slate-300',
+    },
+    {
+      id: 'BILLING' as MainViewTab,
+      label: 'Suscripción & Planes',
+      description: 'Plan, uso y facturación',
+      icon: CreditCard,
+      badge: 'SaaS',
+      badgeColor: 'bg-violet-500/20 text-violet-300 border border-violet-500/30',
     },
   ];
 

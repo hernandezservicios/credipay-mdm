@@ -9,6 +9,7 @@ import {
   updateClient,
 } from '../../services/repoService.js';
 import { recordActivity, recordAudit } from '../../services/auditService.js';
+import { assertPlanLimit } from '../../services/planService.js';
 
 const router = Router();
 
@@ -44,6 +45,7 @@ router.post('/', requirePermission('clients.create'), async (req: TenantRequest,
     res.status(400).json({ error: 'invalid_name', message: 'El nombre completo es obligatorio' });
     return;
   }
+  await assertPlanLimit(req.ctx!.tenantId, 'clients');
   const created = await createClient(req.ctx!.tenantId, req.auth!.userId, body);
   void recordAudit(
     {

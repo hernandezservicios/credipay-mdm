@@ -35,6 +35,8 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { PaymentModal, CascadePaymentPayload } from './components/PaymentModal';
 import { useConfirm } from './components/ConfirmDialog';
 import { LoginScreen } from './components/LoginScreen';
+import { SaaSAvView } from './components/SaaSAvView';
+import { PlatformAdminView } from './components/PlatformAdminView';
 import {
   apiFetchMe,
   apiLogout,
@@ -52,11 +54,25 @@ import {
   apiListTenants,
   apiSwitchTenant,
   apiMdmSyncAll,
+  apiListPlans,
+  apiSubscriptionCurrent,
+  apiChangePlan,
+  apiRenewSubscription,
+  apiBillingPayments,
+  apiGetGateways,
+  apiSetGateway,
+  apiPlatformOverview,
   errorMessage,
   type Session,
   type ClientFullRow,
   type DeviceEventRow,
   type TenantRow,
+  type SubscriptionRow,
+  type SubscriptionUsage,
+  type PlanRow,
+  type BillingPaymentRow,
+  type GatewayRow,
+  type PlatformTenantRow,
 } from './services/api';
 import {
   lockInovaGuardDevice,
@@ -312,12 +328,110 @@ export default function App() {
     }
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // SaaS Comercial (Fase 5): suscripción, planes, pagos y plataforma
+  // ---------------------------------------------------------------------------
+
+  const [saasSubscription, setSaasSubscription] = useState<SubscriptionRow | null>(null);
+  const [saasUsage, setSaasUsage] = useState<SubscriptionUsage>({
+    clients: 0,
+    credits: 0,
+    devices: 0,
+    users: 0,
+  });
+  const [saasPlans, setSaasPlans] = useState<PlanRow[]>([]);
+  const [saasPayments, setSaasPayments] = useState<BillingPaymentRow[]>([]);
+  const [saasGateways, setSaasGateways] = useState<GatewayRow[]>([]);
+  const [saasPreferredGateway, setSaasPreferredGateway] = useState<string | null>(null);
+  const [platformTenants, setPlatformTenants] = useState<PlatformTenantRow[]>([]);
+  const [platformLoading, setPlatformLoading] = useState(false);
+
+  const reloadSaas = useCallback(async () => {
+    if (!has('subscriptions.view') || session?.activeTenantId === null) return;
+    try {
+      const [sub, plans, payments, gateways] = await Promise.all([
+        apiSubscriptionCurrent(),
+        apiListPlans(),
+        apiBillingPayments(),
+        apiGetGateways(),
+      ]);
+      setSaasSubscription(sub.data.subscription);
+      setSaasUsage(sub.data.usage);
+      setSaasPlans(plans.data);
+      setSaasPayments(payments.data);
+      setSaasGateways(gateways.data.gateways);
+      setSaasPreferredGateway(gateways.data.config.preferredGateway);
+    } catch (err) {
+      console.warn('No se pudo cargar la suscripción:', err);
+    }
+  }, [session]);
+
+  const reloadPlatform = useCallback(async () => {
+    if (!has('subscriptions.view') || !session?.isGlobal) return;
+    setPlatformLoading(true);
+    try {
+      const res = await apiPlatformOverview();
+      setPlatformTenants(res.data);
+    } catch (err) {
+      console.warn('No se pudo cargar el panel de plataforma:', err);
+    } finally {
+      setPlatformLoading(false);
+    }
+  }, [session]);
+
+  const handleChangePlan = useCallback(
+    async (planId: number) => {
+      try {
+        const res = await apiChangePlan(planId);
+        showNotification(`✅ Plan actualizado: ${res.data.planName}.`, 'INFO');
+        await reloadSaas();
+      } catch (err) {
+        showNotification(`❌ No se pudo cambiar el plan: ${errorMessage(err)}`, 'LOCK');
+      }
+    },
+    [reloadSaas]
+  );
+
+  const handleRenewSubscription = useCallback(async () => {
+    try {
+      const res = await apiRenewSubscription();
+      showNotification(
+        `✅ Pago de renovación registrado para ${res.data.planName} (vigente hasta ${new Date(
+          res.data.periodEnd
+        ).toLocaleDateString('es-DO')}).`,
+        'INFO'
+      );
+      await reloadSaas();
+    } catch (err) {
+      showNotification(`❌ No se pudo renovar: ${errorMessage(err)}`, 'LOCK');
+    }
+  }, [reloadSaas]);
+
+  const handleSetGateway = useCallback(
+    async (code: string | null) => {
+      try {
+        const res = await apiSetGateway(code);
+        setSaasPreferredGateway(res.data.preferredGateway);
+        showNotification(
+          res.data.preferredGateway
+            ? `✅ Pasarela preferida: ${res.data.preferredGateway}.`
+            : 'Pasarela preferida limpiada.',
+          'INFO'
+        );
+      } catch (err) {
+        showNotification(`❌ No se pudo configurar la pasarela: ${errorMessage(err)}`, 'LOCK');
+      }
+    },
+    []
+  );
+
   const handleSelectTab = useCallback(
     (tab: MainViewTab) => {
       setActiveTab(tab);
       if (tab === 'LOGS') void reloadLogs();
+      if (tab === 'BILLING') void reloadSaas();
     },
-    [reloadLogs]
+    [reloadLogs, reloadSaas]
   );
 
   // AL ARRANCAR: validar la sesión existente (cookie httpOnly)
@@ -341,11 +455,15 @@ export default function App() {
   // Al autenticarse: cargar configuración, cartera y auditoría
   useEffect(() => {
     if (!session) return;
-    if (session.isGlobal) void reloadTenants();
+    if (session.isGlobal) {
+      void reloadTenants();
+      void reloadPlatform();
+    }
     void reloadMdmConfig();
     void reloadClients();
     void reloadLogs();
-  }, [session, reloadTenants, reloadMdmConfig, reloadClients, reloadLogs]);
+    void reloadSaas();
+  }, [session, reloadTenants, reloadPlatform, reloadMdmConfig, reloadClients, reloadLogs, reloadSaas]);
 
   // ---------------------------------------------------------------------------
   // Sesión
@@ -987,6 +1105,15 @@ export default function App() {
 
         {/* Contenido Principal según Pestaña Activa */}
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full overflow-x-hidden">
+          {session.isGlobal && session.activeTenantId === null ? (
+            <PlatformAdminView
+              tenants={platformTenants}
+              loading={platformLoading}
+              onReload={reloadPlatform}
+              onEnter={(id) => void handleSwitchTenant(id)}
+            />
+          ) : (
+          <>
           {clientsLoading && clients.length === 0 && activeTab === 'CLIENTS' && (
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
               <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600 mb-3" />
@@ -1137,6 +1264,26 @@ export default function App() {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'BILLING' && session.activeTenantId !== null && (
+            <SaaSAvView
+              subscription={saasSubscription}
+              usage={saasUsage}
+              plans={saasPlans}
+              payments={saasPayments}
+              gateways={saasGateways}
+              preferredGateway={saasPreferredGateway}
+              permits={{
+                manage: has('subscriptions.manage'),
+                renew: has('billing.manage'),
+              }}
+              onChangePlan={handleChangePlan}
+              onRenew={handleRenewSubscription}
+              onSetGateway={handleSetGateway}
+            />
+          )}
+          </>
           )}
         </main>
       </div>

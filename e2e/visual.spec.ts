@@ -42,6 +42,17 @@ async function login(page: Page, email: string, password: string) {
   });
 }
 
+// Super Admin global sin empresa activa: el panel por defecto es el Comercial
+async function loginGlobal(page: Page, email: string, password: string) {
+  await page.goto('/');
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.getByRole('button', { name: 'Entrar a la Consola' }).click();
+  await expect(page.getByText('Panel Comercial — Empresas & Suscripciones')).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
 function card(page: Page, clientName: string) {
   return page.locator('div.bg-white.border.rounded-xl.p-5', { hasText: clientName }).first();
 }
@@ -78,7 +89,7 @@ test('Super Admin: cambio de contraseña obligatorio (mustChangePassword)', asyn
   await pws.nth(1).fill(newPw);
   await pws.nth(2).fill(newPw);
   await page.getByRole('button', { name: 'Actualizar y Continuar' }).click();
-  await expect(page.getByRole('heading', { name: /Cartera de Clientes/ })).toBeVisible({
+  await expect(page.getByText('Panel Comercial — Empresas & Suscripciones')).toBeVisible({
     timeout: 30_000,
   });
 });
@@ -282,7 +293,7 @@ test('Tenant switch: Super Admin global ve la cartera tras cambiar de empresa', 
   page.on('pageerror', (e) => errors.push(String(e)));
   // La contraseña se rota a NuevaClaveE2E2026! en el test "cambio de contraseña
   // obligatorio" (los tests corren en orden secuencial, workers=1).
-  await login(page, SUPER_ADMIN.email, 'NuevaClaveE2E2026!');
+  await loginGlobal(page, SUPER_ADMIN.email, 'NuevaClaveE2E2026!');
 
   const switcher = page.getByRole('button', { name: 'Plataforma (sin empresa)' });
   await expect(switcher).toBeVisible();
@@ -293,6 +304,99 @@ test('Tenant switch: Super Admin global ve la cartera tras cambiar de empresa', 
     timeout: 30_000,
   });
   await expect(page.getByRole('button', { name: 'CrediPay Principal' })).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------
+// Fase 5: SaaS comercial — suscripción, planes, límites y facturación
+// ---------------------------------------------------------------------------
+
+const dbClient = (cmd: string) => `"${MYSQL}" -u root credipay_mdm -N -B -e "${cmd}"`;
+
+test('SaaS: vista Suscripción con historial y cambio de plan', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await login(page, ADMIN.email, ADMIN.password);
+
+  await page.getByRole('button', { name: /Suscripción & Planes/ }).click();
+  await expect(page.getByText('Suscripción & Planes CrediPay MDM')).toBeVisible({ timeout: 30_000 });
+
+  await expect(page.getByText('Empresa', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('REC-SAAS-000001', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Uso actual vs Límites del Plan/).first()).toBeVisible();
+
+  await page.getByRole('button', { name: /Cambiar de Plan/ }).click();
+  const target = page.getByRole('button', { name: 'Cambiar a Profesional' }).first();
+  await expect(target).toBeVisible();
+  await target.click();
+  await confirmDialog(page, 'Sí, Cambiar Plan');
+  await expect(toast(page).getByText(/Plan actualizado: Profesional/)).toBeVisible({ timeout: 30_000 });
+
+  await page.getByRole('button', { name: /Renovar \/ Registrar Pago/ }).click();
+  await confirmDialog(page, 'Sí, Renovar');
+  await expect(toast(page).getByText(/Pago de renovación registrado/)).toBeVisible({ timeout: 30_000 });
+
+  expect(errors).toEqual([]);
+});
+
+test('SaaS límite de plan: alcanzar max_clients devuelve 403 plan_limit_reached', async ({ request }) => {
+  const loginRes = await request.post('/api/v1/auth/login', {
+    data: { email: ADMIN.email, password: ADMIN.password, remember: false },
+  });
+  expect(loginRes.ok()).toBeTruthy();
+  const state = await request.storageState();
+  const csrf = state.cookies.find((c) => c.name === 'csrf')?.value;
+
+  const planIdRaw = execSync(
+    dbClient(
+      "SELECT MAX(pl.id) FROM subscriptions s JOIN plans pl ON pl.id = s.plan_id WHERE s.tenant_id = 1 AND s.deleted_at IS NULL AND s.status IN ('TRIAL','ACTIVE','PAST_DUE')"
+    )
+  )
+    .toString()
+    .trim();
+  const planId = parseInt(planIdRaw, 10);
+
+  const countRaw = execSync(
+    dbClient('SELECT COUNT(*) FROM clients WHERE tenant_id = 1 AND deleted_at IS NULL')
+  )
+    .toString()
+    .trim();
+  const clientCount = parseInt(countRaw, 10);
+
+  try {
+    execSync(dbClient(`UPDATE plans SET max_clients = ${clientCount} WHERE id = ${planId};`));
+    const res = await request.post('/api/v1/clients', {
+      headers: { 'X-CSRF-Token': csrf ?? '' },
+      data: { fullName: 'Cliente Plan Límite E2E', phone: '+1 809-555-0199' },
+    });
+    expect(res.status()).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe('plan_limit_reached');
+  } finally {
+    execSync(dbClient(`UPDATE plans SET max_clients = 5000 WHERE id = ${planId};`));
+  }
+});
+
+test('SaaS: Panel Comercial del Super Admin lista empresas y entra de la lista', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await loginGlobal(page, SUPER_ADMIN.email, 'NuevaClaveE2E2026!');
+
+  await expect(page.getByText('Panel Comercial — Empresas & Suscripciones')).toBeVisible({
+    timeout: 30_000,
+  });
+  const card = page
+    .locator('div.bg-slate-900.border.border-slate-800.rounded-2xl.p-5', {
+      hasText: 'CrediPay Principal',
+    })
+    .first();
+  await expect(card.getByRole('button', { name: 'Entrar a la empresa' })).toBeVisible();
+
+  await card.getByRole('button', { name: 'Entrar a la empresa' }).click();
+  await expect(page.getByRole('heading', { name: /Cartera de Clientes/ })).toBeVisible({
+    timeout: 30_000,
+  });
 
   expect(errors).toEqual([]);
 });

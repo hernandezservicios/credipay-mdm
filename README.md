@@ -90,17 +90,19 @@ Créditos por cuotas, mora fija por atraso (+3 días), bloqueo/desbloqueo autom�
 ### E2E visual (Playwright)
 La suite `e2e/visual.spec.ts` valida los flujos reales en navegador contra la API viva:
 login y RBAC, cambio de contraseña obligatorio, flujo MDM completo (bloquear → desbloquear →
-código offline → auditoría), pago en cascada, alta de préstamo, config MDM y renderizado de vistas,
-además de la Fase 4: aislamiento de tenant (403 al intentar cambiar de empresa sin ser Super Admin
-global), sync masivo InovaGuard → dispositivos (SYSTEM_SYNC), búsqueda sin guiones
-(cédula/teléfono con guiones) y switch de empresa del Super Admin global.
+código offline → auditoría), pago en cascada, alta de préstamo, config MDM y renderizado de vistas.
+Fase 4: aislamiento de tenant (403 al cambiar de empresa sin ser Super Admin global), sync masivo
+InovaGuard → dispositivos (SYSTEM_SYNC), búsqueda sin guiones y switch de empresa del Super Admin.
+Fase 5: vista de suscripción con historial y cambio de plan, límite de plan alcanzado (403
+`plan_limit_reached`) y Panel Comercial del Super Admin.
 
 Requisitos: servidor API en :4000, Vite en :3000 y Chromium instalado (`npx playwright install chromium`).
 La suite respalda la BD antes (`mysqldump`) y la restaura al final (estado semilla intacto).
 Los tests corren secuencialmente (`workers=1`) porque algunos rotan la contraseña del Super Admin.
 
-> Si el `loginLimiter` del servidor bloquea la suite (muchos logins rápidos), reinicia el servidor
-> con `LOGIN_RATE_LIMIT=100 node --import tsx server/src/server.ts`.
+> Si el `loginLimiter` del servidor bloquea la suite (muchos logins en poco tiempo), reinicia el
+> servidor con `LOGIN_RATE_LIMIT=100 node --import tsx server/src/server.ts` (o en Windows:
+> `set LOGIN_RATE_LIMIT=200 && npm --prefix server start`). El contador se resetea al reiniciar.
 
 ### Smoke API (PowerShell)
 - `test_fase2.ps1` — multitenant, pagos en cascada y proxy MDM simulado.
@@ -116,11 +118,11 @@ src/                  Frontend React (Vite, :3000)
   services/api.ts     Cliente HTTP con sesión + CSRF
   services/inovaGuardApi.ts   Proxy hacia /api/v1/mdm/* del servidor
 server/               Backend Express (tsx, :4000)
-  migraciones/        0001_schema → 0008_tenant_sync (0008: enum SYSTEM_SYNC)
-  src/routes/v1/      auth, tenants, clients, credits, installments, payments, mdm, devices, logs, audit
+  migraciones/        0001_schema → 0009_saas_comercial (0008: SYSTEM_SYNC, 0009: billing_config)
+  src/routes/v1/      auth, tenants, saas, clients, credits, installments, payments, mdm, devices, logs, audit
   src/services/       authService, paymentService (cascada + desbloqueo automático),
                       inovaGuardService (modo simulado/real), inventorySyncService (SYSTEM_SYNC),
-                      repoService, tenantService
+                      planService (planes, límites, uso), repoService, tenantService
   src/middleware/     auth (sesión + RBAC), csrf, rateLimits, tenant (multitenant)
 e2e/                  Suite Playwright (visual.spec.ts)
 ```
@@ -135,6 +137,22 @@ e2e/                  Suite Playwright (visual.spec.ts)
   registra `device_events` con `trigger_source = SYSTEM_SYNC`.
 - Búsquedas de cartera/teléfono/cédula ignoran guiones y símbolos (comparación solo dígitos).
 
+### SaaS Comercial (Fase 5)
+- `GET /api/v1/saas/plans` — catálogo de planes activos con features.
+- `GET /api/v1/saas/subscriptions/current` — suscripción vigente del tenant + uso (clientes,
+  créditos, dispositivos, usuarios) vs límites del plan.
+- `POST /api/v1/saas/subscriptions/change` — cambia de plan; bloquea el *downgrade* si el uso actual
+  supera los límites del nuevo plan (`403 plan_usage_exceeds_limits`).
+- `POST /api/v1/saas/subscriptions/renew` — registra pago de renovación (simulado) y extiende el
+  período según el ciclo del plan (MONTHLY/QUARTERLY/SEMI_ANNUAL/ANNUAL).
+- `GET|POST /api/v1/saas/billing/payments` y `/gateways` — historial de pagos y pasarela preferida
+  por tenant (`tenant_settings.billing_config`; sin secretos en el navegador).
+- `GET /api/v1/saas/platform/overview` — solo Super Admin global: empresas con plan y suscripción.
+- **Enforcement de límites**: crear clientes, créditos o dispositivos por encima del tope del plan
+  devuelve `403 plan_limit_reached` (0 = ilimitado).
+- UI: pestaña **Suscripción & Planes** (plan actual, medidores de uso, historial, cambio de plan,
+  renovación y pasarela) y **Panel Comercial** del Super Admin (entrar a cada empresa).
+
 ### Flujo MDM (bloqueo por mora)
 1. Cuota vence → `PENDIENTE` → `VENCIDO` (días 0-2) → `ATRASADO` (+3 días).
 2. Al pasar 3 días de atraso se aplica mora fija RD$200 y el motor envía orden **LOCK** a InovaGuard.
@@ -147,3 +165,4 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - Fase 2 (multitenant + pagos en cascada + proxy MDM): completada
 - Fase 3 (backend real + reconexión frontend): completada — smoke 22/22 y E2E visual 8/8
 - Fase 4 (empresa activa en sesión, sync masivo SYSTEM_SYNC, búsquedas sin guiones): completada el 03/08/2026
+- Fase 5 (SaaS comercial: planes, suscripción, límites, facturación y pasarelas): completada el 03/08/2026 — E2E 15/15

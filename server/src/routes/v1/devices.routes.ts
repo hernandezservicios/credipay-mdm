@@ -6,6 +6,7 @@ import { pool } from '../../db/pool.js';
 import { listDevices, updateDevice } from '../../services/repoService.js';
 import { findInovaGuardDevice, invalidateInovaGuardCache } from '../../services/inovaGuardService.js';
 import { recordAudit, recordActivity } from '../../services/auditService.js';
+import { assertPlanLimit } from '../../services/planService.js';
 
 const router = Router();
 
@@ -52,6 +53,7 @@ router.post('/', requirePermission('devices.edit'), async (req: TenantRequest, r
       return;
     }
   }
+  await assertPlanLimit(req.ctx!.tenantId, 'devices');
   const [insertRes] = await pool.query<ResultSetHeader>(
     `INSERT INTO devices
       (tenant_id, client_id, device_name, inovaguard_id, brand, model, imei,
