@@ -13,6 +13,7 @@ import installmentsRoutes from './routes/v1/installments.routes.js';
 import paymentsRoutes from './routes/v1/payments.routes.js';
 import devicesRoutes from './routes/v1/devices.routes.js';
 import mdmRoutes from './routes/v1/mdm.routes.js';
+import tenantsRoutes from './routes/v1/tenants.routes.js';
 import logsRoutes from './routes/v1/logs.routes.js';
 import { ApiError } from './utils/http.js';
 
@@ -61,6 +62,7 @@ app.use('/api/v1/installments', installmentsRoutes);
 app.use('/api/v1/payments', paymentsRoutes);
 app.use('/api/v1/devices', devicesRoutes);
 app.use('/api/v1/mdm', mdmRoutes);
+app.use('/api/v1/tenants', tenantsRoutes);
 app.use('/api/v1/logs', logsRoutes);
 
 app.use('/api/v1/docs', (_req: Request, res: Response) => {
@@ -77,6 +79,7 @@ app.use('/api/v1/docs', (_req: Request, res: Response) => {
       '/api/v1/payments',
       '/api/v1/devices',
       '/api/v1/mdm',
+      '/api/v1/tenants',
       '/api/v1/logs',
     ],
   });

@@ -224,3 +224,75 @@ test('RBAC: Operador sin permisos -> toast de denegación', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Entrar a la Consola' })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+// ---------------------------------------------------------------------------
+// Fase 4: multi-tenancy — switch de empresa en sesión, sync masivo y búsquedas
+// ---------------------------------------------------------------------------
+
+test('Aislamiento de tenant: usuario de empresa no puede cambiar de empresa (403)', async ({ request }) => {
+  const loginRes = await request.post('/api/v1/auth/login', {
+    data: { email: ADMIN.email, password: ADMIN.password, remember: false },
+  });
+  expect(loginRes.ok()).toBeTruthy();
+
+  const state = await request.storageState();
+  const csrf = state.cookies.find((c) => c.name === 'csrf')?.value;
+  const res = await request.post('/api/v1/tenants/1/switch', {
+    headers: { 'X-CSRF-Token': csrf ?? '' },
+  });
+  expect(res.status()).toBe(403);
+  const body = await res.json();
+  expect(body.error).toBe('tenant_switch_forbidden');
+});
+
+test('Sync masivo: reconciliación InovaGuard -> dispositivos locales (SYSTEM_SYNC)', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await login(page, ADMIN.email, ADMIN.password);
+
+  await page.getByRole('button', { name: /Parque Dispositivos/ }).click();
+  await expect(page.getByText('Parque de Dispositivos InovaGuard MDM')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Refrescar API (/devices)' }).click();
+  await expect(toast(page).getByText(/SYNC INVENTARIO COMPLETO|SYNC SIMULADO/)).toBeVisible({
+    timeout: 60_000,
+  });
+
+  expect(errors).toEqual([]);
+});
+
+test('Búsqueda sin guiones: cédula y teléfono con guiones localizan clientes', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await login(page, ADMIN.email, ADMIN.password);
+
+  const search = page.getByPlaceholder(/Buscar por cliente/);
+  await search.fill('001-18-29384-5');
+  await expect(card(page, 'Carlos Andrés Mendoza')).toBeVisible();
+  await expect(card(page, 'Mariana Valenzuela Ortiz')).toHaveCount(0);
+
+  await search.fill('809-555-88 21');
+  await expect(card(page, 'Mariana Valenzuela Ortiz')).toBeVisible();
+  await expect(card(page, 'Carlos Andrés Mendoza')).toHaveCount(0);
+
+  expect(errors).toEqual([]);
+});
+
+test('Tenant switch: Super Admin global ve la cartera tras cambiar de empresa', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  // La contraseña se rota a NuevaClaveE2E2026! en el test "cambio de contraseña
+  // obligatorio" (los tests corren en orden secuencial, workers=1).
+  await login(page, SUPER_ADMIN.email, 'NuevaClaveE2E2026!');
+
+  const switcher = page.getByRole('button', { name: 'Plataforma (sin empresa)' });
+  await expect(switcher).toBeVisible();
+  await switcher.click();
+  await page.getByRole('button', { name: 'CrediPay Principal' }).click();
+
+  await expect(page.getByText('Yomaira Rosario Jiménez', { exact: true }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByRole('button', { name: 'CrediPay Principal' })).toBeVisible();
+
+  expect(errors).toEqual([]);
+});

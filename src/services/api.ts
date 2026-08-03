@@ -93,6 +93,8 @@ export interface Session {
   user: SessionUser;
   permissions: string[];
   mustChangePassword: boolean;
+  activeTenantId: number | null;
+  isGlobal: boolean;
 }
 
 export function apiLogin(
@@ -119,6 +121,37 @@ export function apiChangePassword(
     current_password: currentPassword,
     new_password: newPassword,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Empresas (tenants) — selector del Super Admin global
+// ---------------------------------------------------------------------------
+
+export interface TenantRow {
+  id: number;
+  name: string;
+  slug: string;
+  domain: string | null;
+  status: string;
+  email: string | null;
+  phone: string | null;
+  currency_code: string;
+  country_code: string;
+  language_code: string;
+  timezone: string;
+  plan_name?: string | null;
+  client_count?: number | string;
+  user_count?: number | string;
+}
+
+export function apiListTenants(): Promise<{ data: TenantRow[] }> {
+  return request('GET', '/tenants');
+}
+
+export function apiSwitchTenant(tenantId: number): Promise<{
+  data: { tenantId: number; name: string };
+}> {
+  return request('POST', `/tenants/${tenantId}/switch`);
 }
 
 // ---------------------------------------------------------------------------
@@ -367,6 +400,19 @@ export function apiMdmQrEnrollment(): Promise<{
   data: { qrDataUrl: string; enrollmentToken: string; isSimulated: boolean };
 }> {
   return request('GET', '/mdm/qr-enrollment');
+}
+
+export interface SyncInventoryReport {
+  total: number;
+  created: number;
+  updated: number;
+  matchedClients: number;
+  simulated: boolean;
+  errors: number;
+}
+
+export function apiMdmSyncAll(): Promise<{ data: SyncInventoryReport }> {
+  return request('POST', '/mdm/sync-all');
 }
 
 export function apiMdmLock(id: string): Promise<{

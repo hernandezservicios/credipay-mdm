@@ -70,6 +70,8 @@ router.post('/login', loginLimiter, async (req: AuthRequest, res) => {
     user: result.user,
     permissions: result.permissions,
     mustChangePassword: result.user.mustChangePassword,
+    activeTenantId: result.user.tenantId,
+    isGlobal: result.user.tenantId === null,
   });
 });
 
@@ -81,10 +83,12 @@ router.post('/logout', authRequired, csrfProtect, async (req: AuthRequest, res) 
 });
 
 router.get('/me', authRequired, async (req: AuthRequest, res) => {
-  const { userId, tenantId, email, name } = req.auth!;
+  const { userId, tenantId, userTenantId, email, name } = req.auth!;
   const permissions = await loadPermissions(userId, tenantId);
   res.json({
     user: { id: userId, email, name, tenantId },
+    activeTenantId: tenantId,
+    isGlobal: userTenantId === null,
     permissions,
     mustChangePassword: req.auth!.mustChangePassword,
   });

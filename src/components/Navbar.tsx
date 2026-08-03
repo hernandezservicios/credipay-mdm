@@ -1,5 +1,7 @@
 import React from 'react';
 import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu, LogOut } from 'lucide-react';
+import type { TenantRow } from '../services/api';
+import { TenantSwitcher } from './TenantSwitcher';
 
 export type MainViewTab = 'CLIENTS' | 'DEVICES' | 'FINANCE' | 'ANALYTICS' | 'LOGS';
 
@@ -17,6 +19,11 @@ interface NavbarProps {
   userName?: string;
   userEmail?: string;
   onLogout?: () => void;
+  tenants?: TenantRow[];
+  activeTenantId?: number | null;
+  isGlobal?: boolean;
+  onSwitchTenant?: (tenantId: number) => Promise<void>;
+  onReloadTenants?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,6 +40,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   userName,
   userEmail,
   onLogout,
+  tenants = [],
+  activeTenantId = null,
+  isGlobal = false,
+  onSwitchTenant,
+  onReloadTenants,
 }) => {
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
@@ -67,6 +79,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Acciones del encabezado */}
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Selector de empresa activa (Super Admin global) */}
+            {isGlobal && (
+              <TenantSwitcher
+                tenants={tenants}
+                activeTenantId={activeTenantId}
+                isGlobal={isGlobal}
+                onSwitch={async (id) => {
+                  if (onSwitchTenant) await onSwitchTenant(id);
+                }}
+                onReload={onReloadTenants ?? (() => {})}
+              />
+            )}
+
             {/* Estado del motor automático de monitoreo de cuotas */}
             <div className="hidden xl:flex items-center bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
               <div

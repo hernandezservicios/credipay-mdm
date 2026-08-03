@@ -49,17 +49,20 @@ import {
   apiGetMdmConfig,
   apiPutMdmConfig,
   apiGetDeviceEvents,
+  apiListTenants,
+  apiSwitchTenant,
+  apiMdmSyncAll,
   errorMessage,
   type Session,
   type ClientFullRow,
   type DeviceEventRow,
+  type TenantRow,
 } from './services/api';
 import {
   lockInovaGuardDevice,
   unlockInovaGuardDevice,
   generateInovaGuardUnlockCode,
   removeInovaGuardDevice,
-  getInovaGuardDevices,
 } from './services/inovaGuardApi';
 
 // ---------------------------------------------------------------------------
@@ -203,6 +206,9 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Empresas (tenants) — selector del Super Admin global
+  const [tenants, setTenants] = useState<TenantRow[]>([]);
+
   // Datos del tenant (Fase 3: servidos por la API)
   const [clients, setClients] = useState<ClientCredit[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
@@ -297,6 +303,15 @@ export default function App() {
     await Promise.all([reloadMdmConfig(), reloadClients(), reloadLogs()]);
   }, [reloadMdmConfig, reloadClients, reloadLogs]);
 
+  const reloadTenants = useCallback(async () => {
+    try {
+      const res = await apiListTenants();
+      setTenants(res.data);
+    } catch (err) {
+      console.warn('No se pudieron cargar las empresas:', err);
+    }
+  }, []);
+
   const handleSelectTab = useCallback(
     (tab: MainViewTab) => {
       setActiveTab(tab);
@@ -326,10 +341,11 @@ export default function App() {
   // Al autenticarse: cargar configuración, cartera y auditoría
   useEffect(() => {
     if (!session) return;
+    if (session.isGlobal) void reloadTenants();
     void reloadMdmConfig();
     void reloadClients();
     void reloadLogs();
-  }, [session, reloadMdmConfig, reloadClients, reloadLogs]);
+  }, [session, reloadTenants, reloadMdmConfig, reloadClients, reloadLogs]);
 
   // ---------------------------------------------------------------------------
   // Sesión
@@ -344,6 +360,14 @@ export default function App() {
     setSession(null);
     setClients([]);
     setLogs([]);
+    setTenants([]);
+  };
+
+  // CAMBIAR DE EMPRESA (Super Admin global) — el servidor actualiza la sesión
+  const handleSwitchTenant = async (tenantId: number) => {
+    await apiSwitchTenant(tenantId);
+    setSession((prev) => (prev ? { ...prev, activeTenantId: tenantId } : prev));
+    await reloadAll();
   };
 
   // ---------------------------------------------------------------------------
@@ -501,32 +525,17 @@ export default function App() {
     await reloadClients();
   };
 
-  // ACCIÓN MDM: SYNC INOVAGUARD DEVICES (/devices + persistencia local)
+  // ACCIÓN MDM: SYNC INVENTARIO INOVAGUARD (reconciliación server-side SYSTEM_SYNC)
   const handleSyncInovaGuard = async () => {
-    showNotification('🔄 Sincronizando dispositivos en vivo desde InovaGuard API...', 'INFO');
+    showNotification('🔄 Sincronizando inventario InovaGuard con el servidor...', 'INFO');
     try {
-      const { isSimulated, totalDevices } = await getInovaGuardDevices(mdmConfig, {
-        force: true,
-      });
-      let updatedCount = 0;
-      await Promise.all(
-        clients.map(async (cli) => {
-          if (!cli.device.inovaguardId) return;
-          const devId = Number(cli.device.id);
-          if (!Number.isInteger(devId)) return;
-          try {
-            await apiSyncDevice(devId);
-            updatedCount++;
-          } catch {
-            // dispositivo sin enlace MDM en el servidor: se ignora
-          }
-        })
-      );
+      const res = await apiMdmSyncAll();
+      const r = res.data;
       await reloadAll();
       showNotification(
-        isSimulated
-          ? `⚠️ SYNC SIMULADO: La API no respondió; se usaron ${totalDevices} dispositivos demo. Revisa las credenciales en la configuración MDM.`
-          : `✅ SYNC INOVAGUARD COMPLETO: Se sincronizaron ${totalDevices} dispositivos reales y se actualizaron ${updatedCount} clientes en la consola.`,
+        r.simulated
+          ? `⚠️ SYNC SIMULADO: La API no respondió; se procesaron ${r.total} dispositivos demo (${r.created} creados, ${r.updated} actualizados). Revisa las credenciales en la configuración MDM.`
+          : `✅ SYNC INVENTARIO COMPLETO: ${r.total} dispositivo(s) procesados, ${r.created} creados, ${r.updated} actualizados, ${r.matchedClients} vinculados a clientes.`,
         'INFO'
       );
     } catch (err) {
@@ -949,6 +958,11 @@ export default function App() {
         userName={session.user.name}
         userEmail={session.user.email}
         onLogout={handleLogout}
+        tenants={tenants}
+        activeTenantId={session.activeTenantId}
+        isGlobal={session.isGlobal}
+        onSwitchTenant={handleSwitchTenant}
+        onReloadTenants={reloadTenants}
       />
 
       {/* Contenedor Principal con Sidebar Lateral */}

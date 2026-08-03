@@ -7,6 +7,7 @@ import { getSessionUser, loadPermissions } from '../services/authService.js';
 export interface AuthContext {
   userId: number;
   tenantId: number | null;
+  userTenantId: number | null;
   email: string;
   name: string;
   permissions: Set<string>;
@@ -27,10 +28,11 @@ export async function authRequired(req: AuthRequest, res: Response, next: NextFu
     const found = await getSessionUser(rawToken);
     if (!found) throw ApiError.unauthorized();
 
-    const permissions = await loadPermissions(found.user.id, found.user.tenant_id);
+    const permissions = await loadPermissions(found.user.id, found.activeTenantId);
     req.auth = {
       userId: found.user.id,
-      tenantId: found.user.tenant_id,
+      tenantId: found.activeTenantId,
+      userTenantId: found.user.tenant_id,
       email: found.user.email,
       name: found.user.name,
       permissions: new Set(permissions),

@@ -103,6 +103,7 @@ export async function getSessionUser(sessionToken: string): Promise<{
   session: SessionRow;
   user: UserRow;
   tenant: TenantRow | null;
+  activeTenantId: number | null;
 } | null> {
   const id = sha256(sessionToken);
   const [rows] = await pool.query<SessionRow[]>(
@@ -123,18 +124,22 @@ export async function getSessionUser(sessionToken: string): Promise<{
   const user = userRows[0];
   if (user.status !== 'ACTIVE' && user.status !== 'PENDING') return null;
 
+  // Tenant activo: lo que el Super Admin seleccionó en la sesión (switch)
+  // o, por defecto, el tenant nativo del usuario.
+  const activeTenantId = session.tenant_id ?? user.tenant_id;
+
   let tenant: TenantRow | null = null;
-  if (user.tenant_id !== null) {
+  if (activeTenantId !== null) {
     const [tenantRows] = await pool.query<TenantRow[]>(
       'SELECT id, name, slug, status FROM tenants WHERE id = ? AND deleted_at IS NULL LIMIT 1',
-      [user.tenant_id]
+      [activeTenantId]
     );
     tenant = tenantRows[0] ?? null;
     if (!tenant || tenant.status === 'SUSPENDED') return null;
   }
 
   await pool.query('UPDATE sessions SET last_activity_at = NOW() WHERE id = ?', [id]);
-  return { session, user, tenant };
+  return { session, user, tenant, activeTenantId };
 }
 
 async function checkLockout(email: string, ip: string): Promise<number> {

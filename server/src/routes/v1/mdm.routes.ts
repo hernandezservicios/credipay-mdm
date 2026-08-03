@@ -15,6 +15,7 @@ import {
   unlockInovaGuardDevice,
 } from '../../services/inovaGuardService.js';
 import { recordAudit, recordActivity } from '../../services/auditService.js';
+import { syncInovaGuardInventory } from '../../services/inventorySyncService.js';
 import type { RowDataPacket } from 'mysql2';
 import { pool } from '../../db/pool.js';
 
@@ -115,6 +116,21 @@ router.get('/qr-enrollment', requirePermission('mdm.manual'), async (req: Tenant
     req.ctx!.mdmConfig
   );
   res.json({ data: { qrDataUrl, enrollmentToken, isSimulated } });
+});
+
+// ---------------------------------------------------------------------------
+// Reconciliación de inventario (SYSTEM_SYNC)
+// ---------------------------------------------------------------------------
+router.post('/sync-all', requirePermission('devices.edit'), async (req: TenantRequest, res) => {
+  const report = await syncInovaGuardInventory(req.ctx!.tenantId, req.ctx!.mdmConfig);
+  void recordActivity(
+    req.ctx!.tenantId,
+    req.auth!.userId,
+    'MDM_SYNC',
+    `Sincronización de inventario InovaGuard: ${report.created} creados, ${report.updated} actualizados (${report.simulated ? 'simulado' : 'real'})`,
+    req as AuthRequest
+  );
+  res.json({ data: report });
 });
 
 // ---------------------------------------------------------------------------

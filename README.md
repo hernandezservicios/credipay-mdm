@@ -90,10 +90,14 @@ Créditos por cuotas, mora fija por atraso (+3 días), bloqueo/desbloqueo autom�
 ### E2E visual (Playwright)
 La suite `e2e/visual.spec.ts` valida los flujos reales en navegador contra la API viva:
 login y RBAC, cambio de contraseña obligatorio, flujo MDM completo (bloquear → desbloquear →
-código offline → auditoría), pago en cascada, alta de préstamo, config MDM y renderizado de vistas.
+código offline → auditoría), pago en cascada, alta de préstamo, config MDM y renderizado de vistas,
+además de la Fase 4: aislamiento de tenant (403 al intentar cambiar de empresa sin ser Super Admin
+global), sync masivo InovaGuard → dispositivos (SYSTEM_SYNC), búsqueda sin guiones
+(cédula/teléfono con guiones) y switch de empresa del Super Admin global.
 
 Requisitos: servidor API en :4000, Vite en :3000 y Chromium instalado (`npx playwright install chromium`).
 La suite respalda la BD antes (`mysqldump`) y la restaura al final (estado semilla intacto).
+Los tests corren secuencialmente (`workers=1`) porque algunos rotan la contraseña del Super Admin.
 
 > Si el `loginLimiter` del servidor bloquea la suite (muchos logins rápidos), reinicia el servidor
 > con `LOGIN_RATE_LIMIT=100 node --import tsx server/src/server.ts`.
@@ -107,17 +111,29 @@ La suite respalda la BD antes (`mysqldump`) y la restaura al final (estado semil
 
 ```
 src/                  Frontend React (Vite, :3000)
-  components/         Vistas y modales (ClientList, FinanceView, MdmApiConfigModal, ...)
+  components/         Vistas y modales (ClientList, FinanceView, MdmApiConfigModal,
+                      TenantSwitcher, Navbar, InovaGuardDevicesView, ...)
   services/api.ts     Cliente HTTP con sesión + CSRF
   services/inovaGuardApi.ts   Proxy hacia /api/v1/mdm/* del servidor
 server/               Backend Express (tsx, :4000)
-  migraciones/        0001_schema → 0007_credenciales_demo
-  src/routes/v1/      auth, clients, credits, installments, payments, mdm, devices, logs, audit
+  migraciones/        0001_schema → 0008_tenant_sync (0008: enum SYSTEM_SYNC)
+  src/routes/v1/      auth, tenants, clients, credits, installments, payments, mdm, devices, logs, audit
   src/services/       authService, paymentService (cascada + desbloqueo automático),
-                      inovaGuardService (modo simulado/real), repoService, tenantService
+                      inovaGuardService (modo simulado/real), inventorySyncService (SYSTEM_SYNC),
+                      repoService, tenantService
   src/middleware/     auth (sesión + RBAC), csrf, rateLimits, tenant (multitenant)
 e2e/                  Suite Playwright (visual.spec.ts)
 ```
+
+### Multi-tenancy y empresa activa (Fase 4)
+- Toda la consulta filtra por `tenant_id`. El Super Admin global (`user.tenant_id IS NULL`) usa un
+  **selector de empresa** en la Navbar (`TenantSwitcher`): `POST /api/v1/tenants/:id/switch` guarda el
+  `tenant_id` en la sesión (`sessions.tenant_id`); sin empresa activa `requireTenant` responde `tenant_required`.
+- Los usuarios de empresa que llaman al switch reciben `403 tenant_switch_forbidden`.
+- **Sync masivo** (`POST /api/v1/mdm/sync-all`, permiso `devices.edit`): `inventorySyncService` trae el
+  inventario InovaGuard, hace upsert por `inovaguard_id`, vincula clientes normalizando cédula sin guiones y
+  registra `device_events` con `trigger_source = SYSTEM_SYNC`.
+- Búsquedas de cartera/teléfono/cédula ignoran guiones y símbolos (comparación solo dígitos).
 
 ### Flujo MDM (bloqueo por mora)
 1. Cuota vence → `PENDIENTE` → `VENCIDO` (días 0-2) → `ATRASADO` (+3 días).
@@ -130,3 +146,4 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - Fase 1 (núcleo + cartera + MDM simulado): completada
 - Fase 2 (multitenant + pagos en cascada + proxy MDM): completada
 - Fase 3 (backend real + reconexión frontend): completada — smoke 22/22 y E2E visual 8/8
+- Fase 4 (empresa activa en sesión, sync masivo SYSTEM_SYNC, búsquedas sin guiones): completada el 03/08/2026
