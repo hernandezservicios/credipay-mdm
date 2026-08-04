@@ -38,6 +38,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { SaaSAvView } from './components/SaaSAvView';
 import { PlatformAdminView } from './components/PlatformAdminView';
 import { CollectionsView } from './components/CollectionsView';
+import { SecurityModal } from './components/SecurityModal';
 import {
   apiFetchMe,
   apiLogout,
@@ -242,6 +243,25 @@ export default function App() {
 
   // Estados de interfaz y modales
   const [activeTab, setActiveTab] = useState<MainViewTab>('CLIENTS');
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+  const [dark, setDark] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const saved = window.localStorage.getItem('credipay-theme');
+    return saved === 'dark';
+  });
+
+  const toggleDark = useCallback(() => {
+    setDark((prev) => {
+      const next = !prev;
+      window.localStorage.setItem('credipay-theme', next ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+  }, [dark]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [filterStatus, setFilterStatus] = useState<
@@ -1096,10 +1116,10 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-800 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500">Cargando sesión...</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-400">Cargando sesión...</p>
         </div>
       </div>
     );
@@ -1110,7 +1130,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-800 dark:bg-slate-950 text-slate-800 dark:text-slate-100 dark:text-slate-200 flex flex-col font-sans">
       {/* Toast de Notificación flotante */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 animate-bounce">
@@ -1148,6 +1168,9 @@ export default function App() {
         isGlobal={session.isGlobal}
         onSwitchTenant={handleSwitchTenant}
         onReloadTenants={reloadTenants}
+        onOpenSecurity={() => setIsSecurityModalOpen(true)}
+        dark={dark}
+        onToggleDark={toggleDark}
       />
 
       {/* Contenedor Principal con Sidebar Lateral */}
@@ -1182,7 +1205,7 @@ export default function App() {
           ) : (
           <>
           {clientsLoading && clients.length === 0 && activeTab === 'CLIENTS' && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
+            <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center text-slate-500 dark:text-slate-400">
               <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600 mb-3" />
               <p className="text-sm font-medium">Cargando cartera de clientes desde el servidor...</p>
             </div>
@@ -1198,10 +1221,10 @@ export default function App() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">
+                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
                       Cartera de Clientes & Control MDM de Celulares
                     </h2>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Gestiona créditos, verifica estados de cuotas y ejecuta bloqueos o desbloqueos instantáneos o por API
                     </p>
                   </div>
@@ -1262,17 +1285,17 @@ export default function App() {
 
           {activeTab === 'LOGS' && (
             <div className="space-y-6">
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 border-b border-slate-100 pb-4 gap-3">
+              <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-4 gap-3">
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">
+                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
                       Auditoría Completa de Órdenes MDM & Sincronizaciones InovaGuard
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Historial y traza inmutable de todos los comandos de bloqueo, mora, códigos offline y sync REST
                     </p>
                   </div>
-                  <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full self-start sm:self-center">
+                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-full self-start sm:self-center">
                     {logs.length} Eventos Registrados
                   </span>
                 </div>
@@ -1280,7 +1303,7 @@ export default function App() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-200 text-xs font-bold uppercase text-slate-400 bg-slate-50/70">
+                      <tr className="border-b border-slate-200 dark:border-slate-700 text-xs font-bold uppercase text-slate-400 bg-slate-50 dark:bg-slate-900/70">
                         <th className="py-3 px-4">Fecha & Hora</th>
                         <th className="py-3 px-4">Cliente</th>
                         <th className="py-3 px-4">IMEI / Dispositivo</th>
@@ -1292,13 +1315,13 @@ export default function App() {
                     <tbody className="divide-y divide-slate-100 text-xs">
                       {logs.map((log) => (
                         <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-4 font-mono text-slate-500 whitespace-nowrap">
+                          <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {log.timestamp}
                           </td>
-                          <td className="py-3 px-4 font-semibold text-slate-900">
+                          <td className="py-3 px-4 font-semibold text-slate-900 dark:text-slate-100">
                             {log.clientName}
                           </td>
-                          <td className="py-3 px-4 font-mono text-slate-600">
+                          <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-400">
                             {log.imei}
                           </td>
                           <td className="py-3 px-4">
@@ -1312,16 +1335,16 @@ export default function App() {
                                   ? 'bg-indigo-100 text-indigo-800'
                                   : log.action === 'REMOVE'
                                   ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-slate-100 text-slate-800'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'
                               }`}
                             >
                               {log.action}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-slate-600 font-medium">
+                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
                             {log.trigger}
                           </td>
-                          <td className="py-3 px-4 text-slate-700 max-w-sm">
+                          <td className="py-3 px-4 text-slate-700 dark:text-slate-300 max-w-sm">
                             {log.details}
                           </td>
                         </tr>
@@ -1377,7 +1400,7 @@ export default function App() {
           <p className="font-medium text-slate-300">
             CrediPay MDM • Sistema Integral de Préstamos para Celulares con Bloqueo MDM en Pesos Dominicanos
           </p>
-          <p className="text-slate-500 mt-1">
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
             4 Estados: Pendiente | Vencido (Día 0-2) | Atrasado (+3 días, +RD$200 mora fija & Bloqueo automático) | Pagado (Desbloqueo automático)
           </p>
         </div>
@@ -1440,6 +1463,8 @@ export default function App() {
           onConfirm={handleCascadePayment}
         />
       )}
+
+      {isSecurityModalOpen && <SecurityModal onClose={() => setIsSecurityModalOpen(false)} />}
     </div>
   );
 }

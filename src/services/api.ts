@@ -97,12 +97,81 @@ export interface Session {
   isGlobal: boolean;
 }
 
+export interface TwoFactorChallenge {
+  twoFactorRequired: true;
+  ticket: string;
+  user: SessionUser;
+}
+
 export function apiLogin(
   email: string,
   password: string,
   remember: boolean
-): Promise<Session> {
-  return request<Session>('POST', '/auth/login', { email, password, remember });
+): Promise<Session | TwoFactorChallenge> {
+  return request<Session | TwoFactorChallenge>('POST', '/auth/login', { email, password, remember });
+}
+
+export function apiLoginTotp(ticket: string, code: string, remember: boolean): Promise<Session> {
+  return request<Session>('POST', '/auth/login/totp', { ticket, code, remember });
+}
+
+export function apiTwoFactorStatus(): Promise<{ data: { enabled: boolean } }> {
+  return request('GET', '/auth/2fa/status');
+}
+
+export function apiTwoFactorSetup(): Promise<{ data: { secret: string; otpauthUrl: string } }> {
+  return request('POST', '/auth/2fa/setup');
+}
+
+export function apiTwoFactorEnable(code: string): Promise<{ data: { recoveryCodes: string[] } }> {
+  return request('POST', '/auth/2fa/enable', { code });
+}
+
+export function apiTwoFactorDisable(code: string): Promise<{ ok: boolean }> {
+  return request('POST', '/auth/2fa/disable', { code });
+}
+
+// ---------------------------------------------------------------------------
+// API Keys (Fase 7): integraciones externas
+// ---------------------------------------------------------------------------
+
+export interface ApiKeyRow {
+  id: number;
+  key_name: string;
+  key_prefix: string;
+  scopes: string[] | null;
+  status: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export function apiListApiKeys(): Promise<{ data: ApiKeyRow[] }> {
+  return request('GET', '/api-keys');
+}
+
+export function apiCreateApiKey(body: {
+  name: string;
+  scopes?: string[];
+  expiresInDays?: number;
+}): Promise<{ data: { id: number; name: string; key: string; printed: string } }> {
+  return request('POST', '/api-keys', body);
+}
+
+export function apiRevokeApiKey(id: number): Promise<{ ok: boolean }> {
+  return request('DELETE', `/api-keys/${id}`);
+}
+
+export function apiKeyProbe(): Promise<{
+  data: {
+    authenticatedVia: 'api_key' | 'session';
+    keyName: string | null;
+    userId: number;
+    tenantId: number | null;
+    permissions: string[];
+  };
+}> {
+  return request('GET', '/api-keys/probe');
 }
 
 export function apiLogout(): Promise<{ ok: boolean }> {

@@ -78,7 +78,7 @@ export async function getCollectionSummary(tenantId: number): Promise<Collection
   );
 
   const [[atRisk]] = await pool.query<RowDataPacket[]>(
-    `SELECT COUNT(DISTINCT ci.client_id) AS c
+    `SELECT COUNT(DISTINCT cr.client_id) AS c
        FROM credit_installments ci
        JOIN credits cr ON cr.id = ci.credit_id
       WHERE ci.tenant_id = ? AND ci.deleted_at IS NULL

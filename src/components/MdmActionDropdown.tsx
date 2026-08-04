@@ -49,10 +49,10 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center justify-between px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors border border-slate-300 shadow-xs"
+        className="inline-flex items-center justify-between px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-lg transition-colors border border-slate-300 dark:border-slate-600 shadow-xs"
       >
         <span>Acciones MDM</span>
-        <ChevronDown className="w-3.5 h-3.5 ml-1.5 text-slate-500" />
+        <ChevronDown className="w-3.5 h-3.5 ml-1.5 text-slate-500 dark:text-slate-400" />
       </button>
 
       {isOpen && (
@@ -104,9 +104,9 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                 setIsOpen(false);
                 onCheckStatus(clientId);
               }}
-              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center space-x-2"
             >
-              <ShieldCheck className="w-4 h-4 text-slate-500" />
+              <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               <span>Verificar Conexión / Sync API</span>
             </button>
 
@@ -134,7 +134,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                 setIsOpen(false);
                 onOpenInstallments();
               }}
-              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center space-x-2"
             >
               <DollarSign className="w-4 h-4 text-amber-600" />
               <span>Ver Cuotas / Pagar & Aplicar Mora</span>
@@ -145,7 +145,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                 setIsOpen(false);
                 onOpenAiCobranza();
               }}
-              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center space-x-2"
             >
               <MessageSquare className="w-4 h-4 text-emerald-600" />
               <span>Mensaje Cobranza WhatsApp / Aviso</span>

@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import path from 'path';
+import { createHmac } from 'crypto';
 import { test, expect, Page } from '@playwright/test';
 
 /**
@@ -460,4 +461,190 @@ test('F6: RBAC - OPERADOR ve el motor pero no puede ejecutarlo (403 forbidden)',
   expect(runRes.status()).toBe(403);
   const runBody = await runRes.json();
   expect(runBody.error).toBe('forbidden');
+});
+
+// ---------------------------------------------------------------------------
+// Fase 7: 2FA TOTP, API keys y documentación OpenAPI
+// ---------------------------------------------------------------------------
+
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function b32Decode(value: string): Buffer {
+  const clean = value.replace(/[^A-Za-z2-7]/g, '').toUpperCase();
+  let acc = 0n;
+  let bits = 0;
+  const bytes: number[] = [];
+  for (const ch of clean) {
+    const idx = B32.indexOf(ch);
+    if (idx === -1) continue;
+    acc = (acc << 5n) | BigInt(idx);
+    bits += 5;
+    while (bits >= 8) {
+      bytes.push(Number((acc >> BigInt(bits - 8)) & 0xffn));
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function totpNow(secret: string): string {
+  const counter = Math.floor(Date.now() / 1000 / 30);
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64BE(BigInt(counter));
+  const hmac = createHmac('sha1', b32Decode(secret)).update(buf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const bin =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+  return String(bin % 1_000_000).padStart(6, '0');
+}
+
+test('F7: 2FA TOTP - setup, reto de login, código y desactivación', async ({ request }) => {
+  const loginRes = await request.post('/api/v1/auth/login', {
+    data: { email: OPERADOR.email, password: OPERADOR.password, remember: false },
+  });
+  expect(loginRes.ok()).toBeTruthy();
+
+  const statusBefore = await request.get('/api/v1/auth/2fa/status');
+  expect((await statusBefore.json()).data.enabled).toBe(false);
+
+  const csrf = (await request.storageState()).cookies.find((c) => c.name === 'csrf')?.value ?? '';
+  const setupRes = await request.post('/api/v1/auth/2fa/setup', { headers: { 'X-CSRF-Token': csrf } });
+  expect(setupRes.ok()).toBeTruthy();
+  const secret = (await setupRes.json()).data.secret;
+  expect(secret).toMatch(/^[A-Z2-7]{32}$/);
+
+  const enableRes = await request.post('/api/v1/auth/2fa/enable', {
+    headers: { 'X-CSRF-Token': csrf },
+    data: { code: totpNow(secret) },
+  });
+  expect(enableRes.ok()).toBeTruthy();
+  const enableBody = await enableRes.json();
+  expect(enableBody.data.recoveryCodes).toHaveLength(10);
+
+  await request.post('/api/v1/auth/logout', { headers: { 'X-CSRF-Token': csrf } });
+
+  // El login ahora exige el segundo factor
+  const challengeRes = await request.post('/api/v1/auth/login', {
+    data: { email: OPERADOR.email, password: OPERADOR.password, remember: false },
+  });
+  expect(challengeRes.ok()).toBeTruthy();
+  const challenge = await challengeRes.json();
+  expect(challenge.twoFactorRequired).toBe(true);
+  expect(challenge.ticket.length).toBeGreaterThanOrEqual(10);
+
+  // Código incorrecto -> rechazado
+  const badRes = await request.post('/api/v1/auth/login/totp', {
+    data: { ticket: challenge.ticket, code: '000000', remember: false },
+  });
+  expect(badRes.status()).toBe(401);
+
+  const totpRes = await request.post('/api/v1/auth/login/totp', {
+    data: { ticket: challenge.ticket, code: totpNow(secret), remember: false },
+  });
+  expect(totpRes.ok()).toBeTruthy();
+  expect((await totpRes.json()).user.email).toBe(OPERADOR.email);
+
+  const statusAfter = await request.get('/api/v1/auth/2fa/status');
+  expect((await statusAfter.json()).data.enabled).toBe(true);
+
+  const csrfAfter = (await request.storageState()).cookies.find((c) => c.name === 'csrf')?.value ?? '';
+  const disableRes = await request.post('/api/v1/auth/2fa/disable', {
+    headers: { 'X-CSRF-Token': csrfAfter },
+    data: { code: totpNow(secret) },
+  });
+  expect(disableRes.ok()).toBeTruthy();
+  const statusFinal = await request.get('/api/v1/auth/2fa/status');
+  expect((await statusFinal.json()).data.enabled).toBe(false);
+});
+
+test('F7: API keys - crear, probe por X-API-Key, inválida 401 y revocar', async ({ request }) => {
+  const loginRes = await request.post('/api/v1/auth/login', {
+    data: { email: ADMIN.email, password: ADMIN.password, remember: false },
+  });
+  expect(loginRes.ok()).toBeTruthy();
+  const csrf = (await request.storageState()).cookies.find((c) => c.name === 'csrf')?.value ?? '';
+
+  const createRes = await request.post('/api/v1/api-keys', {
+    headers: { 'X-CSRF-Token': csrf },
+    data: { name: 'E2E F7', expiresInDays: 30 },
+  });
+  expect(createRes.ok()).toBeTruthy();
+  const created = await createRes.json();
+  expect(created.data.key).toMatch(/^cpk_[0-9a-f]{24,64}$/);
+  expect(created.data.printed).toContain('-');
+  const keyId = created.data.id;
+
+  const listRes = await request.get('/api/v1/api-keys');
+  expect(listRes.ok()).toBeTruthy();
+  const listBody = await listRes.json();
+  expect(listBody.data.some((k: { id: number }) => k.id === keyId)).toBe(true);
+
+  const probeRes = await request.get('/api/v1/api-keys/probe', {
+    headers: { 'X-API-Key': created.data.printed },
+  });
+  expect(probeRes.ok()).toBeTruthy();
+  const probe = await probeRes.json();
+  expect(probe.data.authenticatedVia).toBe('api_key');
+  expect(probe.data.keyName).toBe('E2E F7');
+  expect(probe.data.permissions.length).toBeGreaterThan(0);
+
+  const badRes = await request.get('/api/v1/api-keys/probe', {
+    headers: { 'X-API-Key': 'cpk_ffffffffffffffffffffffffffffffffffffffff' },
+  });
+  expect(badRes.status()).toBe(401);
+
+  const revokeRes = await request.delete(`/api/v1/api-keys/${keyId}`, {
+    headers: { 'X-CSRF-Token': csrf },
+  });
+  expect(revokeRes.ok()).toBeTruthy();
+
+  const afterRes = await request.get('/api/v1/api-keys/probe', {
+    headers: { 'X-API-Key': created.data.printed },
+  });
+  expect(afterRes.status()).toBe(401);
+});
+
+test('F7: Documentación OpenAPI (spec JSON y docs HTML)', async ({ request }) => {
+  const specRes = await request.get('/api/v1/openapi.json');
+  expect(specRes.ok()).toBeTruthy();
+  const spec = await specRes.json();
+  expect(spec.openapi).toBe('3.1.0');
+  expect(Object.keys(spec.paths)).toContain('/auth/login/totp');
+  expect(Object.keys(spec.paths)).toContain('/api-keys');
+  expect(Object.keys(spec.paths)).toContain('/api-keys/probe');
+
+  const docsRes = await request.get('/api/v1/docs');
+  expect(docsRes.ok()).toBeTruthy();
+  const html = await docsRes.text();
+  expect(html).toContain('openapi.json');
+  expect(html).toContain('CrediPay');
+});
+
+test('F7: UI - modal Seguridad & API (2FA + API keys) y tema oscuro', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+
+  await login(page, ADMIN.email, ADMIN.password);
+  await page.getByRole('button', { name: 'Seguridad & API' }).click();
+  await expect(page.getByRole('heading', { name: 'Seguridad & API' })).toBeVisible();
+  await expect(page.getByText(/Activa la verificación en dos pasos/)).toBeVisible();
+
+  await page.getByRole('button', { name: 'API Keys', exact: true }).click();
+  await page.getByPlaceholder(/Nombre \(ej:/).fill('E2E UI');
+  await page.getByRole('button', { name: 'Crear llave' }).click();
+  await expect(page.getByText(/¡Llave creada!/)).toBeVisible();
+  await page.locator('button:has(svg.lucide-x)').first().click();
+  await expect(page.getByRole('heading', { name: 'Seguridad & API' })).not.toBeVisible();
+
+  const root = page.locator('html');
+  await expect(root).not.toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Modo oscuro' }).click();
+  await expect(root).toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Modo claro' }).click();
+  await expect(root).not.toHaveClass(/dark/);
+
+  expect(errors).toEqual([]);
 });

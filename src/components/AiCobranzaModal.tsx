@@ -48,7 +48,7 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden text-xs">
+      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -73,7 +73,7 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
         <div className="p-6 space-y-4">
           {/* Tonos / Tipos de Mensajes */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-2">Seleccionar Tipo de Comunicación:</label>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-2">Seleccionar Tipo de Comunicación:</label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
@@ -81,7 +81,7 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
                 className={`p-2.5 rounded-lg border text-center font-medium transition-colors ${
                   tone === 'RESPETUOSO'
                     ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 }`}
               >
                 1. Recordatorio Amigable
@@ -92,7 +92,7 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
                 className={`p-2.5 rounded-lg border text-center font-medium transition-colors ${
                   tone === 'ALERTA_BLOQUEO'
                     ? 'bg-rose-600 text-white border-rose-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 }`}
               >
                 2. Alerta Bloqueo & Mora
@@ -103,7 +103,7 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
                 className={`p-2.5 rounded-lg border text-center font-medium transition-colors ${
                   tone === 'CONFIRMACION_PAGO'
                     ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    : 'bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 }`}
               >
                 3. Recibo & Desbloqueo
@@ -114,10 +114,10 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
           {/* Vista previa del mensaje */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="font-semibold text-slate-700">Mensaje generado (listo para enviar):</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Mensaje generado (listo para enviar):</span>
               <span className="text-[10px] text-slate-400">Formato WhatsApp (.md compatible)</span>
             </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 font-mono text-xs whitespace-pre-wrap text-slate-800 leading-relaxed max-h-60 overflow-y-auto">
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-xs whitespace-pre-wrap text-slate-800 dark:text-slate-100 leading-relaxed max-h-60 overflow-y-auto">
               {messageText}
             </div>
           </div>
@@ -135,19 +135,19 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
           </div>
 
           {/* Botones de acción */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
             <button
               onClick={handleCopy}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg flex items-center space-x-1.5 transition-colors"
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold rounded-lg flex items-center space-x-1.5 transition-colors"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
+              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500 dark:text-slate-400" />}
               <span>{copied ? '¡Copiado!' : 'Copiar Texto'}</span>
             </button>
 
             <div className="flex space-x-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 dark:text-slate-100 rounded-lg font-medium transition-colors"
               >
                 Cerrar
               </button>

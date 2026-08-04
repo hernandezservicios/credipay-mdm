@@ -202,7 +202,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </h3>
           </div>
           <div className="p-6 space-y-4 text-sm">
-            <p className="text-slate-700">
+            <p className="text-slate-700 dark:text-slate-300">
               <strong>{success.clientName}</strong> — RD$
               {success.amountApplied.toLocaleString()} aplicados.
             </p>
@@ -259,7 +259,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[55] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 dark:border-slate-700">
         {/* Cabecera */}
         <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -285,14 +285,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           {/* Cliente */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Seleccione Cliente (CrediPay MDM)
             </label>
             <select
               value={selectedClientId}
               onChange={(e) => handleSelectClient(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 font-medium"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50 dark:bg-slate-900 font-medium"
             >
               <option value="">-- Seleccionar Cliente --</option>
               {clients.map((c) => (
@@ -314,11 +314,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               {/* Método y Banco */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Método de Pago</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Método de Pago</label>
                   <select
                     value={method}
                     onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-slate-50 font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 font-medium"
                   >
                     {METHODS.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -328,13 +328,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Banco o Referencia
                   </label>
                   <select
                     value={bank}
                     onChange={(e) => setBank(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-slate-50 font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 font-medium"
                   >
                     {BANKS.map((b) => (
                       <option key={b} value={b}>
@@ -347,7 +347,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
               {/* Monto a pagar */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Monto a Pagar (RD$) — se aplica en cascada
                 </label>
                 <div className="flex gap-2">
@@ -360,7 +360,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       value={montoStr}
                       onChange={(e) => setMontoStr(e.target.value)}
                       placeholder={`Próxima cuota: RD$${nextAmount.toLocaleString()}`}
-                      className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl bg-slate-50 font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
                   <button
@@ -377,7 +377,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               {isEfectivo && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Monto Recibido (RD$)
                     </label>
                     <div className="relative">
@@ -389,7 +389,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                         value={receivedStr}
                         onChange={(e) => setReceivedStr(e.target.value)}
                         placeholder="Efectivo del cliente"
-                        className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl bg-slate-50 font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        className="w-full pl-9 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                       />
                     </div>
                     {receivedShort && (
@@ -411,9 +411,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
               {/* Preview de la cascada */}
               {affected.length > 0 && (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                    <span className="font-bold text-slate-700 flex items-center space-x-1.5">
+                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
                       <Layers className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Distribución en Cascada</span>
                     </span>
@@ -428,10 +428,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                         className="px-3 py-2 flex items-center justify-between"
                       >
                         <div>
-                          <span className="font-semibold text-slate-800">
+                          <span className="font-semibold text-slate-800 dark:text-slate-100">
                             Cuota #{a.installment.number}
                           </span>
-                          <span className="text-slate-500 ml-2">
+                          <span className="text-slate-500 dark:text-slate-400 ml-2">
                             {a.becamePaid ? (
                               <span className="text-emerald-700 font-bold">COMPLETADA</span>
                             ) : (
@@ -441,7 +441,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                             )}
                           </span>
                         </div>
-                        <span className="font-mono font-semibold text-slate-700">
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
                           RD${a.applied.toLocaleString()}
                         </span>
                       </div>
@@ -459,11 +459,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 </span>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors"
                 >
                   Cancelar
                 </button>

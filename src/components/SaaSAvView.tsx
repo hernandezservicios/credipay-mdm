@@ -55,15 +55,15 @@ function StatusChip({ status }: { status: string }) {
     TRIAL: 'bg-indigo-100 text-indigo-700 border-indigo-200',
     PAST_DUE: 'bg-amber-100 text-amber-700 border-amber-200',
     SUSPENDED: 'bg-rose-100 text-rose-700 border-rose-200',
-    CANCELED: 'bg-slate-100 text-slate-600 border-slate-200',
-    EXPIRED: 'bg-slate-100 text-slate-600 border-slate-200',
+    CANCELED: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+    EXPIRED: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
     PAID: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    REFUNDED: 'bg-slate-100 text-slate-600 border-slate-200',
+    REFUNDED: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
   };
   return (
     <span
       className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-        map[status] ?? 'bg-slate-100 text-slate-600 border-slate-200'
+        map[status] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
       }`}
     >
       {status.replace('_', ' ')}
@@ -82,21 +82,21 @@ function Meter({ label, used, max, icon }: MeterProps) {
   const unlimited = max <= 0;
   const pct = unlimited ? 0 : Math.min(100, Math.round((used / max) * 100));
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-white rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700">
+        <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
           <span className="w-7 h-7 rounded-lg bg-slate-900 text-indigo-300 flex items-center justify-center">
             {icon}
           </span>
           {label}
         </div>
-        <span className="text-[11px] font-bold text-slate-500">
+        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
           {used.toLocaleString('es-DO')}
           <span className="text-slate-400"> / </span>
           {unlimited ? '∞' : max.toLocaleString('es-DO')}
         </span>
       </div>
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+      <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <div
           className={`h-full rounded-full ${pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
           style={{ width: `${pct}%` }}
@@ -213,7 +213,7 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                       /{CYCLE_LABEL[plan.billing_cycle].toLowerCase()}
                     </span>
                   </div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
                     setup {Number(plan.setup_fee) > 0 ? formatPrice(plan.setup_fee, plan.currency_code) : 'RD$0'}
                   </div>
                 </div>
@@ -222,7 +222,7 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                   <div className="text-base font-extrabold text-white mt-1">
                     {CYCLE_LABEL[plan.billing_cycle]}
                   </div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
                     renovación {plan.auto_renew ? 'automática' : 'manual'}
                   </div>
                 </div>
@@ -231,14 +231,14 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                   <div className="text-sm font-bold text-white mt-1">
                     {formatDate(plan.current_period_start)}
                   </div>
-                  <div className="text-[10px] text-slate-500">vigente</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">vigente</div>
                 </div>
                 <div className="bg-slate-800/80 rounded-xl p-3">
                   <div className="text-[10px] uppercase tracking-wider text-slate-400">Vence</div>
                   <div className="text-sm font-bold text-white mt-1">
                     {formatDate(plan.current_period_end)}
                   </div>
-                  <div className="text-[10px] text-slate-500">fin de período</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">fin de período</div>
                 </div>
               </div>
 
@@ -271,7 +271,7 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                     {f.is_enabled ? (
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     ) : (
-                      <XCircle className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                      <XCircle className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
                     )}
                     <span>{f.feature_name}</span>
                   </div>
@@ -369,18 +369,18 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
 
       {/* Pasarelas */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
           <div className="flex items-center space-x-2 mb-3">
             <CreditCard className="w-4 h-4 text-indigo-500" />
-            <h3 className="text-sm font-bold text-slate-900">Pasarela de Pago</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Pasarela de Pago</h3>
           </div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
             Método preferido para renovaciones
           </label>
           <select
             value={preferredGateway ?? ''}
             onChange={(e) => onSetGateway(e.target.value || null)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value="">Sin pasarela configurada</option>
             {gateways.map((g) => (
@@ -396,10 +396,10 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
           <div className="flex items-center space-x-2 mb-3">
             <Layers className="w-4 h-4 text-indigo-500" />
-            <h3 className="text-sm font-bold text-slate-900">Historial de Pagos</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Historial de Pagos</h3>
           </div>
           <div className="max-h-56 overflow-y-auto">
             {payments.length === 0 ? (
@@ -407,7 +407,7 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
             ) : (
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-left text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800">
                     <th className="py-1.5 pr-2">Ref</th>
                     <th className="py-1.5 pr-2">Concepto</th>
                     <th className="py-1.5 pr-2">Monto</th>
@@ -418,14 +418,14 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                 <tbody>
                   {payments.slice(0, 10).map((p) => (
                     <tr key={p.id} className="border-b border-slate-50">
-                      <td className="py-2 pr-2 font-mono text-[10px] text-slate-500">
+                      <td className="py-2 pr-2 font-mono text-[10px] text-slate-500 dark:text-slate-400">
                         {p.reference ?? `#${p.id}`}
                       </td>
-                      <td className="py-2 pr-2 text-slate-600 max-w-[180px] truncate">
+                      <td className="py-2 pr-2 text-slate-600 dark:text-slate-400 max-w-[180px] truncate">
                         {p.description ?? p.plan_name ?? 'Pago de suscripción'}
                       </td>
-                      <td className="py-2 pr-2 font-bold text-slate-800">RD${Number(p.amount).toLocaleString('es-DO', { maximumFractionDigits: 2 })}</td>
-                      <td className="py-2 pr-2 text-slate-500">{formatDate(p.paid_at ?? p.created_at)}</td>
+                      <td className="py-2 pr-2 font-bold text-slate-800 dark:text-slate-100">RD${Number(p.amount).toLocaleString('es-DO', { maximumFractionDigits: 2 })}</td>
+                      <td className="py-2 pr-2 text-slate-500 dark:text-slate-400">{formatDate(p.paid_at ?? p.created_at)}</td>
                       <td className="py-2">
                         <StatusChip status={p.status} />
                       </td>

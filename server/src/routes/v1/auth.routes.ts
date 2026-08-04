@@ -7,16 +7,21 @@ import {
   buildResetLink,
   buildVerificationLink,
   changePassword,
+  completeTotpLogin,
   createEmailVerification,
+  disableTotp,
+  enableTotp,
   findUserByEmail,
+  getTwoFactorStatus,
   loadPermissions,
   login,
   logout,
   requestPasswordReset,
   resetPassword,
+  startTotpSetup,
   verifyEmail,
 } from '../../services/authService.js';
-import { requestMeta, uaInfo } from '../../services/auditService.js';
+import { recordAudit, requestMeta, uaInfo } from '../../services/auditService.js';
 import { ApiError } from '../../utils/http.js';
 
 const router = Router();
@@ -65,6 +70,10 @@ router.post('/login', loginLimiter, async (req: AuthRequest, res) => {
     remember: body.data.remember,
     ua: uaInfo(req),
   });
+  if ('twoFactorRequired' in result) {
+    res.json({ twoFactorRequired: true, ticket: result.ticket, user: result.user });
+    return;
+  }
   setAuthCookies(res, result.sessionToken, result.csrfToken, result.expiresAt, body.data.remember);
   res.json({
     user: result.user,
@@ -73,6 +82,74 @@ router.post('/login', loginLimiter, async (req: AuthRequest, res) => {
     activeTenantId: result.user.tenantId,
     isGlobal: result.user.tenantId === null,
   });
+});
+
+const totpLoginSchema = z.object({
+  ticket: z.string().min(10),
+  code: z.string().min(6).max(8),
+  remember: z.boolean().optional().default(false),
+});
+
+router.post('/login/totp', loginLimiter, async (req: AuthRequest, res) => {
+  const body = totpLoginSchema.safeParse(req.body);
+  if (!body.success) throw ApiError.badRequest('invalid_input', 'Datos de verificación inválidos');
+  const result = await completeTotpLogin(body.data.ticket, body.data.code, {
+    remember: body.data.remember,
+    ua: uaInfo(req),
+  });
+  setAuthCookies(res, result.sessionToken, result.csrfToken, result.expiresAt, body.data.remember);
+  res.json({
+    user: result.user,
+    permissions: result.permissions,
+    mustChangePassword: result.user.mustChangePassword,
+    activeTenantId: result.user.tenantId,
+    isGlobal: result.user.tenantId === null,
+  });
+});
+
+// --- Gestión de 2FA (TOTP) ---
+
+router.get('/2fa/status', authRequired, async (req: AuthRequest, res) => {
+  res.json({ data: await getTwoFactorStatus(req.auth!.userId) });
+});
+
+router.post('/2fa/setup', authRequired, csrfProtect, async (req: AuthRequest, res) => {
+  const setup = await startTotpSetup(req.auth!.userId, req.auth!.email);
+  res.json({ data: setup });
+});
+
+router.post('/2fa/enable', authRequired, csrfProtect, async (req: AuthRequest, res) => {
+  const body = z.object({ code: z.string().min(6).max(8) }).safeParse(req.body);
+  if (!body.success) throw ApiError.badRequest('invalid_input', 'Código inválido');
+  const result = await enableTotp(req.auth!.userId, body.data.code);
+  void recordAudit(
+    {
+      tenantId: req.auth!.tenantId,
+      userId: req.auth!.userId,
+      action: 'auth.two_factor_enabled',
+      entityType: 'user',
+      entityId: String(req.auth!.userId),
+    },
+    req as AuthRequest
+  );
+  res.json({ data: result });
+});
+
+router.post('/2fa/disable', authRequired, csrfProtect, async (req: AuthRequest, res) => {
+  const body = z.object({ code: z.string().min(6).max(8) }).safeParse(req.body);
+  if (!body.success) throw ApiError.badRequest('invalid_input', 'Código inválido');
+  await disableTotp(req.auth!.userId, body.data.code);
+  void recordAudit(
+    {
+      tenantId: req.auth!.tenantId,
+      userId: req.auth!.userId,
+      action: 'auth.two_factor_disabled',
+      entityType: 'user',
+      entityId: String(req.auth!.userId),
+    },
+    req as AuthRequest
+  );
+  res.json({ ok: true });
 });
 
 router.post('/logout', authRequired, csrfProtect, async (req: AuthRequest, res) => {

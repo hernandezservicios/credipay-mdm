@@ -52,7 +52,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
   return (
     <div className="space-y-6">
       {/* Encabezado */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
@@ -60,16 +60,16 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
             </span>
             <span className="text-xs text-slate-400">• Vista Stitch Estadísticas & Rendimiento</span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mt-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">
             Estadísticas & Efectividad del Bloqueo CrediPay MDM
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Análisis de recuperación posterior a bloqueo de pantalla, mora en RD$ y comportamiento de pago por marca
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
-          <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl flex items-center space-x-1.5">
+          <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl flex items-center space-x-1.5">
             <BarChart3 className="w-4 h-4 text-emerald-600" />
             <span>Tasa Efectividad Bloqueo: <strong>91.4%</strong></span>
           </span>
@@ -96,35 +96,35 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase text-slate-400">Recuperación post-bloqueo (48h)</span>
               <CheckCircle2 className="w-5 h-5 text-indigo-600" />
             </div>
-            <p className="text-3xl font-black text-slate-900 mt-3">91.4%</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-3xl font-black text-slate-900 dark:text-slate-100 mt-3">91.4%</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Cartera regularizada dentro del segundo día de bloqueo MDM
             </p>
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between text-xs text-slate-500">
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Desbloqueo automático:</span>
-            <span className="font-bold text-slate-800">&lt; 3 segundos</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100">&lt; 3 segundos</span>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase text-slate-400">Tiempo Medio de Desbloqueo</span>
               <Clock className="w-5 h-5 text-emerald-600" />
             </div>
-            <p className="text-3xl font-black text-slate-900 mt-3">14.2 hrs</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-3xl font-black text-slate-900 dark:text-slate-100 mt-3">14.2 hrs</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Tiempo transcurrido desde orden LOCK hasta pago y UNLOCK
             </p>
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between text-xs text-slate-500">
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Mora cobrada en 100% casos:</span>
             <span className="font-bold text-amber-600">+RD$ 200 / cuota</span>
           </div>
@@ -134,13 +134,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
       {/* Gráficos y Barras de Estado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribución por Estado */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Distribución de Cartera por Estado (Stitch)
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Clasificación automática del motor de 4 estados MDM
               </p>
             </div>
@@ -155,9 +155,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2"></span>
                   Al Día (Sin atraso)
                 </span>
-                <span className="text-slate-900">{alDiaCount} clientes ({alDiaPct}%)</span>
+                <span className="text-slate-900 dark:text-slate-100">{alDiaCount} clientes ({alDiaPct}%)</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${alDiaPct}%` }}></div>
               </div>
             </div>
@@ -169,9 +169,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2"></span>
                   Vencido (0 a 2 días - Período de gracia)
                 </span>
-                <span className="text-slate-900">{vencidoCount} clientes ({vencidoPct}%)</span>
+                <span className="text-slate-900 dark:text-slate-100">{vencidoCount} clientes ({vencidoPct}%)</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-amber-500 h-full rounded-full" style={{ width: `${vencidoPct}%` }}></div>
               </div>
             </div>
@@ -183,9 +183,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 mr-2"></span>
                   Atrasado (+3 días, +RD$200 mora & Bloqueado MDM)
                 </span>
-                <span className="text-slate-900">{atrasadoCount} clientes ({atrasadoPct}%)</span>
+                <span className="text-slate-900 dark:text-slate-100">{atrasadoCount} clientes ({atrasadoPct}%)</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-rose-600 h-full rounded-full" style={{ width: `${atrasadoPct}%` }}></div>
               </div>
             </div>
@@ -197,9 +197,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 mr-2"></span>
                   Crédito Finalizado (Equipo Liberado)
                 </span>
-                <span className="text-slate-900">{pagadoCount} clientes ({pagadoPct}%)</span>
+                <span className="text-slate-900 dark:text-slate-100">{pagadoCount} clientes ({pagadoPct}%)</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${pagadoPct}%` }}></div>
               </div>
             </div>
@@ -207,13 +207,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
         </div>
 
         {/* Marcas más Financiadas */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Parque por Marcas de Celulares & Riesgo de Mora
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Desglose en Pesos Dominicanos (RD$) por fabricante de smartphone
               </p>
             </div>
@@ -224,12 +224,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
             {brandStats.map((item, idx) => (
               <div key={idx} className="space-y-1.5">
                 <div className="flex justify-between font-semibold">
-                  <span className="text-slate-800">{item.brand}</span>
-                  <span className="text-slate-500">
+                  <span className="text-slate-800 dark:text-slate-100">{item.brand}</span>
+                  <span className="text-slate-500 dark:text-slate-400">
                     {item.percentage}% <span className="text-[11px] font-normal">({item.risk})</span>
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
                   <div className={`${item.color} h-full rounded-full`} style={{ width: `${item.percentage}%` }}></div>
                 </div>
               </div>

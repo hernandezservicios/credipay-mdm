@@ -66,7 +66,7 @@ export const TenantSwitcher: React.FC<TenantSwitcherProps> = ({
 
       {open && (
         <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 py-1.5">
-          <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-800">
+          <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-800">
             Empresas disponibles
           </div>
           {tenants.length === 0 && (
@@ -85,7 +85,7 @@ export const TenantSwitcher: React.FC<TenantSwitcherProps> = ({
             >
               <span className="min-w-0">
                 <span className="block font-semibold text-slate-200 truncate">{t.name}</span>
-                <span className="block text-[10px] text-slate-500">{t.slug}</span>
+                <span className="block text-[10px] text-slate-500 dark:text-slate-400">{t.slug}</span>
               </span>
               {t.id === activeTenantId ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />

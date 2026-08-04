@@ -519,7 +519,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Encabezado */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
@@ -527,10 +527,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             </span>
             <span className="text-xs text-slate-400">• Vista Stitch Caja & Finanzas</span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mt-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">
             Caja & Flujo de Cobros CrediPay MDM
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Monitoreo en tiempo real de cobros, moras fijas (RD$200), abonos y emisión de recibos digitales
           </p>
         </div>
@@ -574,14 +574,14 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
       {/* Tarjetas de Indicadores Financieros */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Recaudado (Cuotas)</span>
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl font-black text-slate-900 mt-2">
+          <p className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2">
             RD$ {totalRecaudadoBase.toLocaleString()}
           </p>
           <p className="text-xs text-emerald-600 font-medium mt-1 flex items-center">
@@ -590,7 +590,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Moras Cobradas (RD$200)</span>
             <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
@@ -600,27 +600,27 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           <p className="text-2xl font-black text-amber-600 mt-2">
             RD$ {totalMorasCobradas.toLocaleString()}
           </p>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Mora fija de RD$200 por atraso +3 días
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Cartera por Cobrar</span>
             <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
               <Calendar className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl font-black text-slate-900 mt-2">
+          <p className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2">
             RD$ {totalPorCobrar.toLocaleString()}
           </p>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             En cuotas pendientes de pago ({activeClients.length} clientes activos)
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Efectividad Cobranza</span>
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -630,7 +630,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           <p className="text-2xl font-black text-emerald-600 mt-2">
             {efectividadCobro}%
           </p>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {cuotasAlDia} de {cuotasTotal} cuotas al día en sistema
           </p>
         </div>
@@ -638,13 +638,13 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
       {/* Dashboard de Mora & Morosidad (stats del servidor) */}
       {stats && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+        <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
             <div className="flex items-center space-x-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
                 MORA & MOROSIDAD
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 Cálculos del servidor (GET /payments/stats)
               </span>
             </div>
@@ -681,8 +681,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 {stats.efectividad.cuotasPagadas} de {stats.efectividad.cuotasTotal} cuotas pagadas
               </p>
             </div>
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-              <span className="text-[10px] font-bold uppercase text-slate-600 flex items-center">
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 flex items-center">
                 <Users className="w-3.5 h-3.5 mr-1" /> Métodos de pago
               </span>
               <div className="mt-1 space-y-0.5">
@@ -690,7 +690,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                   <p className="text-[10px] text-slate-400">Sin pagos</p>
                 )}
                 {stats.porMetodo.slice(0, 3).map((m) => (
-                  <p key={m.method} className="text-[11px] font-semibold text-slate-700">
+                  <p key={m.method} className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
                     {m.method}: <span className="font-mono">RD$ {m.total.toLocaleString()}</span>{' '}
                     <span className="text-slate-400">({m.count})</span>
                   </p>
@@ -702,7 +702,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
       )}
 
       {/* Barra de Filtros y Búsqueda */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -710,7 +710,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             placeholder="Buscar por cliente, recibo, modelo, cédula o teléfono..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 focus:bg-white transition-all"
+            className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 dark:bg-slate-900 focus:bg-white transition-all"
           />
         </div>
 
@@ -722,7 +722,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shrink-0 ${
                 selectedMethod === method
                   ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
               }`}
             >
               {method === 'ALL' ? 'Todos los Métodos' : method}
@@ -732,10 +732,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
       </div>
 
       {/* Tabla de Pagos Recibidos */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
               Historial de Pagos & Conciliación (RD$)
             </h3>
             <span className="text-xs text-slate-400">
@@ -756,7 +756,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-xs font-bold uppercase text-slate-400 bg-slate-50/70">
+              <tr className="border-b border-slate-200 dark:border-slate-700 text-xs font-bold uppercase text-slate-400 bg-slate-50 dark:bg-slate-900/70">
                 <th className="py-3 px-4">Recibo</th>
                 <th className="py-3 px-4">Fecha</th>
                 <th className="py-3 px-4">Cliente / Celular</th>
@@ -778,22 +778,22 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               ) : (
                 filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
                       {payment.id}
                     </td>
-                    <td className="py-3.5 px-4 text-slate-500">
+                    <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400">
                       {payment.date}
                     </td>
                     <td className="py-3.5 px-4">
-                      <p className="font-bold text-slate-900">{payment.clientName}</p>
-                      <p className="text-[11px] text-slate-500">{payment.deviceModel}</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-100">{payment.clientName}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{payment.deviceModel}</p>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-700">
+                      <span className="px-2 py-0.5 rounded-full font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         Cuota #{payment.installmentNum}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-slate-800">
+                    <td className="py-3.5 px-4 font-medium text-slate-800 dark:text-slate-100">
                       RD$ {payment.baseAmount.toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4">
@@ -819,7 +819,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                           const msg = `🎉 *RECIBO CREDIPAY MDM*\nRecibo: ${payment.id}\nCliente: ${payment.clientName}\nEquipo: ${payment.deviceModel}\nCuota: #${payment.installmentNum}\nTotal pagado: *RD$ ${payment.totalPaid.toLocaleString()}*\n✅ Su celular se encuentra DESBLOQUEADO y al día.`;
                           window.open(`https://wa.me/${payment.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
                         }}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg inline-flex items-center space-x-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold rounded-lg inline-flex items-center space-x-1 transition-colors cursor-pointer"
                       >
                         <Send className="w-3.5 h-3.5 text-emerald-600" />
                         <span>WhatsApp</span>
@@ -836,7 +836,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
       {/* Modal de Vista Previa y Exportación a PDF (Reporte de Cobranza) */}
       {showPdfReportModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             {/* Barra superior de acciones (no se imprime) */}
             <div className="px-6 py-4 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
               <div className="flex items-center space-x-2.5">
@@ -887,10 +887,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             </div>
 
             {/* Contenido Imprimible del Reporte */}
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-100">
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-slate-800">
               <div
                 id="printable-report-area"
-                className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 max-w-4xl mx-auto text-slate-800"
+                className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 max-w-4xl mx-auto text-slate-800 dark:text-slate-100"
               >
                 {/* Cabecera Institucional del Reporte */}
                 <div className="border-b-2 border-emerald-600 pb-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2">
@@ -898,15 +898,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                     <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 mb-1.5">
                       PESOS DOMINICANOS (RD$)
                     </span>
-                    <h1 className="text-2xl font-black text-slate-900">
+                    <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">
                       CrediPay MDM - Reporte Detallado de Cobranza & Flujo RD$
                     </h1>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Emisión oficial • Conciliación de caja, pagos realizados, moras fijas (RD$200) y cartera activa
                     </p>
                   </div>
-                  <div className="text-right text-xs text-slate-500">
-                    <p className="font-bold text-slate-700">Fecha de Generación:</p>
+                  <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+                    <p className="font-bold text-slate-700 dark:text-slate-300">Fecha de Generación:</p>
                     <p>
                       {new Date().toLocaleString('es-DO', {
                         dateStyle: 'long',
@@ -918,41 +918,41 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
                 {/* Resumen de KPIs */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block">
                       Recaudado (Cuotas)
                     </span>
-                    <span className="text-lg font-black text-slate-900">
+                    <span className="text-lg font-black text-slate-900 dark:text-slate-100">
                       RD$ {totalRecaudadoBase.toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-slate-500 block">Cuotas al día</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Cuotas al día</span>
                   </div>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block">
                       Moras Cobradas
                     </span>
                     <span className="text-lg font-black text-amber-600">
                       RD$ {totalMorasCobradas.toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-slate-500 block">Mora RD$200 por atraso</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Mora RD$200 por atraso</span>
                   </div>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block">
                       Cartera por Cobrar
                     </span>
                     <span className="text-lg font-black text-indigo-600">
                       RD$ {totalPorCobrar.toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-slate-500 block">Pendiente de pago</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Pendiente de pago</span>
                   </div>
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block">
                       Efectividad Cobranza
                     </span>
                     <span className="text-lg font-black text-emerald-600">
                       {efectividadCobro}%
                     </span>
-                    <span className="text-[10px] text-slate-500 block">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
                       {cuotasAlDia} / {cuotasTotal} cuotas
                     </span>
                   </div>
@@ -960,13 +960,13 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
                 {/* Sección 1: Estado Actual de Clientes & Fechas de Vencimiento */}
                 <div className="mb-8">
-                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900 border-b border-slate-200 pb-2 mb-3">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-2 mb-3">
                     1. Estado Actual de Clientes & Fechas de Vencimiento ({clients.length} clientes)
                   </h2>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-slate-100/80 text-slate-500 uppercase text-[10px] border-b border-slate-300">
+                        <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase text-[10px] border-b border-slate-300 dark:border-slate-600">
                           <th className="py-2 px-2.5">ID / IMEI</th>
                           <th className="py-2 px-2.5">Cliente & Equipo</th>
                           <th className="py-2 px-2.5">Estado MDM</th>
@@ -992,28 +992,28 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
                           return (
                             <tr key={client.id} className="hover:bg-slate-50">
-                              <td className="py-2.5 px-2.5 font-mono font-bold text-slate-700">
+                              <td className="py-2.5 px-2.5 font-mono font-bold text-slate-700 dark:text-slate-300">
                                 {client.id}
                                 <div className="text-[10px] text-slate-400 font-normal">
                                   IMEI: {client.device.imei}
                                 </div>
                               </td>
                               <td className="py-2.5 px-2.5">
-                                <div className="font-bold text-slate-900">
+                                <div className="font-bold text-slate-900 dark:text-slate-100">
                                   {client.fullName}
                                 </div>
-                                <div className="text-[11px] text-slate-500">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                   {client.phone} • {client.device.model}
                                 </div>
                               </td>
-                              <td className="py-2.5 px-2.5 font-medium text-slate-700">
+                              <td className="py-2.5 px-2.5 font-medium text-slate-700 dark:text-slate-300">
                                 {mdmStatus}
                               </td>
                               <td className="py-2.5 px-2.5">
-                                <div className="font-bold text-slate-900">
+                                <div className="font-bold text-slate-900 dark:text-slate-100">
                                   Cuota #{nextInst ? nextInst.number : '-'}
                                 </div>
-                                <div className="text-[11px] text-slate-500">
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                   Vence: {nextInst ? nextInst.dueDate : 'N/A'}
                                 </div>
                               </td>
@@ -1024,7 +1024,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                                   {statusObj.label}
                                 </span>
                               </td>
-                              <td className="py-2.5 px-2.5 text-right font-bold text-slate-900">
+                              <td className="py-2.5 px-2.5 text-right font-bold text-slate-900 dark:text-slate-100">
                                 RD$ {client.monthlyInstallmentAmount.toLocaleString()}
                               </td>
                             </tr>
@@ -1037,13 +1037,13 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
                 {/* Sección 2: Detalle de Pagos Realizados */}
                 <div className="mb-6">
-                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900 border-b border-slate-200 pb-2 mb-3">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-2 mb-3">
                     2. Detalle de Pagos Realizados & Conciliación ({samplePayments.length} recibos en RD$)
                   </h2>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-slate-100/80 text-slate-500 uppercase text-[10px] border-b border-slate-300">
+                        <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase text-[10px] border-b border-slate-300 dark:border-slate-600">
                           <th className="py-2 px-2.5">Recibo ID</th>
                           <th className="py-2 px-2.5">Fecha Pago</th>
                           <th className="py-2 px-2.5">Cliente & Equipo</th>
@@ -1056,29 +1056,29 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                       <tbody className="divide-y divide-slate-200">
                         {samplePayments.map((p) => (
                           <tr key={p.id} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-2.5 font-mono font-bold text-slate-700">
+                            <td className="py-2.5 px-2.5 font-mono font-bold text-slate-700 dark:text-slate-300">
                               {p.id}
                             </td>
-                            <td className="py-2.5 px-2.5 text-slate-600">
+                            <td className="py-2.5 px-2.5 text-slate-600 dark:text-slate-400">
                               {p.date}
                             </td>
                             <td className="py-2.5 px-2.5">
-                              <div className="font-bold text-slate-900">
+                              <div className="font-bold text-slate-900 dark:text-slate-100">
                                 {p.clientName}
                               </div>
-                              <div className="text-[11px] text-slate-500">
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                                 {p.deviceModel} • Cuota #{p.installmentNum}
                               </div>
                             </td>
                             <td className="py-2.5 px-2.5">
-                              <div className="font-semibold text-slate-800">
+                              <div className="font-semibold text-slate-800 dark:text-slate-100">
                                 {p.method}
                               </div>
                               <div className="text-[10px] text-slate-400">
                                 {p.bank || ''}
                               </div>
                             </td>
-                            <td className="py-2.5 px-2.5 text-right font-medium text-slate-700">
+                            <td className="py-2.5 px-2.5 text-right font-medium text-slate-700 dark:text-slate-300">
                               RD$ {p.baseAmount.toLocaleString()}
                             </td>
                             <td className="py-2.5 px-2.5 text-right">
@@ -1101,7 +1101,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 </div>
 
                 {/* Pie de Página */}
-                <div className="border-t border-slate-200 pt-4 mt-8 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-500 gap-2">
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-8 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 gap-2">
                   <div>
                     <strong>CrediPay MDM v2.5</strong> • Sistema Automatizado de Gestión & Bloqueo Kiosk en Servidor
                   </div>

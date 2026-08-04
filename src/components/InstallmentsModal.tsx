@@ -21,7 +21,7 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
           <div>
@@ -67,7 +67,7 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
         <div className="p-6 max-h-[60vh] overflow-y-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase">
+              <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs uppercase">
                 <th className="py-3 px-3">Cuota #</th>
                 <th className="py-3 px-3">Vencimiento</th>
                 <th className="py-3 px-3">Monto Base</th>
@@ -90,8 +90,8 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                       isOverdue ? 'bg-rose-50/70 font-medium' : isDue ? 'bg-amber-50/50' : 'hover:bg-slate-50'
                     }`}
                   >
-                    <td className="py-3.5 px-3 font-semibold text-slate-900">Cuota #{inst.number}</td>
-                    <td className="py-3.5 px-3 text-slate-600 font-mono text-xs">
+                    <td className="py-3.5 px-3 font-semibold text-slate-900 dark:text-slate-100">Cuota #{inst.number}</td>
+                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 font-mono text-xs">
                       {inst.dueDate}
                       {inst.paidDate && (
                         <div className="text-[11px] text-emerald-600 font-sans">
@@ -99,7 +99,7 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="py-3.5 px-3 text-slate-700 font-medium">
+                    <td className="py-3.5 px-3 text-slate-700 dark:text-slate-300 font-medium">
                       RD${inst.amount.toLocaleString()}
                     </td>
                     <td className="py-3.5 px-3">
@@ -144,7 +144,7 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                         <span className="text-slate-400">RD$0</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-3 font-bold text-slate-900">
+                    <td className="py-3.5 px-3 font-bold text-slate-900 dark:text-slate-100">
                       RD${inst.totalAmount.toLocaleString()}
                     </td>
                     <td className="py-3.5 px-3 text-right">
@@ -183,7 +183,7 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
         </div>
 
         {/* Pie del modal */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end">
+        <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
           <button
             onClick={onClose}
             className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition-colors"

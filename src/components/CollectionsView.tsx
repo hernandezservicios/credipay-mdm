@@ -143,14 +143,14 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
           {/* Acción principal + reparto IA */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+            <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 dark:border-slate-700 p-5">
               <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-slate-800 text-sm flex items-center space-x-2">
+                <div className="font-semibold text-slate-800 dark:text-slate-100 text-sm flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-indigo-600" />
                   Ejecutar Motor de Cobranza Automática
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mb-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                 Analiza <b>{s.clientsAtRisk}</b> clientes en riesgo, calcula su scoring (0-100) y genera
                 recordatorios personalizados listos para WhatsApp. Los duplicados pendientes se omiten.
               </p>
@@ -163,8 +163,8 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                 <span>{loading ? 'Procesando…' : 'Ejecutar Motor de Cobranza'}</span>
               </button>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <div className="font-semibold text-slate-800 text-sm mb-3">Distribución de Riesgo (IA)</div>
+            <div className="bg-white rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+              <div className="font-semibold text-slate-800 dark:text-slate-100 text-sm mb-3">Distribución de Riesgo (IA)</div>
               <div className="space-y-2">
                 {(['ALTO', 'MEDIO', 'BAJO'] as CollectionRisk[]).map((level) => {
                   const count = s.riskDistribution[level] ?? 0;
@@ -174,11 +174,11 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     level === 'ALTO' ? 'bg-rose-500' : level === 'MEDIO' ? 'bg-amber-500' : 'bg-emerald-500';
                   return (
                     <div key={level}>
-                      <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
+                      <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                         <span>{RISK_LABEL[level]}</span>
                         <span>{count}</span>
                       </div>
-                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -191,9 +191,9 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
       )}
 
       {/* Recordatorios generados */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800 text-sm flex items-center space-x-2">
+      <div className="bg-white rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm flex items-center space-x-2">
             <MessageSquare className="w-4 h-4 text-emerald-600" />
             Recordatorios generados por IA
           </h3>
@@ -216,7 +216,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                       >
                         {RISK_LABEL[r.risk_level]} · {r.risk_score}
                       </span>
-                      <span className="text-xs font-semibold text-slate-700 truncate">{r.full_name}</span>
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{r.full_name}</span>
                       <span className="text-[11px] text-slate-400">{TYPE_LABEL[r.reminder_type]}</span>
                       <span className="hidden sm:inline text-[11px] text-slate-400">
                         {r.device_model ?? '—'} · {r.phone}
@@ -227,7 +227,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                           r.status === 'SENT'
                             ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                         }`}
                       >
                         {r.status === 'SENT' ? 'Enviado' : 'Pendiente'}
@@ -250,7 +250,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                     </div>
                   </div>
                   {open && (
-                    <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-[11px] whitespace-pre-wrap text-slate-700 leading-relaxed max-h-52 overflow-y-auto">
+                    <div className="mt-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 font-mono text-[11px] whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed max-h-52 overflow-y-auto">
                       {r.message}
                     </div>
                   )}
@@ -263,15 +263,15 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
 
       {/* Historial de corridas */}
       {runs.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 flex items-center space-x-2">
+        <div className="bg-white rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center space-x-2">
             <History className="w-4 h-4 text-indigo-600" />
-            <h3 className="font-semibold text-slate-800 text-sm">Historial del Motor</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">Historial del Motor</h3>
           </div>
           <div className="divide-y divide-slate-100">
             {runs.slice(0, 8).map((run) => (
               <div key={run.id} className="px-5 py-2.5 flex items-center justify-between text-[11px]">
-                <div className="flex items-center space-x-2 text-slate-600">
+                <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-400">
                   <span className={run.status === 'COMPLETED' ? 'text-emerald-600' : 'text-rose-600'}>
                     {run.status === 'COMPLETED' ? (
                       <CheckCircle2 className="w-4 h-4" />
@@ -308,11 +308,11 @@ function CollectionsCard({
   accent: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-white rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <span className={`${MINI_ICON} ${accent} mb-2`}>{icon}</span>
-      <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{label}</div>
-      <div className="text-lg font-bold text-slate-900">{value}</div>
-      {sub && <div className="mt-1 text-[11px] text-slate-500">{sub}</div>}
+      <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{label}</div>
+      <div className="text-lg font-bold text-slate-900 dark:text-slate-100">{value}</div>
+      {sub && <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{sub}</div>}
     </div>
   );
 }

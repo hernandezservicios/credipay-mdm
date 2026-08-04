@@ -107,7 +107,7 @@ export const ClientList: React.FC<ClientListProps> = ({
   return (
     <div>
       {/* Barra de Búsqueda y Filtros por Estado */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 dark:border-slate-700 rounded-xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         {/* Input de búsqueda */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -116,7 +116,7 @@ export const ClientList: React.FC<ClientListProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar por cliente, cédula, teléfono, modelo de celular o IMEI..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-colors"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-colors"
           />
         </div>
 
@@ -139,7 +139,7 @@ export const ClientList: React.FC<ClientListProps> = ({
                   ? item.id === 'ATRASADO'
                     ? 'bg-rose-600 text-white border-rose-600'
                     : 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  : 'bg-white text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
               }`}
             >
               {item.label}
@@ -150,7 +150,7 @@ export const ClientList: React.FC<ClientListProps> = ({
 
       {/* Lista de Clientes */}
       {filteredClients.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+        <div className="bg-white border border-slate-200 dark:border-slate-700 rounded-xl p-12 text-center text-slate-500 dark:text-slate-400">
           <Smartphone className="w-10 h-10 mx-auto text-slate-300 mb-3" />
           <p className="font-medium text-sm">No se encontraron clientes para este filtro o búsqueda.</p>
           <p className="text-xs text-slate-400 mt-1">Prueba cambiando los criterios de búsqueda.</p>
@@ -165,7 +165,7 @@ export const ClientList: React.FC<ClientListProps> = ({
               <div
                 key={client.id}
                 className={`bg-white border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${
-                  isLocked ? 'border-l-4 border-l-rose-600 border-rose-200/80' : 'border-slate-200'
+                  isLocked ? 'border-l-4 border-l-rose-600 border-rose-200/80' : 'border-slate-200 dark:border-slate-700'
                 }`}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -174,13 +174,13 @@ export const ClientList: React.FC<ClientListProps> = ({
                     <img
                       src={client.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={client.fullName}
-                      className="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-xs shrink-0"
+                      className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-xs shrink-0"
                     />
 
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-bold text-slate-900 text-sm">{client.fullName}</h3>
-                        <span className="text-xs text-slate-500 font-mono">({client.cedulaOrId})</span>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">{client.fullName}</h3>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">({client.cedulaOrId})</span>
 
                         {/* Estado MDM del Celular */}
                         {isLocked ? (
@@ -208,12 +208,12 @@ export const ClientList: React.FC<ClientListProps> = ({
                         )}
                       </div>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
                         <span className="flex items-center space-x-1">
                           <Smartphone className="w-3.5 h-3.5 text-slate-400" />
                           <span className="font-medium">{client.device.model}</span>
                         </span>
-                        <span>IMEI: <strong className="font-mono text-slate-800">{client.device.imei}</strong></span>
+                        <span>IMEI: <strong className="font-mono text-slate-800 dark:text-slate-100">{client.device.imei}</strong></span>
                         <span>Tel: {client.phone}</span>
                       </div>
 
@@ -225,7 +225,7 @@ export const ClientList: React.FC<ClientListProps> = ({
                           {overall.label}
                         </span>
 
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
                           Cuotas mes: <strong>RD${client.monthlyInstallmentAmount.toLocaleString()}</strong> ({client.installments.filter(i => i.status === 'PAGADO').length}/{client.totalInstallmentsCount} pagadas)
                         </span>
 

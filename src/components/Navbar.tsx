@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu, LogOut } from 'lucide-react';
+import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu, LogOut, KeyRound, Sun, Moon } from 'lucide-react';
 import type { TenantRow } from '../services/api';
 import { TenantSwitcher } from './TenantSwitcher';
 
@@ -24,6 +24,9 @@ interface NavbarProps {
   isGlobal?: boolean;
   onSwitchTenant?: (tenantId: number) => Promise<void>;
   onReloadTenants?: () => void;
+  onOpenSecurity?: () => void;
+  dark?: boolean;
+  onToggleDark?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -45,6 +48,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   isGlobal = false,
   onSwitchTenant,
   onReloadTenants,
+  onOpenSecurity,
+  dark = false,
+  onToggleDark,
 }) => {
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
@@ -103,7 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Motor MDM: <span className="text-emerald-400 font-bold">Activo</span>
                 </span>
               </div>
-              <span className="text-slate-600 mx-2">|</span>
+              <span className="text-slate-600 dark:text-slate-400 mx-2">|</span>
               <button
                 onClick={onRunEngineNow}
                 className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 font-medium"
@@ -140,6 +146,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline">API MDM</span>
               <span className={`w-2 h-2 rounded-full ${mdmConfigEnabled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
             </button>
+
+            {/* Seguridad & API (2FA + API keys) */}
+            {onOpenSecurity && (
+              <button
+                onClick={onOpenSecurity}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+                title="Autenticación 2FA y API keys"
+              >
+                <KeyRound className="w-4 h-4 text-indigo-300" />
+                <span className="hidden sm:inline">Seguridad & API</span>
+              </button>
+            )}
+
+            {/* Tema claro/oscuro */}
+            {onToggleDark && (
+              <button
+                onClick={onToggleDark}
+                className="flex items-center justify-center px-3 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+                title={dark ? 'Modo claro' : 'Modo oscuro'}
+              >
+                {dark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-indigo-300" />}
+              </button>
+            )}
 
             {/* Botón Nuevo Crédito */}
             <button

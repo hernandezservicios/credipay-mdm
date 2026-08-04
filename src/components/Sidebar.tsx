@@ -312,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {!isCollapsed && (
-              <Settings className="w-4 h-4 text-slate-500 group-hover:text-slate-300 shrink-0" />
+              <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-300 shrink-0" />
             )}
           </button>
         </div>

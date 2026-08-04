@@ -4,6 +4,14 @@ import { pool } from '../db/pool.js';
 import { env } from '../config/env.js';
 import { ApiError, isValidPassword, randomHex, sha256 } from '../utils/http.js';
 import { recordAudit, recordLoginAttempt, type UaInfo } from './auditService.js';
+import {
+  generateRecoveryCodes,
+  generateSecret,
+  otpauthUrl,
+  removeRecoveryCode,
+  verifyRecoveryCode,
+  verifyTotp,
+} from './totpService.js';
 
 interface UserRow extends RowDataPacket {
   id: number;
@@ -14,6 +22,9 @@ interface UserRow extends RowDataPacket {
   password_hash: string;
   status: 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   must_change_password: number;
+  two_factor_enabled: number;
+  two_factor_secret: string | null;
+  two_factor_recovery_codes: string[] | null;
 }
 
 interface SessionRow extends RowDataPacket {
@@ -165,7 +176,7 @@ export async function login(input: {
   password: string;
   remember: boolean;
   ua: UaInfo;
-}): Promise<{ sessionToken: string; csrfToken: string; expiresAt: Date; user: PublicUser; permissions: string[] }> {
+}): Promise<LoginResult> {
   const email = input.email.trim().toLowerCase();
 
   const lockoutSeconds = await checkLockout(email, input.ua.ip);
@@ -208,6 +219,40 @@ export async function login(input: {
     throw ApiError.unauthorized('Credenciales inválidas');
   }
 
+  // 2FA habilitada: emitir ticket de verificación (no se crea sesión aún)
+  if (user.two_factor_enabled === 1) {
+    const ticket = randomHex(32);
+    await pool.query(
+      `INSERT INTO two_factor_tokens (user_id, purpose, token_hash, expires_at)
+       VALUES (?, 'LOGIN', ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))`,
+      [user.id, sha256(ticket)]
+    );
+    await recordLoginAttempt({
+      userId: user.id,
+      email,
+      ip: input.ua.ip,
+      userAgent: input.ua.userAgent,
+      success: true,
+      reason: 'TOTP_REQUIRED',
+    });
+    return { twoFactorRequired: true, ticket, user: toPublicUser(user) };
+  }
+
+  const result = await finalizeLogin(user, input);
+  await recordLoginAttempt({
+    userId: user.id,
+    email,
+    ip: input.ua.ip,
+    userAgent: input.ua.userAgent,
+    success: true,
+  });
+  return result;
+}
+
+async function finalizeLogin(
+  user: UserRow,
+  input: { remember: boolean; ua: UaInfo }
+): Promise<{ sessionToken: string; csrfToken: string; expiresAt: Date; user: PublicUser; permissions: string[] }> {
   await pool.query('DELETE FROM sessions WHERE expires_at < NOW()');
 
   const sessionToken = randomHex(32);
@@ -243,13 +288,6 @@ export async function login(input: {
     [input.ua.ip, input.ua.userAgent, user.id]
   );
 
-  await recordLoginAttempt({
-    userId: user.id,
-    email,
-    ip: input.ua.ip,
-    userAgent: input.ua.userAgent,
-    success: true,
-  });
   await recordAudit({
     tenantId: user.tenant_id,
     userId: user.id,
@@ -267,6 +305,55 @@ export async function login(input: {
     user: toPublicUser(user),
     permissions,
   };
+}
+
+export type LoginResult =
+  | { twoFactorRequired: true; ticket: string; user: PublicUser }
+  | { sessionToken: string; csrfToken: string; expiresAt: Date; user: PublicUser; permissions: string[] };
+
+/**
+ * Completa el login 2FA: valida el ticket único, verifica el TOTP (o un
+ * código de recuperación) y crea la sesión.
+ */
+export async function completeTotpLogin(
+  ticket: string,
+  code: string,
+  input: { remember: boolean; ua: UaInfo }
+): Promise<Exclude<LoginResult, { twoFactorRequired: true }>> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT id, user_id FROM two_factor_tokens
+      WHERE token_hash = ? AND purpose = 'LOGIN' AND used_at IS NULL
+        AND expires_at > NOW()
+      LIMIT 1`,
+    [sha256(ticket)]
+  );
+  const token = rows[0] as { id: number; user_id: number } | undefined;
+  if (!token) throw new ApiError(401, 'invalid_totp_ticket', 'Sesión 2FA expirada. Inicie sesión de nuevo');
+
+  const [userRows] = await pool.query<UserRow[]>(
+    'SELECT * FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+    [token.user_id]
+  );
+  const user = userRows[0];
+  if (!user || user.two_factor_enabled !== 1 || !user.two_factor_secret) {
+    throw ApiError.forbidden('two_factor_disabled', 'El 2FA ya no está activo');
+  }
+
+  const verified =
+    verifyTotp(user.two_factor_secret, code) ||
+    verifyRecoveryCode(code, user.two_factor_recovery_codes);
+  if (!verified) throw new ApiError(401, 'invalid_totp', 'Código de verificación incorrecto');
+
+  await pool.query('UPDATE two_factor_tokens SET used_at = NOW() WHERE id = ?', [token.id]);
+  if (verifyRecoveryCode(code, user.two_factor_recovery_codes)) {
+    const remaining = removeRecoveryCode(code, user.two_factor_recovery_codes ?? []);
+    await pool.query(
+      'UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?',
+      [JSON.stringify(remaining), user.id]
+    );
+  }
+
+  return finalizeLogin(user, input);
 }
 
 export async function logout(sessionToken: string, req?: { ip?: string }): Promise<void> {
@@ -457,4 +544,87 @@ export function buildResetLink(rawToken: string, email: string): string {
 
 export function buildVerificationLink(rawToken: string, email: string): string {
   return `${env.WEB_ORIGIN}/verify-email?token=${rawToken}&email=${encodeURIComponent(email)}`;
+}
+
+// ---------------------------------------------------------------------------
+// Gestión de 2FA (TOTP)
+// ---------------------------------------------------------------------------
+
+export async function getTwoFactorStatus(userId: number): Promise<{ enabled: boolean }> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    'SELECT two_factor_enabled FROM users WHERE id = ? LIMIT 1',
+    [userId]
+  );
+  return { enabled: (rows[0]?.two_factor_enabled as number) === 1 };
+}
+
+export async function startTotpSetup(
+  userId: number,
+  email: string
+): Promise<{ secret: string; otpauthUrl: string }> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    'SELECT two_factor_enabled FROM users WHERE id = ? LIMIT 1',
+    [userId]
+  );
+  if ((rows[0]?.two_factor_enabled as number) === 1) {
+    throw ApiError.badRequest('two_factor_already_enabled', 'El 2FA ya está activo');
+  }
+  const secret = generateSecret();
+  await pool.query('UPDATE users SET two_factor_secret = ? WHERE id = ?', [secret, userId]);
+  return { secret, otpauthUrl: otpauthUrl(secret, email) };
+}
+
+export async function enableTotp(userId: number, code: string): Promise<{ recoveryCodes: string[] }> {
+  const [rows] = await pool.query<UserRow[]>('SELECT * FROM users WHERE id = ? LIMIT 1', [userId]);
+  const user = rows[0];
+  if (!user) throw ApiError.notFound('Usuario no encontrado');
+  if (user.two_factor_enabled === 1) {
+    throw ApiError.badRequest('two_factor_already_enabled', 'El 2FA ya está activo');
+  }
+  if (!user.two_factor_secret || !verifyTotp(user.two_factor_secret, code)) {
+    throw new ApiError(401, 'invalid_totp', 'Código de verificación incorrecto');
+  }
+  const recovery = generateRecoveryCodes(10);
+  await pool.query(
+    `UPDATE users
+        SET two_factor_enabled = 1,
+            two_factor_recovery_codes = ?
+      WHERE id = ?`,
+    [JSON.stringify(recovery.hashed), userId]
+  );
+  await recordAudit({
+    tenantId: user.tenant_id,
+    userId,
+    action: 'auth.two_factor_enabled',
+    entityType: 'user',
+    entityId: String(userId),
+  });
+  return { recoveryCodes: recovery.plain };
+}
+
+export async function disableTotp(userId: number, code: string): Promise<void> {
+  const [rows] = await pool.query<UserRow[]>('SELECT * FROM users WHERE id = ? LIMIT 1', [userId]);
+  const user = rows[0];
+  if (!user) throw ApiError.notFound('Usuario no encontrado');
+  if (user.two_factor_enabled !== 1) {
+    throw ApiError.badRequest('two_factor_not_enabled', 'El 2FA no está activo');
+  }
+  const verified =
+    (user.two_factor_secret && verifyTotp(user.two_factor_secret, code)) ||
+    verifyRecoveryCode(code, user.two_factor_recovery_codes);
+  if (!verified) throw new ApiError(401, 'invalid_totp', 'Código de verificación incorrecto');
+
+  await pool.query(
+    `UPDATE users
+        SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL
+      WHERE id = ?`,
+    [userId]
+  );
+  await recordAudit({
+    tenantId: user.tenant_id,
+    userId,
+    action: 'auth.two_factor_disabled',
+    entityType: 'user',
+    entityId: String(userId),
+  });
 }

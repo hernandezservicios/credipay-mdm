@@ -136,7 +136,7 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Header */}
         <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -162,51 +162,51 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs">
           {/* Datos del cliente */}
           <div>
-            <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center space-x-1.5 border-b pb-2">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm mb-3 flex items-center space-x-1.5 border-b pb-2">
               <User className="w-4 h-4 text-emerald-600" />
               <span>1. Datos del Cliente</span>
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nombre Completo *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre Completo *</label>
                 <input
                   type="text"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Ej: Laura Sofía Torres"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Cédula / DNI *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Cédula / DNI *</label>
                 <input
                   type="text"
                   required
                   value={cedulaOrId}
                   onChange={(e) => setCedulaOrId(e.target.value)}
                   placeholder="Ej: 001-9283741-2"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Teléfono (WhatsApp)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono (WhatsApp)</label>
                 <input
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1 809-555-0101"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Correo Electrónico</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo Electrónico</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="cliente@correo.com"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -214,7 +214,7 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
 
           {/* Datos del celular */}
           <div>
-            <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center space-x-1.5 border-b pb-2">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm mb-3 flex items-center space-x-1.5 border-b pb-2">
               <Smartphone className="w-4 h-4 text-emerald-600" />
               <span>{isDeviceLinked ? '2. Dispositivo Vinculado del Stock MDM' : '2. Dispositivo a Financiar (MDM Inscrito)'}</span>
             </h3>
@@ -236,12 +236,12 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Marca</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Marca</label>
                 <select
                   value={brand}
                   disabled={isDeviceLinked}
                   onChange={(e) => setBrand(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
                 >
                   <option value="Samsung">Samsung</option>
                   <option value="Apple">Apple (iPhone)</option>
@@ -251,7 +251,7 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Modelo exacto *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Modelo exacto *</label>
                 <input
                   type="text"
                   required
@@ -259,11 +259,11 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
                   disabled={isDeviceLinked}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder="Ej: Galaxy A55 5G 256GB"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">IMEI del Equipo (15 dígitos) *</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">IMEI del Equipo (15 dígitos) *</label>
                 <input
                   type="text"
                   required
@@ -271,18 +271,18 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
                   disabled={isDeviceLinked}
                   onChange={(e) => setImei(e.target.value)}
                   placeholder="358920198234001"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg font-mono focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Número de Serie (Opcional)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Número de Serie (Opcional)</label>
                 <input
                   type="text"
                   value={serialNumber}
                   disabled={isDeviceLinked}
                   onChange={(e) => setSerialNumber(e.target.value)}
                   placeholder="SN-XXXXX"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg font-mono focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:text-slate-500"
                 />
               </div>
             </div>
@@ -290,26 +290,26 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
 
           {/* Plan de cuotas */}
           <div>
-            <h3 className="font-bold text-slate-900 text-sm mb-3 flex items-center space-x-1.5 border-b pb-2">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm mb-3 flex items-center space-x-1.5 border-b pb-2">
               <CreditCard className="w-4 h-4 text-emerald-600" />
               <span>3. Plan de Cuotas & Monitoreo</span>
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Monto Total del Crédito</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Monto Total del Crédito</label>
                 <input
                   type="number"
                   value={totalCreditAmount}
                   onChange={(e) => setTotalCreditAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Cuotas Mensuales</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Cuotas Mensuales</label>
                 <select
                   value={totalInstallmentsCount}
                   onChange={(e) => setTotalInstallmentsCount(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value={6}>6 Cuotas</option>
                   <option value={12}>12 Cuotas</option>
@@ -318,12 +318,12 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Cuota Base (RD$/mes)</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Cuota Base (RD$/mes)</label>
                 <input
                   type="number"
                   value={monthlyInstallmentAmount}
                   onChange={(e) => setMonthlyInstallmentAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -338,11 +338,11 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
           </div>
 
           {/* Botones */}
-          <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+          <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors"
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-lg font-medium transition-colors"
             >
               Cancelar
             </button>

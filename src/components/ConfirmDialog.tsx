@@ -109,7 +109,7 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       {/* Diálogo de confirmación moderno y centrado */}
       <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 dark:border-slate-700">
           <div className="bg-slate-900 px-5 py-3.5 flex items-center justify-between">
             <h3 className="text-sm font-bold text-white tracking-tight">{dialog.title}</h3>
             {!dialog.confirmOnly && (
@@ -132,16 +132,16 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   {dialog.icon}
                 </div>
               )}
-              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
                 {dialog.message}
               </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
               {!dialog.confirmOnly && (
                 <button
                   onClick={() => close(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold transition-colors"
+                  className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 dark:text-slate-100 text-xs font-semibold transition-colors"
                 >
                   {dialog.cancelLabel || 'Cancelar'}
                 </button>

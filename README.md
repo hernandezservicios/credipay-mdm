@@ -114,16 +114,21 @@ Los tests corren secuencialmente (`workers=1`) porque algunos rotan la contrase�
 ```
 src/                  Frontend React (Vite, :3000)
   components/         Vistas y modales (ClientList, FinanceView, MdmApiConfigModal,
-                      TenantSwitcher, Navbar, InovaGuardDevicesView, ...)
+                      TenantSwitcher, Navbar, InovaGuardDevicesView, SecurityModal, ...)
   services/api.ts     Cliente HTTP con sesión + CSRF
   services/inovaGuardApi.ts   Proxy hacia /api/v1/mdm/* del servidor
 server/               Backend Express (tsx, :4000)
-  migraciones/        0001_schema → 0009_saas_comercial (0008: SYSTEM_SYNC, 0009: billing_config)
-  src/routes/v1/      auth, tenants, saas, clients, credits, installments, payments, mdm, devices, logs, audit
+  migraciones/        0001_schema → 0011_produccion (0008: SYSTEM_SYNC, 0009: billing_config,
+                      0010: cobranza IA, 0011: 2FA + API keys)
+  src/routes/v1/      auth, tenants, saas, collection, api-keys, clients, credits, installments,
+                      payments, mdm, devices, logs, audit
   src/services/       authService, paymentService (cascada + desbloqueo automático),
                       inovaGuardService (modo simulado/real), inventorySyncService (SYSTEM_SYNC),
-                      planService (planes, límites, uso), repoService, tenantService
-  src/middleware/     auth (sesión + RBAC), csrf, rateLimits, tenant (multitenant)
+                      planService (planes, límites, uso), aiMessagingService (scoring + mensajes IA),
+                      collectionService (motor de cobranza), apiKeyService, totpService,
+                      repoService, tenantService
+  src/middleware/     auth (sesión + RBAC), apiKey (X-API-Key), csrf, rateLimits, tenant (multitenant)
+  src/docs/           openapi.ts (spec OpenAPI 3.1 + página /api/v1/docs)
 e2e/                  Suite Playwright (visual.spec.ts)
 ```
 
@@ -153,6 +158,38 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - UI: pestaña **Suscripción & Planes** (plan actual, medidores de uso, historial, cambio de plan,
   renovación y pasarela) y **Panel Comercial** del Super Admin (entrar a cada empresa).
 
+### Cobranza Automática + IA (Fase 6)
+- `GET /api/v1/collection/summary` — resumen del tenant: cuotas por estado, monto adeudado,
+  clientes en riesgo, recordatorios pendientes/enviados y última corrida del motor.
+- `POST /api/v1/collection/run` — **motor de cobranza automática**: analiza cuotas VENCIDO/ATRASADO
+  por cliente, calcula el **scoring de riesgo IA (0-100)** (`aiMessagingService`) y genera
+  `collection_reminders` PENDING con mensajes de WhatsApp personalizados (ALERTA_BLOQUEO si hay
+  atraso ≥3 días o bloqueo MDM; RECORDATORIO si solo vence). Omite duplicados pendientes por
+  cliente+tipo. Cada corrida queda registrada en `collection_runs`.
+- `POST /api/v1/collection/reminders/:id/send` — simula el envío (WHATSAPP), marca SENT y crea una
+  notificación interna `COBRANZA` en el panel.
+- `GET /api/v1/collection/reminders` y `/runs` — listado filtrable y historial del motor.
+- Permisos: `collection.view`, `collection.run`, `collection.send` (SUPER_ADMIN/ADMIN/GESTOR
+  operan; OPERADOR ve y envía; CONSULTA solo lectura).
+- UI: pestaña **Cobranza Inteligente IA** con medidores de riesgo, botón "Ejecutar Motor de
+  Cobranza", recordatorios expandibles y historial de corridas.
+
+### Producción (Fase 7): 2FA, API keys y documentación
+- **2FA TOTP (RFC 6238)** puro en Node (`totpService`, sin dependencias): `POST /api/v1/auth/2fa/setup`
+  (genera secreto base32 + `otpauth://`), `POST /api/v1/auth/2fa/enable` (valida código y entrega
+  10 códigos de recuperación con hash), `GET /api/v1/auth/2fa/status`, `POST /api/v1/auth/2fa/disable`.
+  El login con 2FA activo devuelve `{ twoFactorRequired, ticket }` y se completa con
+  `POST /api/v1/auth/login/totp` (ticket de un solo uso + código). Los códigos de recuperación se
+  verifican y se consumen (one-time). UI: botón **Seguridad & API** en la Navbar.
+- **API keys** (`apiKeysService`, prefijo `cpk_`, solo se muestra una vez, almacenada como
+  sha256+salt): CRUD en `/api/v1/api-keys` (permiso `api_keys.manage`), autenticación alternativa
+  por cabecera `X-API-Key` (`middleware/apiKey.ts`) con límite de 20 activas y expiración opcional.
+  `GET /api/v1/api-keys/probe` verifica sesión o API key (respuesta indica `authenticatedVia`).
+- **Documentación**: `GET /api/v1/openapi.json` (spec OpenAPI 3.1 con securitySchemes de cookie y
+  API key) y `GET /api/v1/docs` (página HTML con los endpoints).
+- **Tema oscuro**: toggle en la Navbar con clase `.dark` (Tailwind `@custom-variant`), preferencia
+  persistida en `localStorage`.
+
 ### Flujo MDM (bloqueo por mora)
 1. Cuota vence → `PENDIENTE` → `VENCIDO` (días 0-2) → `ATRASADO` (+3 días).
 2. Al pasar 3 días de atraso se aplica mora fija RD$200 y el motor envía orden **LOCK** a InovaGuard.
@@ -166,3 +203,5 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - Fase 3 (backend real + reconexión frontend): completada — smoke 22/22 y E2E visual 8/8
 - Fase 4 (empresa activa en sesión, sync masivo SYSTEM_SYNC, búsquedas sin guiones): completada el 03/08/2026
 - Fase 5 (SaaS comercial: planes, suscripción, límites, facturación y pasarelas): completada el 03/08/2026 — E2E 15/15
+- Fase 6 (motor de cobranza automática + IA de mensajería con scoring de riesgo): completada el 03/08/2026 — E2E 17/17
+- Fase 7 (producción: 2FA TOTP con códigos de recuperación, API keys para integraciones, OpenAPI/Swagger y tema oscuro): completada el 03/08/2026 — E2E 20/20

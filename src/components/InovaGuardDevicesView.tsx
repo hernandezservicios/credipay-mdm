@@ -414,7 +414,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       </div>
 
       {/* Barra de Filtros y Búsqueda */}
-      <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-4">
+      <div className="bg-white rounded-xl shadow-xs border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* Input de Búsqueda */}
           <div className="relative flex-1 max-w-md">
@@ -424,12 +424,12 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Buscar por IMEI, Serie, Cédula, Teléfono, ID InovaGuard, Código, Cliente, Marca o Modelo..."
-              className="w-full pl-10 pr-4 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50"
+              className="w-full pl-10 pr-4 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-900/50"
             />
           </div>
 
           {/* Filtros rápidos por estado */}
-          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg">
+          <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             {(
               [
                 { id: 'ALL', label: 'Todos', count: devices.length },
@@ -461,12 +461,12 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                 onClick={() => setFilterStatus(tab.id)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center space-x-1.5 ${
                   filterStatus === tab.id
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white text-slate-900 dark:text-slate-100 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
                 <span>{tab.label}</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700 dark:text-slate-300">
                   {tab.count}
                 </span>
               </button>
@@ -477,14 +477,14 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
       {/* Lista / Tabla de Dispositivos */}
       {isLoading ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
+        <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center text-slate-500 dark:text-slate-400">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto text-indigo-600 mb-3" />
           <p className="text-sm font-medium">Consultando dispositivos en InovaGuard MDM...</p>
         </div>
       ) : filteredDevices.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
+        <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center text-slate-500 dark:text-slate-400">
           <Smartphone className="w-10 h-10 mx-auto text-slate-400 mb-3" />
-          <p className="text-sm font-medium text-slate-700">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
             No se encontraron dispositivos que coincidan con la búsqueda o filtro seleccionado.
           </p>
           <button
@@ -515,22 +515,22 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               <div
                 key={device.id}
                 className={`bg-white rounded-xl border transition-all duration-150 shadow-xs hover:shadow-md overflow-hidden flex flex-col justify-between ${
-                  isLocked ? 'border-rose-300 bg-rose-50/10' : 'border-slate-200'
+                  isLocked ? 'border-rose-300 bg-rose-50/10' : 'border-slate-200 dark:border-slate-700'
                 }`}
               >
                 {/* Cabecera de la Tarjeta del Dispositivo */}
-                <div className="p-4 border-b border-slate-100">
+                <div className="p-4 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2 min-w-0">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
                           Código: {device.unlockCode || '—'}
                         </span>
-                        <h3 className="font-bold text-slate-900 text-sm truncate min-w-0">
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate min-w-0">
                           {device.deviceName}
                         </h3>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                         {device.brand} {device.model}
                       </p>
                     </div>
@@ -557,44 +557,44 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                   </div>
 
                   {/* IMEI & Información técnica */}
-                  <div className="mt-3 bg-slate-50 rounded-lg p-2.5 border border-slate-200/80 space-y-1.5">
+                  <div className="mt-3 bg-slate-50 dark:bg-slate-900 rounded-lg p-2.5 border border-slate-200 dark:border-slate-700/80 space-y-1.5">
                     <div className="flex items-center justify-between text-xs gap-2">
-                      <span className="text-slate-500 shrink-0">IMEI:</span>
-                      <span className="font-mono font-semibold text-slate-800 truncate">
+                      <span className="text-slate-500 dark:text-slate-400 shrink-0">IMEI:</span>
+                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-100 truncate">
                         {device.imei}
                       </span>
                     </div>
                     {device.serie && device.serie !== device.imei && (
                       <div className="flex items-center justify-between text-xs gap-2">
-                        <span className="text-slate-500 shrink-0">Serie:</span>
-                        <span className="font-mono text-slate-700 truncate">
+                        <span className="text-slate-500 dark:text-slate-400 shrink-0">Serie:</span>
+                        <span className="font-mono text-slate-700 dark:text-slate-300 truncate">
                           {device.serie}
                         </span>
                       </div>
                     )}
                     {device.dueDate && (
                       <div className="flex items-center justify-between text-xs gap-2">
-                        <span className="text-slate-500 shrink-0">Vence Licencia:</span>
+                        <span className="text-slate-500 dark:text-slate-400 shrink-0">Vence Licencia:</span>
                         <span
                           className={`font-semibold ${
                             device.dueDate < new Date().toISOString().split('T')[0]
                               ? 'text-rose-600'
-                              : 'text-slate-700'
+                              : 'text-slate-700 dark:text-slate-300'
                           }`}
                         >
                           {device.dueDate}
                         </span>
                       </div>
                     )}
-                    <div className="flex items-center justify-between text-xs gap-2 border-t border-slate-200/80 pt-1.5">
+                    <div className="flex items-center justify-between text-xs gap-2 border-t border-slate-200 dark:border-slate-700/80 pt-1.5">
                       <span className="text-slate-400 shrink-0">ID Interno:</span>
-                      <span className="font-mono text-slate-500 truncate">{device.id}</span>
+                      <span className="font-mono text-slate-500 dark:text-slate-400 truncate">{device.id}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Cliente Asignado */}
-                <div className="px-4 py-3 bg-slate-50/50 flex items-center justify-between">
+                <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-slate-400" />
                     <div>
@@ -610,7 +610,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                           <ExternalLink className="w-3 h-3" />
                         </button>
                       ) : device.assignedClientName ? (
-                        <span className="text-xs font-medium text-slate-700">
+                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                           {device.assignedClientName}
                         </span>
                       ) : (
@@ -623,26 +623,26 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                         <div className="mt-1.5 space-y-0.5 text-[11px]">
                           {clientCedula && (
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-500">Cédula:</span>
-                              <span className="font-mono text-slate-700">{clientCedula}</span>
+                              <span className="font-bold text-slate-500 dark:text-slate-400">Cédula:</span>
+                              <span className="font-mono text-slate-700 dark:text-slate-300">{clientCedula}</span>
                             </div>
                           )}
                           {clientPhone && (
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-500">Tel:</span>
-                              <span className="text-slate-700">{clientPhone}</span>
+                              <span className="font-bold text-slate-500 dark:text-slate-400">Tel:</span>
+                              <span className="text-slate-700 dark:text-slate-300">{clientPhone}</span>
                             </div>
                           )}
                           {clientEmail && (
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-500">Email:</span>
-                              <span className="text-slate-700 truncate">{clientEmail}</span>
+                              <span className="font-bold text-slate-500 dark:text-slate-400">Email:</span>
+                              <span className="text-slate-700 dark:text-slate-300 truncate">{clientEmail}</span>
                             </div>
                           )}
                           {clientAddress && (
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-slate-500">Dir:</span>
-                              <span className="text-slate-700 truncate">{clientAddress}</span>
+                              <span className="font-bold text-slate-500 dark:text-slate-400">Dir:</span>
+                              <span className="text-slate-700 dark:text-slate-300 truncate">{clientAddress}</span>
                             </div>
                           )}
                         </div>
@@ -666,7 +666,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                 </div>
 
                 {/* Botones de acción directa para este celular */}
-                <div className="p-3 border-t border-slate-100 bg-white grid grid-cols-2 gap-2">
+                <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white grid grid-cols-2 gap-2">
                   {!clientInfo && !device.assignedClientId && (
                     <button
                       onClick={() => onCreateLoanForDevice(device)}
@@ -721,8 +721,8 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
       {showQrModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
                 <QrCode className="w-5 h-5 text-indigo-600" />
                 <span>Enrolamiento QR - InovaGuard MDM</span>
               </h3>
@@ -734,7 +734,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               </button>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 inline-block mx-auto">
+            <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 inline-block mx-auto">
               {qrData ? (
                 <img
                   src={qrData.qrUrl}
@@ -748,7 +748,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               )}
             </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               Escanea este QR desde el asistente inicial de Android o desde la App InovaGuard para
               enrolar el dispositivo en el catálogo de tu empresa al instante.
             </p>
@@ -783,10 +783,10 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Código de Desbloqueo Offline
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Para el dispositivo <strong>{codeModal.deviceName}</strong>{' '}
                 {codeModal.unlockCode ? `(InovaGuard ID: ${codeModal.unlockCode})` : ''}
               </p>
@@ -801,7 +801,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
               </span>
             </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               Entrega este código de 6 dígitos al cliente si no tiene internet para que lo ingrese
               directamente en la pantalla de bloqueo.
             </p>

@@ -47,21 +47,21 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
         {/* Total Clientes y Créditos */}
         <div
           onClick={() => onOpenInstallmentsFilter('ALL')}
-          className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Créditos Activos
             </span>
-            <div className="p-2 bg-slate-100 text-slate-700 rounded-lg">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg">
               <Smartphone className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">{metrics.activeCredits}</span>
-            <span className="text-xs text-slate-500">{metrics.totalClients} clientes</span>
+            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">{metrics.activeCredits}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{metrics.totalClients} clientes</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">Celulares en financiamiento</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Celulares en financiamiento</p>
         </div>
 
         {/* Celulares Bloqueados MDM */}
@@ -81,7 +81,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
             <span className="text-2xl font-bold text-rose-600">{metrics.lockedDevicesCount}</span>
             <span className="text-xs font-medium text-rose-600">MDM Lock</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {metrics.lockedDevicesCount > 0
               ? 'Desbloqueo automático tras pago'
               : 'Todos los celulares operando normal'}
@@ -105,13 +105,13 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
             <span className="text-2xl font-bold text-amber-700">{metrics.overdueCount}</span>
             <span className="text-xs font-semibold text-amber-600">+RD$200 Mora c/u</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">&gt;3 días vencidas (Genera mora fija)</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">&gt;3 días vencidas (Genera mora fija)</p>
         </div>
 
         {/* Recaudado en el Mes */}
         <div
           onClick={() => onOpenInstallmentsFilter('PAGADO')}
-          className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
+          className="bg-white border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
@@ -122,12 +122,12 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               RD${metrics.totalCollectedThisMonth.toLocaleString()}
             </span>
-            <span className="text-xs text-slate-500">RD$ (DOP)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">RD$ (DOP)</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">Incluye cuotas base y moras cobradas</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Incluye cuotas base y moras cobradas</p>
         </div>
       </div>
     </div>

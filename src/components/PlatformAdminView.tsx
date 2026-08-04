@@ -25,7 +25,7 @@ function StatusChip({ status }: { status: string | null }) {
   return (
     <span
       className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-        status ? (map[status] ?? 'bg-slate-100 text-slate-600 border-slate-200') : 'bg-slate-100 text-slate-500 border-slate-200'
+        status ? (map[status] ?? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700') : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
       }`}
     >
       {status ? status.replace('_', ' ') : 'SIN PLAN'}
@@ -95,15 +95,15 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <div className="bg-slate-800/70 rounded-lg py-2">
                   <div className="text-sm font-extrabold text-white">{t.client_count.toLocaleString('es-DO')}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-slate-500">Clientes</div>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Clientes</div>
                 </div>
                 <div className="bg-slate-800/70 rounded-lg py-2">
                   <div className="text-sm font-extrabold text-white">{t.max_devices === 0 ? '∞' : t.max_devices}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-slate-500">Dispositivos</div>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Dispositivos</div>
                 </div>
                 <div className="bg-slate-800/70 rounded-lg py-2">
                   <div className="text-sm font-extrabold text-white">{t.max_users === 0 ? '∞' : t.max_users}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-slate-500">Usuarios</div>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Usuarios</div>
                 </div>
               </div>
 
