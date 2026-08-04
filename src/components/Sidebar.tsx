@@ -35,6 +35,7 @@ interface SidebarProps {
   onOpenApiConfig: () => void;
   onSyncInovaGuard?: () => void;
   mdmConfigEnabled: boolean;
+  permissions?: string[];
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   isOpenMobile: boolean;
@@ -54,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenApiConfig,
   onSyncInovaGuard,
   mdmConfigEnabled,
+  permissions,
   isCollapsed,
   onToggleCollapse,
   isOpenMobile,
@@ -67,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Users,
       badge: clientsCount,
       badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+      perm: 'clients.view',
     },
     {
       id: 'DEVICES' as MainViewTab,
@@ -75,6 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Smartphone,
       badge: 'LIVE',
       badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
+      perm: 'devices.view',
     },
     {
       id: 'FINANCE' as MainViewTab,
@@ -83,6 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: DollarSign,
       badge: 'RD$',
       badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+      perm: 'payments.view',
     },
     {
       id: 'ANALYTICS' as MainViewTab,
@@ -91,6 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: BarChart3,
       badge: '91.4%',
       badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
+      perm: 'reports.view',
     },
     {
       id: 'LOGS' as MainViewTab,
@@ -99,6 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: Activity,
       badge: logsCount,
       badgeColor: 'bg-slate-700 text-slate-300',
+      perm: 'logs.view',
     },
     {
       id: 'BILLING' as MainViewTab,
@@ -107,6 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: CreditCard,
       badge: 'SaaS',
       badgeColor: 'bg-violet-500/20 text-violet-300 border border-violet-500/30',
+      perm: 'subscriptions.view',
     },
     {
       id: 'COLLECTIONS' as MainViewTab,
@@ -115,8 +123,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: BrainCircuit,
       badge: 'IA',
       badgeColor: 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30',
+      perm: 'collection.view',
     },
   ];
+
+  const visibleNavItems = navItems.filter((item) => !item.perm || (permissions ?? []).includes(item.perm));
 
   return (
     <>
@@ -162,7 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Vistas Principales */}
           <nav className="space-y-1.5">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (

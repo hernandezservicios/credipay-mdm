@@ -447,7 +447,7 @@ export async function getPaymentStats(tenantId: number): Promise<PaymentStats> {
       clientesAtrasados: Number(morosidadRow.atrasados) || 0,
       deudaAtrasada: Number(morosidadRow.deuda) || 0,
     },
-    porMetodo: (metodo[0] as RowDataPacket[]).map((m) => ({
+    porMetodo: (metodo as RowDataPacket[]).map((m) => ({
       method: DB_METHOD_LABEL[String(m.method)] ?? String(m.method),
       count: Number(m.count) || 0,
       total: Number(m.total) || 0,

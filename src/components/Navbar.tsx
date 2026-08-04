@@ -1,11 +1,13 @@
 import React from 'react';
-import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu, LogOut, KeyRound, Sun, Moon } from 'lucide-react';
+import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu, LogOut, KeyRound, Sun, Moon, ArrowLeft } from 'lucide-react';
 import type { TenantRow } from '../services/api';
 import { TenantSwitcher } from './TenantSwitcher';
 
 export type MainViewTab = 'CLIENTS' | 'DEVICES' | 'FINANCE' | 'ANALYTICS' | 'LOGS' | 'BILLING' | 'COLLECTIONS';
 
 interface NavbarProps {
+  mode?: 'portal' | 'tenant';
+  onExitTenant?: () => void;
   onOpenNewCredit: () => void;
   onOpenApiConfig: () => void;
   autoEngineActive: boolean;
@@ -30,6 +32,8 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
+  mode = 'tenant',
+  onExitTenant,
   onOpenNewCredit,
   onOpenApiConfig,
   autoEngineActive,
@@ -52,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   dark = false,
   onToggleDark,
 }) => {
+  const isPortal = mode === 'portal';
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -76,9 +81,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800 rounded">
                   PROD v1.0
                 </span>
+                {isPortal && (
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800 rounded">
+                    PLATAFORMA
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
-                Créditos, Cuotas & Bloqueo Automático MDM de Celulares (RD$)
+                {isPortal
+                  ? 'Portal comercial multi-tenant — empresas, planes y suscripciones'
+                  : 'Créditos, Cuotas & Bloqueo Automático MDM de Celulares (RD$)'}
               </p>
             </div>
           </div>
@@ -95,10 +107,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                   if (onSwitchTenant) await onSwitchTenant(id);
                 }}
                 onReload={onReloadTenants ?? (() => {})}
+                onExit={onExitTenant}
               />
             )}
 
+            {/* Volver a la plataforma (Super Admin dentro de una empresa) */}
+            {!isPortal && isGlobal && onExitTenant && (
+              <button
+                onClick={onExitTenant}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-indigo-700/60 bg-indigo-950/80 text-indigo-300 hover:bg-indigo-900 transition-colors"
+                title="Volver al portal de plataforma"
+              >
+                <ArrowLeft className="w-4 h-4 text-indigo-400" />
+                <span>Volver a la plataforma</span>
+              </button>
+            )}
+
             {/* Estado del motor automático de monitoreo de cuotas */}
+            {!isPortal && (
             <div className="hidden xl:flex items-center bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
               <div
                 className="flex items-center space-x-2 text-slate-300"
@@ -119,9 +145,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Evaluar</span>
               </button>
             </div>
+            )}
 
             {/* Botón de Sincronización automática con InovaGuard */}
-            {onSyncInovaGuard && (
+            {!isPortal && onSyncInovaGuard && (
               <button
                 onClick={onSyncInovaGuard}
                 className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-indigo-700/60 bg-indigo-950/80 text-indigo-300 hover:bg-indigo-900 transition-colors shadow-xs"
@@ -133,6 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Configurar API MDM (Inyección de API externa) */}
+            {!isPortal && (
             <button
               onClick={onOpenApiConfig}
               className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
@@ -146,6 +174,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline">API MDM</span>
               <span className={`w-2 h-2 rounded-full ${mdmConfigEnabled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
             </button>
+            )}
 
             {/* Seguridad & API (2FA + API keys) */}
             {onOpenSecurity && (
@@ -171,6 +200,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Botón Nuevo Crédito */}
+            {!isPortal && (
             <button
               onClick={onOpenNewCredit}
               className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3.5 py-2 rounded-lg text-xs shadow-sm transition-colors"
@@ -178,6 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Plus className="w-4 h-4" />
               <span>Nuevo Préstamo</span>
             </button>
+            )}
           </div>
         </div>
 

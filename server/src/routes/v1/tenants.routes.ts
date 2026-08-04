@@ -123,4 +123,39 @@ router.post('/:id/switch', requirePermission('tenants.view'), async (req: AuthRe
   res.json({ data: { tenantId, name: tenant.name } });
 });
 
+router.post('/exit', requirePermission('tenants.view'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden(
+      'tenant_switch_forbidden',
+      'Solo el Super Administrador global puede volver a la plataforma'
+    );
+  }
+
+  await pool.query(
+    'UPDATE sessions SET tenant_id = NULL WHERE id = ? AND revoked_at IS NULL',
+    [req.auth!.sessionId]
+  );
+
+  void recordAudit(
+    {
+      tenantId: null,
+      userId: req.auth!.userId,
+      action: 'tenant.exit',
+      entityType: 'tenant',
+      entityId: undefined,
+      newValues: { tenantName: 'Plataforma' },
+    },
+    req
+  );
+  void recordActivity(
+    null,
+    req.auth!.userId,
+    'TENANT',
+    'Sesión de plataforma restaurada (sin empresa activa)',
+    req
+  );
+
+  res.json({ data: { tenantId: null } });
+});
+
 export default router;

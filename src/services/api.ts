@@ -223,6 +223,10 @@ export function apiSwitchTenant(tenantId: number): Promise<{
   return request('POST', `/tenants/${tenantId}/switch`);
 }
 
+export function apiSwitchTenantExit(): Promise<{ data: { tenantId: null } }> {
+  return request('POST', '/tenants/exit');
+}
+
 // ---------------------------------------------------------------------------
 // Modelos de filas (snake_case del servidor)
 // ---------------------------------------------------------------------------

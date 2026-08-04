@@ -36,9 +36,10 @@ import { PaymentModal, CascadePaymentPayload } from './components/PaymentModal';
 import { useConfirm } from './components/ConfirmDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { SaaSAvView } from './components/SaaSAvView';
-import { PlatformAdminView } from './components/PlatformAdminView';
 import { CollectionsView } from './components/CollectionsView';
 import { SecurityModal } from './components/SecurityModal';
+import { PlatformSidebar, PortalTab } from './components/PlatformSidebar';
+import { PlatformPortalView } from './components/PlatformPortalView';
 import {
   apiFetchMe,
   apiLogout,
@@ -55,6 +56,7 @@ import {
   apiGetDeviceEvents,
   apiListTenants,
   apiSwitchTenant,
+  apiSwitchTenantExit,
   apiMdmSyncAll,
   apiListPlans,
   apiSubscriptionCurrent,
@@ -243,6 +245,7 @@ export default function App() {
 
   // Estados de interfaz y modales
   const [activeTab, setActiveTab] = useState<MainViewTab>('CLIENTS');
+  const [portalTab, setPortalTab] = useState<PortalTab>('OVERVIEW');
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [dark, setDark] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -310,15 +313,18 @@ export default function App() {
   // ---------------------------------------------------------------------------
 
   const reloadMdmConfig = useCallback(async () => {
+    if (!has('mdm.config')) return;
+    if (session?.activeTenantId === null) return;
     try {
       const res = await apiGetMdmConfig();
       setMdmConfig(res.data);
     } catch (err) {
       console.warn('No se pudo cargar la configuración MDM:', err);
     }
-  }, []);
+  }, [session]);
 
   const reloadClients = useCallback(async () => {
+    if (session?.activeTenantId === null) return;
     setClientsLoading(true);
     try {
       const list = await apiListClients({ perPage: 200 });
@@ -333,16 +339,17 @@ export default function App() {
     } finally {
       setClientsLoading(false);
     }
-  }, []);
+  }, [session]);
 
   const reloadLogs = useCallback(async () => {
+    if (session?.activeTenantId === null) return;
     try {
       const res = await apiGetDeviceEvents({ perPage: 200 });
       setLogs(res.data.map(mapEvent));
     } catch (err) {
       console.warn('No se pudieron cargar los eventos MDM:', err);
     }
-  }, []);
+  }, [session]);
 
   const reloadAll = useCallback(async () => {
     await Promise.all([reloadMdmConfig(), reloadClients(), reloadLogs()]);
@@ -411,6 +418,15 @@ export default function App() {
       setPlatformLoading(false);
     }
   }, [session]);
+
+  const loadPortalPlans = useCallback(async () => {
+    try {
+      const res = await apiListPlans();
+      setSaasPlans(res.data);
+    } catch (err) {
+      console.warn('No se pudieron cargar los planes de la plataforma:', err);
+    }
+  }, []);
 
   const reloadCollection = useCallback(async () => {
     if (!has('collection.view') || session?.activeTenantId === null) return;
@@ -544,13 +560,15 @@ export default function App() {
     if (session.isGlobal) {
       void reloadTenants();
       void reloadPlatform();
+      void loadPortalPlans();
     }
+    if (session.activeTenantId === null) return;
     void reloadMdmConfig();
     void reloadClients();
     void reloadLogs();
     void reloadSaas();
     void reloadCollection();
-  }, [session, reloadTenants, reloadPlatform, reloadMdmConfig, reloadClients, reloadLogs, reloadSaas, reloadCollection]);
+  }, [session, reloadTenants, reloadPlatform, loadPortalPlans, reloadMdmConfig, reloadClients, reloadLogs, reloadSaas, reloadCollection]);
 
   // ---------------------------------------------------------------------------
   // Sesión
@@ -572,7 +590,23 @@ export default function App() {
   const handleSwitchTenant = async (tenantId: number) => {
     await apiSwitchTenant(tenantId);
     setSession((prev) => (prev ? { ...prev, activeTenantId: tenantId } : prev));
+    setActiveTab('CLIENTS');
+    setPortalTab('OVERVIEW');
     await reloadAll();
+  };
+
+  // VOLVER A LA PLATAFORMA (Super Admin global) — limpia la empresa activa
+  const handleExitTenant = async () => {
+    try {
+      await apiSwitchTenantExit();
+      setSession((prev) => (prev ? { ...prev, activeTenantId: null } : prev));
+      setActiveTab('CLIENTS');
+      setPortalTab('OVERVIEW');
+      await Promise.all([reloadTenants(), reloadPlatform(), loadPortalPlans()]);
+      showNotification('🏢 De vuelta a la plataforma.', 'INFO');
+    } catch (err) {
+      showNotification(`❌ No se pudo volver a la plataforma: ${errorMessage(err)}`, 'LOCK');
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -1129,6 +1163,8 @@ export default function App() {
     return <LoginScreen onAuthenticated={(s) => setSession(s)} />;
   }
 
+  const isPortalMode = session.isGlobal && session.activeTenantId === null;
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-800 dark:bg-slate-950 text-slate-800 dark:text-slate-100 dark:text-slate-200 flex flex-col font-sans">
       {/* Toast de Notificación flotante */}
@@ -1150,6 +1186,8 @@ export default function App() {
 
       {/* Header */}
       <Navbar
+        mode={isPortalMode ? 'portal' : 'tenant'}
+        onExitTenant={!isPortalMode && session.isGlobal ? handleExitTenant : undefined}
         onOpenNewCredit={guard('credits.create', () => setIsNewCreditModalOpen(true))}
         onOpenApiConfig={guard('mdm.config', () => setIsApiModalOpen(true))}
         autoEngineActive={autoEngineActive}
@@ -1175,6 +1213,17 @@ export default function App() {
 
       {/* Contenedor Principal con Sidebar Lateral */}
       <div className="flex flex-1 w-full min-h-[calc(100vh-4rem)] relative">
+        {isPortalMode ? (
+          <PlatformSidebar
+            activeTab={portalTab}
+            onSelectTab={setPortalTab}
+            onOpenSecurity={() => setIsSecurityModalOpen(true)}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            isOpenMobile={isMobileSidebarOpen}
+            onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          />
+        ) : (
         <Sidebar
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
@@ -1187,19 +1236,24 @@ export default function App() {
           onOpenApiConfig={guard('mdm.config', () => setIsApiModalOpen(true))}
           onSyncInovaGuard={guard('devices.view', handleSyncInovaGuard)}
           mdmConfigEnabled={mdmConfig.enabled}
+          permissions={session.permissions}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
+        )}
 
         {/* Contenido Principal según Pestaña Activa */}
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full overflow-x-hidden">
-          {session.isGlobal && session.activeTenantId === null ? (
-            <PlatformAdminView
+          {isPortalMode ? (
+            <PlatformPortalView
+              tab={portalTab}
               tenants={platformTenants}
               loading={platformLoading}
-              onReload={reloadPlatform}
+              plans={saasPlans}
+              onReload={() => void reloadPlatform()}
+              onReloadPlans={loadPortalPlans}
               onEnter={(id) => void handleSwitchTenant(id)}
             />
           ) : (
