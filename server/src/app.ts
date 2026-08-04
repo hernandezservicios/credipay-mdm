@@ -18,6 +18,8 @@ import logsRoutes from './routes/v1/logs.routes.js';
 import saasRoutes from './routes/v1/saas.routes.js';
 import collectionRoutes from './routes/v1/collection.routes.js';
 import apiKeysRoutes, { probeRouter } from './routes/v1/apiKeys.routes.js';
+import webhooksRoutes from './routes/v1/webhooks.routes.js';
+import backupsRoutes from './routes/v1/backups.routes.js';
 import { docsHtml, openApiSpec } from './docs/openapi.js';
 import { ApiError } from './utils/http.js';
 
@@ -72,6 +74,8 @@ app.use('/api/v1/saas', saasRoutes);
 app.use('/api/v1/collection', collectionRoutes);
 app.use(probeRouter);
 app.use('/api/v1/api-keys', apiKeysRoutes);
+app.use('/api/v1/webhooks', webhooksRoutes);
+app.use('/api/v1/backups', backupsRoutes);
 
 app.get('/api/v1/openapi.json', (_req: Request, res: Response) => {
   res.json(openApiSpec);

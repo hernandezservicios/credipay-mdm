@@ -3,6 +3,8 @@ import { pool } from '../db/pool.js';
 import { ApiError } from '../utils/http.js';
 import { recordActivity, recordAudit } from './auditService.js';
 import { unlockInovaGuardDevice } from './inovaGuardService.js';
+import { notifyPayment } from './notifService.js';
+import { dispatchWebhookEvent } from './webhookService.js';
 import type { TenantRequest } from '../middleware/tenant.js';
 
 export type PaymentMethod = 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'DEPOSITO';
@@ -120,10 +122,10 @@ export async function applyCascadePayment(
   }
 
   const [clientRows] = await pool.query<RowDataPacket[]>(
-    'SELECT id, full_name FROM clients WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL',
+    'SELECT id, full_name, email FROM clients WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL',
     [input.clientId, tenantId]
   );
-  const client = clientRows[0] as { id: number; full_name: string } | undefined;
+  const client = clientRows[0] as { id: number; full_name: string; email: string | null } | undefined;
   if (!client) throw ApiError.notFound('Cliente no encontrado');
 
   const [instRows] = await pool.query<RowDataPacket[]>(
@@ -325,6 +327,30 @@ export async function applyCascadePayment(
       `Pago en cascada RD$${amountApplied.toLocaleString()} para ${client.full_name} (${affected.length} cuota(s))`,
       req
     );
+
+    void notifyPayment({
+      tenantId,
+      clientName: client.full_name,
+      clientEmail: client.email,
+      amount: amountApplied,
+      reference: `PAG-${today}-${paymentId}`,
+      method: input.method,
+    });
+    void dispatchWebhookEvent(tenantId, 'payment.paid', {
+      paymentId,
+      clientId: input.clientId,
+      clientName: client.full_name,
+      amount: amountApplied,
+      method: input.method,
+      affected: breakdown,
+    });
+    if (unlock && unlock.success) {
+      void dispatchWebhookEvent(tenantId, 'device.unlocked', {
+        deviceId: unlock.deviceId,
+        clientId: input.clientId,
+        paymentId,
+      });
+    }
 
     return payment;
   } catch (err) {

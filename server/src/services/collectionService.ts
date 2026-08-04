@@ -16,6 +16,8 @@ import {
   type ReminderType,
   type RiskLevel,
 } from './aiMessagingService.js';
+import { dispatchReminderChannels } from './notifService.js';
+import { dispatchWebhookEvent } from './webhookService.js';
 
 export type RunSource = 'MANUAL' | 'SCHEDULED' | 'API';
 
@@ -250,6 +252,13 @@ export async function runCollectionEngine(
       [total, runId]
     );
     await conn.commit();
+    void dispatchWebhookEvent(tenantId, 'collection.run_completed', {
+      runId,
+      source,
+      totalReminders: total,
+      byType,
+      byRisk,
+    });
     return { runId, total, byType, byRisk };
   } catch (error) {
     await conn.rollback().catch(() => undefined);
@@ -299,6 +308,7 @@ export interface ReminderRow extends RowDataPacket {
   created_at: Date | string;
   full_name: string;
   phone: string;
+  email: string;
   device_model: string | null;
 }
 
@@ -333,7 +343,7 @@ export async function listReminders(
   return rows;
 }
 
-export async function sendReminder(reminderId: number, tenantId: number, userId: number): Promise<ReminderRow> {
+export async function sendReminder(reminderId: number, tenantId: number, userId: number | null): Promise<ReminderRow> {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -341,7 +351,7 @@ export async function sendReminder(reminderId: number, tenantId: number, userId:
       `SELECT cr.id, cr.run_id, cr.client_id, cr.reminder_type, cr.channel, cr.status,
               cr.risk_level, cr.risk_score, cr.subject, cr.message,
               cr.scheduled_at, cr.sent_at, cr.created_at,
-              cl.full_name, cl.phone
+              cl.full_name, cl.phone, cl.email
          FROM collection_reminders cr
          JOIN clients cl ON cl.id = cr.client_id
         WHERE cr.id = ? AND cr.tenant_id = ?`,
@@ -382,10 +392,34 @@ export async function sendReminder(reminderId: number, tenantId: number, userId:
       ]
     );
     await conn.commit();
+    void dispatchReminderChannels(tenantId, reminder);
     return { ...reminder, status: 'SENT' };
   } finally {
     conn.release();
   }
+}
+
+/**
+ * Procesa los recordatorios PENDING cuyo scheduled_at ya venció (invocado por
+ * el scheduler). El envío sigue siendo transaccional en sendReminder.
+ */
+export async function processDueReminders(userId: number | null, limit = 50): Promise<number> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT id, tenant_id FROM collection_reminders
+      WHERE status = 'PENDING' AND scheduled_at <= NOW()
+      ORDER BY scheduled_at
+      LIMIT ${Number(limit)}`,
+  );
+  let processed = 0;
+  for (const row of rows) {
+    try {
+      await sendReminder(Number(row.id), Number(row.tenant_id), userId);
+      processed += 1;
+    } catch (err) {
+      console.error(`[cobranza] error al enviar recordatorio #${row.id}:`, err);
+    }
+  }
+  return processed;
 }
 
 export async function listRuns(tenantId: number): Promise<RowDataPacket[]> {

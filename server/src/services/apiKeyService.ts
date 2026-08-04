@@ -108,6 +108,8 @@ export interface ApiKeyAuthResult {
   userTenantId: number | null;
   keyName: string;
   permissions: string[];
+  keyId: number;
+  rateLimitPerMin: number;
 }
 
 /** Valida la llave en el encabezado X-API-Key y devuelve el contexto. */
@@ -115,7 +117,8 @@ export async function authenticateApiKey(rawKey: string): Promise<ApiKeyAuthResu
   const key = rawKey.replace(/-/g, '');
   if (!key.startsWith(KEY_PREFIX)) return null;
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT a.id AS key_id, a.key_name, a.user_id, u.tenant_id AS user_tenant_id, a.expires_at, a.status
+    `SELECT a.id AS key_id, a.key_name, a.user_id, u.tenant_id AS user_tenant_id,
+            a.expires_at, a.status, a.rate_limit_per_min
        FROM api_keys a
        JOIN users u ON u.id = a.user_id
       WHERE a.key_hash = ? AND a.status = 'ACTIVE'
@@ -135,6 +138,8 @@ export async function authenticateApiKey(rawKey: string): Promise<ApiKeyAuthResu
     userTenantId: row.user_tenant_id as number | null,
     keyName: row.key_name,
     permissions,
+    keyId: Number(row.key_id),
+    rateLimitPerMin: Number(row.rate_limit_per_min ?? 60),
   };
 }
 

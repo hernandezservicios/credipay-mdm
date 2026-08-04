@@ -23,6 +23,18 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   MIGRATIONS_DIR: z.string().default('./migraciones'),
+  SCHEDULER_ENABLED: z.string().optional(),
+  BACKUP_DIR: z.string().optional(),
+  MYSQLDUMP_PATH: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('CrediPay MDM <no-reply@credipay.local>'),
+  SMTP_SECURE: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

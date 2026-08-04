@@ -22,6 +22,7 @@ import {
   verifyEmail,
 } from '../../services/authService.js';
 import { recordAudit, requestMeta, uaInfo } from '../../services/auditService.js';
+import { sendTransactionalEmail } from '../../services/emailService.js';
 import { ApiError } from '../../utils/http.js';
 
 const router = Router();
@@ -199,12 +200,28 @@ router.post('/forgot-password', passwordResetLimiter, async (req: AuthRequest, r
   const raw = await requestPasswordReset(body.data.email);
 
   const response: Record<string, unknown> = { ok: true };
-  if (raw && env.NODE_ENV !== 'production') {
-    response.dev_link = buildResetLink(raw, body.data.email);
+  if (raw) {
+    const link = buildResetLink(raw, body.data.email);
+    if (env.NODE_ENV !== 'production') {
+      response.dev_link = link;
+    }
+    await sendTransactionalEmail({
+      to: body.data.email,
+      templateKey: 'email.password_reset',
+      vars: { nombre: user?.name ?? 'usuario', link },
+    }).catch(() => undefined);
   }
-  if (user && env.NODE_ENV !== 'production' && user.status === 'PENDING') {
+  if (user && user.status === 'PENDING' && !user.email_verified_at) {
     const verifyRaw = await createEmailVerification(user.id);
-    response.dev_verify_link = buildVerificationLink(verifyRaw, user.email);
+    const link = buildVerificationLink(verifyRaw, user.email);
+    if (env.NODE_ENV !== 'production') {
+      response.dev_verify_link = link;
+    }
+    await sendTransactionalEmail({
+      to: user.email,
+      templateKey: 'email.verification',
+      vars: { nombre: user.name, link },
+    }).catch(() => undefined);
   }
   res.json(response);
 });
@@ -246,9 +263,19 @@ router.post('/resend-verification', passwordResetLimiter, async (req: AuthReques
   if (!body.success) throw ApiError.badRequest('invalid_input', 'Correo inválido');
 
   const user = await findUserByEmail(body.data.email);
-  if (user && !user.email_verified_at && env.NODE_ENV !== 'production') {
+  if (user && !user.email_verified_at) {
     const raw = await createEmailVerification(user.id);
-    res.json({ ok: true, dev_link: buildVerificationLink(raw, user.email) });
+    const link = buildVerificationLink(raw, user.email);
+    if (env.NODE_ENV !== 'production') {
+      res.json({ ok: true, dev_link: link });
+    } else {
+      res.json({ ok: true });
+    }
+    await sendTransactionalEmail({
+      to: user.email,
+      templateKey: 'email.verification',
+      vars: { nombre: user.name, link },
+    }).catch(() => undefined);
     return;
   }
   res.json({ ok: true });

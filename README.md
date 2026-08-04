@@ -190,6 +190,33 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - **Tema oscuro**: toggle en la Navbar con clase `.dark` (Tailwind `@custom-variant`), preferencia
   persistida en `localStorage`.
 
+### Plataforma de automatización (Fase 8)
+- **Scheduler real** (`scheduler.ts` + `jobService.ts`): daemon con tick de 60s que arranca con la
+  API. Encola y ejecuta jobs en las tablas `jobs`/`queue` (claim atómico `FOR UPDATE SKIP LOCKED`,
+  reintentos exponenciales). Tareas: **corrida diaria de cobranza** por tenant activo
+  (`scheduler.collection_hour`, por defecto 9:00), **respaldo diario** (`backups.hour`, por defecto
+  3:00), **envío automático de recordatorios** vencidos (`collection_reminders.scheduled_at`) y
+  ejecución de la cola (incluye reintentos de webhooks). Se controla con
+  `system_settings.scheduler.enabled` o env `SCHEDULER_ENABLED`.
+- **Rate limit por API key**: `middleware/apiKey.ts` ahora aplica `api_keys.rate_limit_per_min`
+  (ventana deslizante de 60s en memoria) → HTTP 429 `too_many_requests` al exceder.
+- **Webhooks** (`webhookService` + `/api/v1/webhooks`, permiso `webhooks.manage`, límite
+  `max_webhooks` del plan): CRUD con secreto HMAC-SHA256. Eventos: `payment.paid`,
+  `device.locked`, `device.unlocked`, `collection.run_completed`. Cada entrega se registra en
+  `webhook_deliveries` con reintentos exponenciales (máx. 5) y se firma con
+  `X-Credipay-Signature`; `GET /api/v1/webhooks/:id/deliveries` muestra el historial.
+- **Backups automáticos** (`backupService` + `/api/v1/backups`, permiso `backups.manage`): usa
+  `mysqldump` (WAMP), registra en `backups` con checksum sha256 y poda por retención
+  (`backups.retention_days`, por defecto 14). `POST /api/v1/backups/run` ejecuta uno manual y
+  `GET /api/v1/backups/:id/download` lo descarga.
+- **Email transaccional SMTP** (`emailService`, nodemailer): plantillas en `email_templates` con
+  interpolación `{{var}}` (verificación de correo, restablecimiento de contraseña, recibo de pago,
+  recordatorios). Sin SMTP configurado, funciona en modo desarrollo (imprime en consola, no rompe
+  el flujo). Variables: `SMTP_HOST/PORT/USER/PASS/FROM/SECURE` en `server/.env`.
+- **Canales de notificación** (`notifService`): el envío de recordatorios de cobranza despacha por
+  canal (EMAIL → SMTP con plantilla según tipo, WHATSAPP → simulado/dev, IN_APP → `notifications`)
+  y los pagos generan recibo por correo + notificación interna.
+
 ### Flujo MDM (bloqueo por mora)
 1. Cuota vence → `PENDIENTE` → `VENCIDO` (días 0-2) → `ATRASADO` (+3 días).
 2. Al pasar 3 días de atraso se aplica mora fija RD$200 y el motor envía orden **LOCK** a InovaGuard.
@@ -205,3 +232,4 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - Fase 5 (SaaS comercial: planes, suscripción, límites, facturación y pasarelas): completada el 03/08/2026 — E2E 15/15
 - Fase 6 (motor de cobranza automática + IA de mensajería con scoring de riesgo): completada el 03/08/2026 — E2E 17/17
 - Fase 7 (producción: 2FA TOTP con códigos de recuperación, API keys para integraciones, OpenAPI/Swagger y tema oscuro): completada el 03/08/2026 — E2E 21/21
+- Fase 8 (plataforma de automatización: scheduler real + cola de jobs, rate limit por API key, webhooks con HMAC y reintentos, backups automáticos con mysqldump, email SMTP transaccional y canales de notificación): completada el 04/08/2026 — unit 39/39
