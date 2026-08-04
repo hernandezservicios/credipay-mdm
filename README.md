@@ -204,4 +204,4 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - Fase 4 (empresa activa en sesión, sync masivo SYSTEM_SYNC, búsquedas sin guiones): completada el 03/08/2026
 - Fase 5 (SaaS comercial: planes, suscripción, límites, facturación y pasarelas): completada el 03/08/2026 — E2E 15/15
 - Fase 6 (motor de cobranza automática + IA de mensajería con scoring de riesgo): completada el 03/08/2026 — E2E 17/17
-- Fase 7 (producción: 2FA TOTP con códigos de recuperación, API keys para integraciones, OpenAPI/Swagger y tema oscuro): completada el 03/08/2026 — E2E 20/20
+- Fase 7 (producción: 2FA TOTP con códigos de recuperación, API keys para integraciones, OpenAPI/Swagger y tema oscuro): completada el 03/08/2026 — E2E 21/21

@@ -23,3 +23,6 @@ npm-debug.log*
 # Sistema
 .DS_Store
 Thumbs.db
+
+
+**/error-context.md
