@@ -40,6 +40,8 @@ import { CollectionsView } from './components/CollectionsView';
 import { SecurityModal } from './components/SecurityModal';
 import { PlatformSidebar, PortalTab } from './components/PlatformSidebar';
 import { PlatformPortalView } from './components/PlatformPortalView';
+import { TenantFormModal } from './components/TenantFormModal';
+import { PlanFormModal } from './components/PlanFormModal';
 import {
   apiFetchMe,
   apiLogout,
@@ -71,6 +73,10 @@ import {
   apiCollectionReminders,
   apiCollectionSendReminder,
   apiCollectionRuns,
+  apiGetTenantDetail,
+  apiTogglePlan,
+  apiDuplicatePlan,
+  apiDeletePlan,
   errorMessage,
   type Session,
   type ClientFullRow,
@@ -82,6 +88,7 @@ import {
   type BillingPaymentRow,
   type GatewayRow,
   type PlatformTenantRow,
+  type TenantDetailRow,
   type CollectionSummaryRow,
   type CollectionReminderRow,
   type CollectionRunRow,
@@ -381,6 +388,9 @@ export default function App() {
   const [saasPreferredGateway, setSaasPreferredGateway] = useState<string | null>(null);
   const [platformTenants, setPlatformTenants] = useState<PlatformTenantRow[]>([]);
   const [platformLoading, setPlatformLoading] = useState(false);
+  const [tenantDetail, setTenantDetail] = useState<TenantDetailRow | null>(null);
+  const [tenantModal, setTenantModal] = useState<{ mode: 'create' | 'edit'; id: number | null } | null>(null);
+  const [planModal, setPlanModal] = useState<{ mode: 'create' | 'edit'; plan: PlanRow | null } | null>(null);
   const [collectionSummary, setCollectionSummary] = useState<CollectionSummaryRow | null>(null);
   const [collectionReminders, setCollectionReminders] = useState<CollectionReminderRow[]>([]);
   const [collectionRuns, setCollectionRuns] = useState<CollectionRunRow[]>([]);
@@ -426,6 +436,102 @@ export default function App() {
     } catch (err) {
       console.warn('No se pudieron cargar los planes de la plataforma:', err);
     }
+  }, []);
+
+  // Panel Super Admin: abrir edición de empresa (carga detalle completo)
+  const handleEditTenant = useCallback(
+    async (tenantId: number) => {
+      try {
+        const res = await apiGetTenantDetail(tenantId);
+        setTenantDetail(res.data);
+        setTenantModal({ mode: 'edit', id: tenantId });
+      } catch (err) {
+        showNotification(`❌ No se pudo cargar la empresa: ${errorMessage(err)}`, 'LOCK');
+      }
+    },
+    [showNotification]
+  );
+
+  const handleTenantSaved = useCallback(
+    (message: string) => {
+      showNotification(message, 'INFO');
+      setTenantDetail(null);
+      setTenantModal(null);
+      void reloadTenants();
+      void reloadPlatform();
+    },
+    [showNotification, reloadTenants, reloadPlatform]
+  );
+
+  const handlePlanSaved = useCallback(
+    (message: string) => {
+      showNotification(message, 'INFO');
+      setPlanModal(null);
+      void loadPortalPlans();
+    },
+    [showNotification, loadPortalPlans]
+  );
+
+  const handleTogglePlan = useCallback(
+    async (plan: PlanRow) => {
+      try {
+        const res = await apiTogglePlan(plan.id);
+        showNotification(
+          `✅ Plan "${plan.name}" ${res.data.status === 'ACTIVE' ? 'activado' : 'desactivado'}.`,
+          'INFO'
+        );
+        void loadPortalPlans();
+      } catch (err) {
+        showNotification(`❌ No se pudo cambiar el estado del plan: ${errorMessage(err)}`, 'LOCK');
+      }
+    },
+    [showNotification, loadPortalPlans]
+  );
+
+  const handleDuplicatePlan = useCallback(
+    async (plan: PlanRow) => {
+      try {
+        const res = await apiDuplicatePlan(plan.id);
+        showNotification(`✅ Plan duplicado como "${res.data.name}".`, 'INFO');
+        void loadPortalPlans();
+      } catch (err) {
+        showNotification(`❌ No se pudo duplicar el plan: ${errorMessage(err)}`, 'LOCK');
+      }
+    },
+    [showNotification, loadPortalPlans]
+  );
+
+  const handleDeletePlan = useCallback(
+    async (plan: PlanRow) => {
+      const ok = await confirmDialog({
+        title: `Eliminar plan "${plan.name}"`,
+        message: 'Se eliminará del catálogo (soft delete). No se puede eliminar si está asignado a empresas activas.',
+        tone: 'rose',
+        confirmLabel: 'Eliminar plan',
+      });
+      if (!ok) return;
+      try {
+        await apiDeletePlan(plan.id);
+        showNotification(`🗑️ Plan "${plan.name}" eliminado.`, 'INFO');
+        void loadPortalPlans();
+      } catch (err) {
+        showNotification(`❌ No se pudo eliminar el plan: ${errorMessage(err)}`, 'LOCK');
+      }
+    },
+    [confirmDialog, showNotification, loadPortalPlans]
+  );
+
+  const handleNewTenant = useCallback(() => {
+    setTenantDetail(null);
+    setTenantModal({ mode: 'create', id: null });
+  }, []);
+
+  const handleNewPlan = useCallback(() => {
+    setPlanModal({ mode: 'create', plan: null });
+  }, []);
+
+  const handleEditPlan = useCallback((plan: PlanRow) => {
+    setPlanModal({ mode: 'edit', plan });
   }, []);
 
   const reloadCollection = useCallback(async () => {
@@ -1255,6 +1361,14 @@ export default function App() {
               onReload={() => void reloadPlatform()}
               onReloadPlans={loadPortalPlans}
               onEnter={(id) => void handleSwitchTenant(id)}
+              onEditTenant={(id) => void handleEditTenant(id)}
+              onNewTenant={handleNewTenant}
+              onNewPlan={handleNewPlan}
+              onEditPlan={handleEditPlan}
+              onTogglePlan={(p) => void handleTogglePlan(p)}
+              onDuplicatePlan={(p) => void handleDuplicatePlan(p)}
+              onDeletePlan={(p) => void handleDeletePlan(p)}
+              onNotify={(text, type) => showNotification(text, type)}
             />
           ) : (
           <>
@@ -1519,6 +1633,28 @@ export default function App() {
       )}
 
       {isSecurityModalOpen && <SecurityModal onClose={() => setIsSecurityModalOpen(false)} />}
+
+      {tenantModal && (
+        <TenantFormModal
+          isOpen
+          tenant={tenantModal.mode === 'edit' ? tenantDetail : null}
+          plans={saasPlans}
+          onClose={() => {
+            setTenantModal(null);
+            setTenantDetail(null);
+          }}
+          onSaved={handleTenantSaved}
+        />
+      )}
+
+      {planModal && (
+        <PlanFormModal
+          isOpen
+          plan={planModal.plan}
+          onClose={() => setPlanModal(null)}
+          onSaved={handlePlanSaved}
+        />
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { getSettingBoolean, getSettingNumber } from './services/settingsService.
 import { processDueReminders, runCollectionEngine } from './services/collectionService.js';
 import { runBackup } from './services/backupService.js';
 import { deliverDelivery } from './services/webhookService.js';
+import { recordAudit } from './services/auditService.js';
 
 const TICK_BASE_MS = 60_000;
 
@@ -71,12 +72,130 @@ async function ensureDailyBackupJob(): Promise<void> {
   await enqueueJob({ jobName: 'backup.run_daily', queue: 'backups', maxAttempts: 3 });
 }
 
+/**
+ * Expiración automática de suscripciones (diaria):
+ *  - ACTIVE con auto_renew=0 y período vencido  -> EXPIRED (el tenant sigue activo).
+ *  - TRIAL con trial_ends_at vencido            -> suscripción EXPIRED.
+ *  - PAST_DUE que excede la gracia (3 días)     -> suscripción SUSPENDED.
+ * Cada cambio se registra en subscription_history y audit_logs.
+ */
+async function expireSubscriptions(): Promise<void> {
+  const now = new Date();
+
+  const [noRenewExpired] = await pool.query<RowDataPacket[]>(
+    `SELECT s.id AS subscription_id, s.tenant_id, pl.name AS plan_name, pl.slug AS plan_slug
+       FROM subscriptions s
+       JOIN plans pl ON pl.id = s.plan_id
+      WHERE s.status = 'ACTIVE' AND s.auto_renew = 0
+        AND s.current_period_end < NOW()
+        AND s.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM subscription_history sh
+           WHERE sh.subscription_id = s.id AND sh.event_type = 'EXPIRED'
+        )`,
+    []
+  );
+  for (const sub of noRenewExpired) {
+    await pool.query(
+      `UPDATE subscriptions SET status = 'EXPIRED', updated_at = NOW() WHERE id = ?`,
+      [sub.subscription_id]
+    );
+    await pool.query(
+      `INSERT INTO subscription_history (subscription_id, tenant_id, event_type, description, data)
+       VALUES (?, ?, 'EXPIRED', ?, JSON_OBJECT('trigger', 'auto_renew_off'))`,
+      [sub.subscription_id, sub.tenant_id, `Período vencido sin renovación automática (${sub.plan_name})`]
+    );
+    void recordAudit({
+      tenantId: sub.tenant_id,
+      userId: null,
+      action: 'SUBSCRIPTION_EXPIRED',
+      entityType: 'subscription',
+      entityId: String(sub.subscription_id),
+      newValues: { planName: sub.plan_name, trigger: 'auto_renew_off' },
+    });
+  }
+
+  const [trialsExpired] = await pool.query<RowDataPacket[]>(
+    `SELECT t.id AS tenant_id, t.name AS tenant_name,
+            s.id AS subscription_id, s.status, pl.name AS plan_name
+       FROM tenants t
+       JOIN subscriptions s ON s.tenant_id = t.id AND s.deleted_at IS NULL
+       JOIN plans pl ON pl.id = s.plan_id
+      WHERE t.status IN ('TRIAL','ACTIVE') AND t.deleted_at IS NULL
+        AND t.trial_ends_at IS NOT NULL AND t.trial_ends_at < NOW()
+        AND s.status = 'TRIAL'
+        AND NOT EXISTS (
+          SELECT 1 FROM subscription_history sh
+           WHERE sh.subscription_id = s.id AND sh.event_type = 'EXPIRED'
+        )`,
+    []
+  );
+  for (const row of trialsExpired) {
+    await pool.query(
+      `UPDATE subscriptions SET status = 'EXPIRED', updated_at = NOW() WHERE id = ?`,
+      [row.subscription_id]
+    );
+    await pool.query(
+      `INSERT INTO subscription_history (subscription_id, tenant_id, event_type, description, data)
+       VALUES (?, ?, 'EXPIRED', ?, JSON_OBJECT('trigger', 'trial_ended'))`,
+      [row.subscription_id, row.tenant_id, `Prueba gratuita finalizada (${row.plan_name})`]
+    );
+    void recordAudit({
+      tenantId: row.tenant_id,
+      userId: null,
+      action: 'SUBSCRIPTION_EXPIRED',
+      entityType: 'subscription',
+      entityId: String(row.subscription_id),
+      newValues: { planName: row.plan_name, trigger: 'trial_ended' },
+    });
+  }
+
+  const [pastDueSuspended] = await pool.query<RowDataPacket[]>(
+    `SELECT s.id AS subscription_id, s.tenant_id, pl.name AS plan_name
+       FROM subscriptions s
+       JOIN plans pl ON pl.id = s.plan_id
+      WHERE s.status = 'PAST_DUE' AND s.current_period_end < DATE_SUB(NOW(), INTERVAL 3 DAY)
+        AND s.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM subscription_history sh
+           WHERE sh.subscription_id = s.id AND sh.event_type = 'SUSPENDED'
+        )`,
+    []
+  );
+  for (const sub of pastDueSuspended) {
+    await pool.query(
+      `UPDATE subscriptions SET status = 'SUSPENDED', updated_at = NOW() WHERE id = ?`,
+      [sub.subscription_id]
+    );
+    await pool.query(
+      `INSERT INTO subscription_history (subscription_id, tenant_id, event_type, description, data)
+       VALUES (?, ?, 'SUSPENDED', ?, JSON_OBJECT('trigger', 'grace_exceeded'))`,
+      [sub.subscription_id, sub.tenant_id, `Período vencido superó la gracia; suscripción suspendida (${sub.plan_name})`]
+    );
+    void recordAudit({
+      tenantId: sub.tenant_id,
+      userId: null,
+      action: 'SUBSCRIPTION_SUSPENDED',
+      entityType: 'subscription',
+      entityId: String(sub.subscription_id),
+      newValues: { planName: sub.plan_name, trigger: 'grace_exceeded' },
+    });
+  }
+
+  if (noRenewExpired.length + trialsExpired.length + pastDueSuspended.length > 0) {
+    console.log(
+      `[scheduler] expiración: ${noRenewExpired.length} sin renovar, ${trialsExpired.length} trials, ${pastDueSuspended.length} morosos suspendidos`
+    );
+  }
+}
+
 async function runTick(): Promise<void> {
   if (ticking) return;
   ticking = true;
   try {
     await ensureDailyCollectionJobs();
     await ensureDailyBackupJob();
+    await expireSubscriptions();
     await processDueReminders(null, 50);
     await processPendingJobs(handlers as unknown as Record<string, (p: Record<string, unknown>) => Promise<void>>, 10);
   } catch (err) {

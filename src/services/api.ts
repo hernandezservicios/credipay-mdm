@@ -641,6 +641,8 @@ export interface PlatformTenantRow {
   slug: string;
   tenant_status: string;
   currency_code: string;
+  suspended_at: string | null;
+  suspended_reason: string | null;
   subscription_id: number | null;
   subscription_status: string | null;
   current_period_start: string | null;
@@ -655,6 +657,84 @@ export interface PlatformTenantRow {
   max_devices: number;
   max_users: number;
   client_count: number;
+  credit_count: number;
+  device_count: number;
+  user_count: number;
+  overdue_installments: number;
+  collected_month: number;
+  collected_total: number;
+}
+
+export interface TenantDetailRow {
+  id: number;
+  name: string;
+  slug: string;
+  domain: string | null;
+  status: string;
+  email: string | null;
+  phone: string | null;
+  currency_code: string;
+  country_code: string;
+  language_code: string;
+  timezone: string;
+  logo_url: string | null;
+  trial_ends_at: string | null;
+  suspended_at: string | null;
+  suspended_by: number | null;
+  suspended_reason: string | null;
+  activated_at: string | null;
+  created_at: string;
+  updated_at: string;
+  settings: {
+    tenant_id: number;
+    grace_days: number;
+    overdue_penalty: string;
+    receipt_prefix: string;
+    invoice_prefix: string;
+  } | null;
+  subscription: {
+    id: number;
+    plan_id: number;
+    plan_name: string;
+    billing_cycle: BillingCycle;
+    status: string;
+    current_period_start: string;
+    current_period_end: string;
+    canceled_at: string | null;
+    ends_at: string | null;
+    auto_renew: number;
+  } | null;
+  admin: {
+    id: number;
+    name: string;
+    email: string;
+    status: string;
+    last_login_at: string | null;
+  } | null;
+}
+
+export interface PlatformUserRow {
+  id: number;
+  tenant_id: number | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  email_verified_at: string | null;
+  last_login_at: string | null;
+  must_change_password: number;
+  created_at: string;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  tenant_status: string | null;
+  role_slugs: string | null;
+}
+
+export interface PlatformUserDetailRow extends PlatformUserRow {
+  two_factor_enabled: number;
+  locale: string;
+  updated_at: string;
+  roles: Array<{ id: number; slug: string; name: string }>;
 }
 
 export function apiListPlans(): Promise<{ data: PlanRow[] }> {
@@ -667,16 +747,16 @@ export function apiSubscriptionCurrent(): Promise<{
   return request('GET', '/saas/subscriptions/current');
 }
 
-export function apiChangePlan(planId: number): Promise<{
+export function apiChangePlan(planId: number, tenantId?: number): Promise<{
   data: { subscriptionId: number; planId: number; planName: string };
 }> {
-  return request('POST', '/saas/subscriptions/change', { planId });
+  return request('POST', '/saas/subscriptions/change', tenantId ? { planId, tenantId } : { planId });
 }
 
-export function apiRenewSubscription(): Promise<{
+export function apiRenewSubscription(tenantId?: number): Promise<{
   data: { paymentId: number; planName: string; periodEnd: string };
 }> {
-  return request('POST', '/saas/subscriptions/renew');
+  return request('POST', '/saas/subscriptions/renew', tenantId ? { tenantId } : undefined);
 }
 
 export function apiBillingPayments(): Promise<{ data: BillingPaymentRow[] }> {
@@ -700,6 +780,164 @@ export function apiSetGateway(preferredGateway: string | null): Promise<{
 
 export function apiPlatformOverview(): Promise<{ data: PlatformTenantRow[] }> {
   return request('GET', '/saas/platform/overview');
+}
+
+// ---------------------------------------------------------------------------
+// Panel del Super Administrador (Fase 9): gestión de empresas, planes y usuarios
+// ---------------------------------------------------------------------------
+
+export function apiGetTenantDetail(id: number): Promise<{ data: TenantDetailRow }> {
+  return request('GET', `/tenants/${id}`);
+}
+
+export function apiCreateTenant(body: {
+  name: string;
+  slug?: string;
+  email?: string;
+  phone?: string;
+  domain?: string;
+  status?: string;
+  currency_code?: string;
+  planId?: number;
+  periodMonths?: number;
+  adminName?: string;
+  adminEmail?: string;
+  adminPassword?: string;
+}): Promise<{ data: { tenantId: number; name: string; slug: string; status: string; subscriptionId: number | null; adminUserId: number | null }; dev_password?: string }> {
+  return request('POST', '/tenants', body);
+}
+
+export function apiUpdateTenant(
+  id: number,
+  body: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    domain?: string;
+    currency_code?: string;
+    timezone?: string;
+    language_code?: string;
+    status?: string;
+  }
+): Promise<{ data: { tenantId: number; updated: boolean } }> {
+  return request('PATCH', `/tenants/${id}`, body);
+}
+
+export function apiSuspendTenant(id: number, reason?: string): Promise<{ data: { tenantId: number; status: string } }> {
+  return request('POST', `/tenants/${id}/suspend`, { reason });
+}
+
+export function apiReactivateTenant(id: number): Promise<{ data: { tenantId: number; status: string } }> {
+  return request('POST', `/tenants/${id}/reactivate`);
+}
+
+export function apiDeleteTenant(id: number): Promise<{ data: { tenantId: number; deleted: boolean } }> {
+  return request('DELETE', `/tenants/${id}`);
+}
+
+export function apiCreatePlan(body: {
+  name: string;
+  slug?: string;
+  description?: string;
+  billing_cycle: BillingCycle;
+  price: number;
+  setup_fee?: number;
+  currency_code?: string;
+  max_users?: number;
+  max_clients?: number;
+  max_credits?: number;
+  max_devices?: number;
+  storage_mb?: number;
+  api_rate_limit_per_min?: number;
+  max_webhooks?: number;
+  features?: Array<{ feature_key: string; feature_name?: string; feature_value?: string | null; is_enabled?: number }>;
+}): Promise<{ data: { planId: number; name: string; slug: string } }> {
+  return request('POST', '/saas/plans', body);
+}
+
+export function apiUpdatePlan(
+  id: number,
+  body: Partial<Parameters<typeof apiCreatePlan>[0]>
+): Promise<{ data: { planId: number; updated: boolean } }> {
+  return request('PATCH', `/saas/plans/${id}`, body);
+}
+
+export function apiTogglePlan(id: number): Promise<{ data: { planId: number; status: string } }> {
+  return request('POST', `/saas/plans/${id}/toggle`);
+}
+
+export function apiDuplicatePlan(id: number): Promise<{ data: { planId: number; name: string; slug: string } }> {
+  return request('POST', `/saas/plans/${id}/duplicate`);
+}
+
+export function apiDeletePlan(id: number): Promise<{ data: { planId: number; deleted: boolean } }> {
+  return request('DELETE', `/saas/plans/${id}`);
+}
+
+export function apiCancelSubscription(tenantId?: number): Promise<{ data: { subscriptionId: number; status: string } }> {
+  return request('POST', '/saas/subscriptions/cancel', tenantId ? { tenantId } : undefined);
+}
+
+export function apiExtendSubscription(days: number, tenantId?: number): Promise<{ data: { subscriptionId: number; periodEnd: string } }> {
+  return request('POST', '/saas/subscriptions/extend', tenantId ? { days, tenantId } : { days });
+}
+
+export function apiListUsers(params?: {
+  tenant_id?: number;
+  q?: string;
+}): Promise<{ data: PlatformUserRow[] }> {
+  const qs = new URLSearchParams();
+  if (params?.tenant_id) qs.set('tenant_id', String(params.tenant_id));
+  if (params?.q) qs.set('q', params.q);
+  return request('GET', `/users?${qs.toString()}`);
+}
+
+export function apiGetUser(id: number): Promise<{ data: PlatformUserDetailRow }> {
+  return request('GET', `/users/${id}`);
+}
+
+export function apiListTenantUsers(tenantId: number): Promise<{ data: PlatformUserRow[] }> {
+  return request('GET', `/users/tenant/${tenantId}/users`);
+}
+
+export function apiCreateUser(body: {
+  tenant_id?: number;
+  name: string;
+  email: string;
+  phone?: string;
+  password?: string;
+  roles?: string[];
+  status?: string;
+}): Promise<{ data: { userId: number; name: string; email: string; status: string }; dev_password?: string }> {
+  return request('POST', '/users', body);
+}
+
+export function apiUpdateUser(
+  id: number,
+  body: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    status?: string;
+    locale?: string;
+    roles?: string[];
+  }
+): Promise<{ data: { userId: number; updated: boolean } }> {
+  return request('PATCH', `/users/${id}`, body);
+}
+
+export function apiSetUserStatus(id: number, status: string): Promise<{
+  data: { userId: number; status: string; changed: boolean };
+}> {
+  return request('POST', `/users/${id}/status`, { status });
+}
+
+export function apiResetUserPassword(id: number): Promise<{ data: { userId: number; ok: boolean }; dev_reset_link?: string }> {
+  return request('POST', `/users/${id}/reset-password`);
+}
+
+export function apiDeleteUser(id: number): Promise<{ data: { userId: number; deleted: boolean } }> {
+  return request('DELETE', `/users/${id}`);
 }
 
 // ---------------------------------------------------------------------------

@@ -3,12 +3,13 @@ import {
   LayoutDashboard,
   Building2,
   Crown,
+  Users,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 
-export type PortalTab = 'OVERVIEW' | 'TENANTS' | 'PLANS';
+export type PortalTab = 'OVERVIEW' | 'TENANTS' | 'PLANS' | 'USERS';
 
 interface PlatformSidebarProps {
   activeTab: PortalTab;
@@ -47,6 +48,12 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
       label: 'Planes & Catálogo',
       description: 'Catálogo de planes SaaS',
       icon: Crown,
+    },
+    {
+      id: 'USERS' as PortalTab,
+      label: 'Usuarios',
+      description: 'Usuarios de la plataforma y empresas',
+      icon: Users,
     },
   ];
 

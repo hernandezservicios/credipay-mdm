@@ -24,6 +24,23 @@ const router = Router();
 
 router.use(authRequired, csrfProtect);
 
+/**
+ * Resuelve el tenant sobre el que opera una acción de plataforma:
+ *  - Usuario de tenant (ADMIN local): siempre su propio tenant.
+ *  - Super Admin global (tenantId === null): exige tenantId en el body
+ *    para operar sobre la empresa indicada.
+ */
+export function resolvePlatformTenantId(req: AuthRequest, bodyTenantId?: unknown): number {
+  if (req.auth!.tenantId !== null) {
+    return req.auth!.tenantId;
+  }
+  const tenantId = Number(bodyTenantId);
+  if (!Number.isInteger(tenantId) || tenantId <= 0) {
+    throw ApiError.badRequest('tenant_required', 'Indica el tenantId objetivo (Super Admin global)');
+  }
+  return tenantId;
+}
+
 // ---------------------------------------------------------------------------
 // SaaS Comercial (Fase 5): planes, suscripción, facturación y pasarelas
 // ---------------------------------------------------------------------------
@@ -38,6 +55,255 @@ router.get('/plans', requirePermission('subscriptions.view'), async (_req: AuthR
     byPlan.set(f.plan_id, list);
   }
   res.json({ data: plans.map((p) => ({ ...p, features: byPlan.get(p.id) ?? [] })) });
+});
+
+// --- CRUD DE PLANES (Super Admin global) ------------------------------------
+
+const PLAN_FIELDS = [
+  'name', 'slug', 'description', 'billing_cycle', 'price', 'setup_fee',
+  'currency_code', 'max_users', 'max_clients', 'max_credits', 'max_devices',
+  'storage_mb', 'api_rate_limit_per_min', 'max_webhooks', 'status',
+  'is_default', 'sort_order',
+] as const;
+
+type PlanInput = Record<string, unknown>;
+
+export function parsePlanInput(body: PlanInput): { fields: string[]; values: unknown[] } {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  for (const key of PLAN_FIELDS) {
+    if (key === 'status') continue;
+    if (key === 'is_default') continue;
+    if (key === 'name' || key === 'slug') continue;
+    const raw = body[key];
+    if (raw === undefined) continue;
+    switch (key) {
+      case 'description':
+      case 'currency_code': {
+        const v = typeof raw === 'string' ? raw.trim() : null;
+        if (key === 'description' && !v) {
+          fields.push(key); values.push(null);
+        } else if (v) {
+          fields.push(key); values.push(v);
+        }
+        break;
+      }
+      case 'billing_cycle': {
+        const cycle = typeof raw === 'string' ? raw.toUpperCase() : '';
+        if (['MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL'].includes(cycle)) {
+          fields.push(key); values.push(cycle);
+        }
+        break;
+      }
+      case 'price':
+      case 'setup_fee': {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n >= 0) { fields.push(key); values.push(n); }
+        break;
+      }
+      default: {
+        const n = Number(raw);
+        if (Number.isInteger(n) && n >= 0) { fields.push(key); values.push(n); }
+      }
+    }
+  }
+  return { fields, values };
+}
+
+async function assertPlanSlugFree(slug: string, excludeId?: number): Promise<void> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    'SELECT id FROM plans WHERE slug = ? AND deleted_at IS NULL LIMIT 1',
+    [slug]
+  );
+  if (rows[0] && rows[0].id !== excludeId) {
+    throw ApiError.badRequest('slug_in_use', 'Ya existe un plan con ese slug');
+  }
+}
+
+router.post('/plans', requirePermission('subscriptions.manage'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden('tenant_switch_forbidden', 'Solo el Super Administrador global puede gestionar el catálogo de planes');
+  }
+  const body = req.body ?? {};
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (!name) throw ApiError.badRequest('invalid_name', 'El nombre del plan es obligatorio');
+  const slug = typeof body.slug === 'string' && body.slug.trim()
+    ? body.slug.trim().toLowerCase()
+    : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!slug) throw ApiError.badRequest('invalid_slug', 'Slug inválido');
+  await assertPlanSlugFree(slug);
+
+  const { fields, values } = parsePlanInput(body);
+  const cols = ['name', 'slug', ...fields];
+  const vals = [name, slug, ...values];
+
+  const [insertRes] = await pool.query<ResultSetHeader>(
+    `INSERT INTO plans (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+    vals
+  );
+  const planId = insertRes.insertId;
+
+  if (Array.isArray(body.features)) {
+    for (const f of body.features) {
+      if (!f || typeof f.feature_key !== 'string' || !f.feature_key.trim()) continue;
+      await pool.query(
+        `INSERT INTO plan_features (plan_id, feature_key, feature_name, feature_value, is_enabled)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          planId,
+          f.feature_key.trim(),
+          typeof f.feature_name === 'string' && f.feature_name.trim() ? f.feature_name.trim() : f.feature_key.trim(),
+          f.feature_value != null ? String(f.feature_value) : null,
+          f.is_enabled === 0 ? 0 : 1,
+        ]
+      );
+    }
+  }
+
+  void recordAudit(
+    { tenantId: null, userId: req.auth!.userId, action: 'plan.create', entityType: 'plan', entityId: String(planId), newValues: { name, slug } },
+    req
+  );
+  void recordActivity(null, req.auth!.userId, 'BILLING', `Plan "${name}" creado en el catálogo`, req);
+  res.status(201).json({ data: { planId, name, slug } });
+});
+
+router.patch('/plans/:id', requirePermission('subscriptions.manage'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden('tenant_switch_forbidden', 'Solo el Super Administrador global puede gestionar planes');
+  }
+  const planId = Number(req.params.id);
+  const plan = await getPlanById(planId);
+  const body = req.body ?? {};
+
+  if (typeof body.slug === 'string' && body.slug.trim()) {
+    await assertPlanSlugFree(body.slug.trim().toLowerCase(), planId);
+  }
+
+  const { fields, values } = parsePlanInput(body);
+  if (fields.length > 0) {
+    const sets = fields.map((f) => `${f} = ?`).join(', ');
+    values.push(planId);
+    await pool.query(`UPDATE plans SET ${sets}, updated_at = NOW() WHERE id = ?`, values);
+  }
+
+  if (Array.isArray(body.features)) {
+    await pool.query('DELETE FROM plan_features WHERE plan_id = ?', [planId]);
+    for (const f of body.features) {
+      if (!f || typeof f.feature_key !== 'string' || !f.feature_key.trim()) continue;
+      await pool.query(
+        `INSERT INTO plan_features (plan_id, feature_key, feature_name, feature_value, is_enabled)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          planId,
+          f.feature_key.trim(),
+          typeof f.feature_name === 'string' && f.feature_name.trim() ? f.feature_name.trim() : f.feature_key.trim(),
+          f.feature_value != null ? String(f.feature_value) : null,
+          f.is_enabled === 0 ? 0 : 1,
+        ]
+      );
+    }
+  }
+
+  void recordAudit(
+    { tenantId: null, userId: req.auth!.userId, action: 'plan.update', entityType: 'plan', entityId: String(planId), newValues: { name: plan.name } },
+    req
+  );
+  void recordActivity(null, req.auth!.userId, 'BILLING', `Plan "${plan.name}" actualizado`, req);
+  res.json({ data: { planId, updated: true } });
+});
+
+router.post('/plans/:id/toggle', requirePermission('subscriptions.manage'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden('tenant_switch_forbidden', 'Solo el Super Administrador global puede gestionar planes');
+  }
+  const planId = Number(req.params.id);
+  const plan = await getPlanById(planId);
+  const next = plan.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+  await pool.query("UPDATE plans SET status = ?, updated_at = NOW() WHERE id = ?", [next, planId]);
+  void recordAudit(
+    { tenantId: null, userId: req.auth!.userId, action: 'plan.toggle', entityType: 'plan', entityId: String(planId), oldValues: { status: plan.status }, newValues: { status: next } },
+    req
+  );
+  void recordActivity(null, req.auth!.userId, 'BILLING', `Plan "${plan.name}" ${next === 'ACTIVE' ? 'activado' : 'desactivado'}`, req);
+  res.json({ data: { planId, status: next } });
+});
+
+router.post('/plans/:id/duplicate', requirePermission('subscriptions.manage'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden('tenant_switch_forbidden', 'Solo el Super Administrador global puede gestionar planes');
+  }
+  const planId = Number(req.params.id);
+  const plan = await getPlanById(planId);
+  const [featRows] = await pool.query<RowDataPacket[]>(
+    'SELECT feature_key, feature_name, feature_value, is_enabled FROM plan_features WHERE plan_id = ?',
+    [planId]
+  );
+  const baseSlug = `${plan.slug}-copia`;
+  let slug = baseSlug;
+  let n = 2;
+  while (true) {
+    const [chk] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM plans WHERE slug = ? AND deleted_at IS NULL LIMIT 1',
+      [slug]
+    );
+    if (chk.length === 0) break;
+    slug = `${baseSlug}-${n}`;
+    n++;
+  }
+  const name = `${plan.name} (copia)`;
+
+  const [cloneRes] = await pool.query<ResultSetHeader>(
+    `INSERT INTO plans (name, slug, description, billing_cycle, price, setup_fee, currency_code,
+       max_users, max_clients, max_credits, max_devices, storage_mb, api_rate_limit_per_min,
+       max_webhooks, status, is_default, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'INACTIVE', 0, ?)`,
+    [
+      name, slug, plan.description, plan.billing_cycle, plan.price, plan.setup_fee, plan.currency_code,
+      plan.max_users, plan.max_clients, plan.max_credits, plan.max_devices, plan.storage_mb,
+      plan.api_rate_limit_per_min, plan.max_webhooks, plan.sort_order + 1,
+    ]
+  );
+  const newPlanId = cloneRes.insertId;
+  for (const f of featRows) {
+    await pool.query(
+      `INSERT INTO plan_features (plan_id, feature_key, feature_name, feature_value, is_enabled)
+       VALUES (?, ?, ?, ?, ?)`,
+      [newPlanId, f.feature_key, f.feature_name, f.feature_value, f.is_enabled]
+    );
+  }
+  void recordAudit(
+    { tenantId: null, userId: req.auth!.userId, action: 'plan.duplicate', entityType: 'plan', entityId: String(newPlanId), newValues: { fromPlanId: planId, name } },
+    req
+  );
+  void recordActivity(null, req.auth!.userId, 'BILLING', `Plan "${plan.name}" duplicado como "${name}"`, req);
+  res.status(201).json({ data: { planId: newPlanId, name, slug } });
+});
+
+router.delete('/plans/:id', requirePermission('subscriptions.manage'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden('tenant_switch_forbidden', 'Solo el Super Administrador global puede eliminar planes');
+  }
+  const planId = Number(req.params.id);
+  const plan = await getPlanById(planId);
+  const [used] = await pool.query<RowDataPacket[]>(
+    `SELECT COUNT(*) AS total FROM subscriptions
+      WHERE plan_id = ? AND deleted_at IS NULL AND status IN ('TRIAL','ACTIVE','PAST_DUE')`,
+    [planId]
+  );
+  if (Number(used[0]?.total) > 0) {
+    throw ApiError.badRequest('plan_in_use', 'El plan está asignado a empresas activas. Desactívalo en lugar de eliminarlo.');
+  }
+  await pool.query('UPDATE plans SET deleted_at = NOW(), status = ?, updated_at = NOW() WHERE id = ?', [
+    'INACTIVE',
+    planId,
+  ]);
+  void recordAudit(
+    { tenantId: null, userId: req.auth!.userId, action: 'plan.delete', entityType: 'plan', entityId: String(planId), oldValues: { name: plan.name } },
+    req
+  );
+  void recordActivity(null, req.auth!.userId, 'BILLING', `Plan "${plan.name}" eliminado (soft delete)`, req);
+  res.json({ data: { planId, deleted: true } });
 });
 
 // --- SUSCRIPCIÓN ------------------------------------------------------------
@@ -58,10 +324,9 @@ router.get(
 
 router.post(
   '/subscriptions/change',
-  requireTenant,
   requirePermission('subscriptions.manage'),
-  async (req: TenantRequest, res) => {
-    const tenantId = req.ctx!.tenantId;
+  async (req: AuthRequest, res) => {
+    const tenantId = resolvePlatformTenantId(req, req.body?.tenantId);
     const planId = Number(req.body?.planId);
     if (!Number.isInteger(planId) || planId <= 0) {
       res.status(400).json({ error: 'invalid_plan', message: 'Plan inválido' });
@@ -132,10 +397,9 @@ router.post(
 
 router.post(
   '/subscriptions/renew',
-  requireTenant,
   requirePermission('billing.manage'),
-  async (req: TenantRequest, res) => {
-    const tenantId = req.ctx!.tenantId;
+  async (req: AuthRequest, res) => {
+    const tenantId = resolvePlatformTenantId(req, req.body?.tenantId);
     const current = await getActiveSubscription(tenantId);
     if (!current) {
       res.status(409).json({ error: 'no_subscription', message: 'Sin suscripción activa' });
@@ -205,6 +469,83 @@ router.post(
     res.json({
       data: { paymentId: insertRes.insertId, planName: current.plan_name, periodEnd: nextEnd.toISOString() },
     });
+  }
+);
+
+// --- OPERACIONES DE PLATAFORMA (Super Admin global) -------------------------
+
+router.post(
+  '/subscriptions/cancel',
+  requirePermission('subscriptions.manage'),
+  async (req: AuthRequest, res) => {
+    const tenantId = resolvePlatformTenantId(req, req.body?.tenantId);
+    const current = await getActiveSubscription(tenantId);
+    if (!current) {
+      res.status(409).json({ error: 'no_subscription', message: 'Sin suscripción activa' });
+      return;
+    }
+    await pool.query(
+      `UPDATE subscriptions
+          SET status = 'CANCELED', canceled_at = NOW(), ends_at = current_period_end,
+              updated_at = NOW()
+        WHERE id = ?`,
+      [current.subscription_id]
+    );
+    await pool.query(
+      `INSERT INTO subscription_history (subscription_id, tenant_id, event_type, description, data)
+       VALUES (?, ?, 'CANCELED', ?, JSON_OBJECT('reason', 'manual_superadmin'))`,
+      [current.subscription_id, tenantId, `Suscripción cancelada (${current.plan_name}). Vigente hasta ${current.current_period_end.toISOString()}`]
+    );
+    void recordAudit(
+      { tenantId, userId: req.auth!.userId, action: 'SUBSCRIPTION_CANCELED', entityType: 'subscription', entityId: String(current.subscription_id), newValues: { planName: current.plan_name } },
+      req as AuthRequest
+    );
+    void recordActivity(tenantId, req.auth!.userId, 'BILLING', `Suscripción cancelada (${current.plan_name})`, req as AuthRequest);
+    res.json({ data: { subscriptionId: current.subscription_id, status: 'CANCELED' } });
+  }
+);
+
+router.post(
+  '/subscriptions/extend',
+  requirePermission('subscriptions.manage'),
+  async (req: AuthRequest, res) => {
+    const tenantId = resolvePlatformTenantId(req, req.body?.tenantId);
+    const current = await getActiveSubscription(tenantId);
+    if (!current) {
+      res.status(409).json({ error: 'no_subscription', message: 'Sin suscripción activa' });
+      return;
+    }
+    const days = Number(req.body?.days);
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      throw ApiError.badRequest('invalid_days', 'Días debe ser un entero entre 1 y 365');
+    }
+    const previousEnd = new Date(current.current_period_end);
+    const now = new Date();
+    const base = previousEnd.getTime() > now.getTime() ? previousEnd : now;
+    const newEnd = new Date(base.getTime() + days * 86400000);
+    await pool.query(
+      `UPDATE subscriptions
+          SET status = 'ACTIVE', current_period_end = ?, updated_at = NOW()
+        WHERE id = ?`,
+      [newEnd, current.subscription_id]
+    );
+    await pool.query(
+      `INSERT INTO subscription_history (subscription_id, tenant_id, event_type, description, data)
+       VALUES (?, ?, 'RENEWED', ?, JSON_OBJECT('daysAdded', ?, 'periodEnd', ?))`,
+      [
+        current.subscription_id,
+        tenantId,
+        `Período extendido ${days} día(s) (${current.plan_name})`,
+        days,
+        newEnd.toISOString(),
+      ]
+    );
+    void recordAudit(
+      { tenantId, userId: req.auth!.userId, action: 'SUBSCRIPTION_EXTENDED', entityType: 'subscription', entityId: String(current.subscription_id), newValues: { days, periodEnd: newEnd.toISOString() } },
+      req as AuthRequest
+    );
+    void recordActivity(tenantId, req.auth!.userId, 'BILLING', `Suscripción extendida ${days} día(s)`, req as AuthRequest);
+    res.json({ data: { subscriptionId: current.subscription_id, periodEnd: newEnd.toISOString() } });
   }
 );
 
@@ -315,12 +656,21 @@ router.get(
     }
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT t.id AS tenant_id, t.name, t.slug, t.status AS tenant_status,
-              t.currency_code,
+              t.currency_code, t.suspended_at, t.suspended_reason,
               s.id AS subscription_id, s.status AS subscription_status,
               s.current_period_start, s.current_period_end, s.canceled_at, s.auto_renew,
               pl.name AS plan_name, pl.slug AS plan_slug, pl.billing_cycle,
               pl.price, pl.max_clients, pl.max_devices, pl.max_users,
-              (SELECT COUNT(*) FROM clients c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL) AS client_count
+              (SELECT COUNT(*) FROM clients c WHERE c.tenant_id = t.id AND c.deleted_at IS NULL) AS client_count,
+              (SELECT COUNT(*) FROM credits cr WHERE cr.tenant_id = t.id AND cr.deleted_at IS NULL) AS credit_count,
+              (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id AND d.deleted_at IS NULL) AS device_count,
+              (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL) AS user_count,
+              (SELECT COUNT(*) FROM credit_installments ci
+                WHERE ci.tenant_id = t.id AND ci.status = 'ATRASADO') AS overdue_installments,
+              (SELECT COALESCE(SUM(pr.amount), 0) FROM payments_received pr
+                WHERE pr.tenant_id = t.id AND pr.received_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS collected_month,
+              (SELECT COALESCE(SUM(pr.amount), 0) FROM payments_received pr
+                WHERE pr.tenant_id = t.id) AS collected_total
          FROM tenants t
          LEFT JOIN subscriptions s
            ON s.tenant_id = t.id AND s.deleted_at IS NULL

@@ -1,6 +1,20 @@
 import React from 'react';
-import { RefreshCw, Building2, Crown, Users, CreditCard, Globe2 } from 'lucide-react';
+import {
+  RefreshCw,
+  Building2,
+  Crown,
+  Users,
+  CreditCard,
+  Globe2,
+  TrendingUp,
+  Plus,
+  Pencil,
+  Power,
+  Copy,
+  Trash2,
+} from 'lucide-react';
 import { PlatformAdminView } from './PlatformAdminView';
+import { UsersView } from './UsersView';
 import type { PlatformTenantRow, PlanRow, BillingCycle } from '../services/api';
 import type { PortalTab } from './PlatformSidebar';
 
@@ -32,28 +46,48 @@ interface PlatformPortalViewProps {
   onReload: () => void;
   onReloadPlans: () => void;
   onEnter: (tenantId: number) => void;
+  onEditTenant: (tenantId: number) => void;
+  onNewTenant: () => void;
+  onNewPlan: () => void;
+  onEditPlan: (plan: PlanRow) => void;
+  onTogglePlan: (plan: PlanRow) => void;
+  onDuplicatePlan: (plan: PlanRow) => void;
+  onDeletePlan: (plan: PlanRow) => void;
+  onNotify: (text: string, type?: 'INFO' | 'LOCK') => void;
 }
 
-function OverviewSection({ tenants, onReload }: { tenants: PlatformTenantRow[]; onReload: () => void }) {
+function OverviewSection({
+  tenants,
+  onReload,
+}: {
+  tenants: PlatformTenantRow[];
+  onReload: () => void;
+}) {
   const active = tenants.filter((t) => t.subscription_status === 'ACTIVE');
   const trial = tenants.filter((t) => t.subscription_status === 'TRIAL');
+  const suspended = tenants.filter((t) => t.tenant_status === 'SUSPENDED');
   const pastDue = tenants.filter((t) => t.subscription_status === 'PAST_DUE');
   const totalClients = tenants.reduce((acc, t) => acc + (t.client_count || 0), 0);
+  const totalCredits = tenants.reduce((acc, t) => acc + (t.credit_count || 0), 0);
+  const totalDevices = tenants.reduce((acc, t) => acc + (t.device_count || 0), 0);
+  const collectedMonth = tenants.reduce((acc, t) => acc + (Number(t.collected_month) || 0), 0);
+  const collectedTotal = tenants.reduce((acc, t) => acc + (Number(t.collected_total) || 0), 0);
   const mrr = tenants.reduce((acc, t) => {
     if (!t.price || !t.billing_cycle) return acc;
     if (t.subscription_status !== 'ACTIVE' && t.subscription_status !== 'TRIAL') return acc;
     return acc + (Number(t.price) || 0) / CYCLE_MONTHS[t.billing_cycle];
   }, 0);
+  const symbol = tenants[0]?.currency_code === 'USD' ? 'US$' : 'RD$';
 
   const cards = [
     { label: 'Empresas totales', value: String(tenants.length), icon: Building2, tone: 'bg-indigo-600' },
     { label: 'Con suscripción activa', value: String(active.length), icon: CreditCard, tone: 'bg-emerald-600' },
     { label: 'En prueba (trial)', value: String(trial.length), icon: Globe2, tone: 'bg-amber-600' },
+    { label: 'Suspendidas', value: String(suspended.length), icon: Globe2, tone: 'bg-rose-600' },
     { label: 'Clientes en cartera', value: totalClients.toLocaleString('es-DO'), icon: Users, tone: 'bg-sky-600' },
+    { label: 'Créditos activos', value: totalCredits.toLocaleString('es-DO'), icon: CreditCard, tone: 'bg-violet-600' },
+    { label: 'Dispositivos MDM', value: totalDevices.toLocaleString('es-DO'), icon: Users, tone: 'bg-fuchsia-600' },
   ];
-
-  const symbol = 'RD$';
-  const mrrLabel = `${symbol}${Math.round(mrr).toLocaleString('es-DO')}/mes`;
 
   return (
     <div className="space-y-6">
@@ -61,7 +95,7 @@ function OverviewSection({ tenants, onReload }: { tenants: PlatformTenantRow[]; 
         <div>
           <h2 className="text-lg font-bold text-white">Resumen de Plataforma</h2>
           <p className="text-xs text-slate-400">
-            Estado global del negocio SaaS multi-tenant
+            Estado global del negocio SaaS multi-tenant (métricas del servidor)
           </p>
         </div>
         <button
@@ -73,25 +107,64 @@ function OverviewSection({ tenants, onReload }: { tenants: PlatformTenantRow[]; 
         </button>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
         {cards.map((c) => (
-          <div key={c.label} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center space-x-3">
-            <div className={`w-10 h-10 rounded-xl ${c.tone} text-white flex items-center justify-center shrink-0`}>
-              <c.icon className="w-5 h-5" />
+          <div key={c.label} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
+            <div className={`w-9 h-9 rounded-xl ${c.tone} text-white flex items-center justify-center shrink-0`}>
+              <c.icon className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-lg font-extrabold text-white truncate">{c.value}</div>
-              <div className="text-[10px] uppercase tracking-wider text-slate-400">{c.label}</div>
+              <div className="text-base font-extrabold text-white truncate">{c.value}</div>
+              <div className="text-[9px] uppercase tracking-wider text-slate-400">{c.label}</div>
             </div>
           </div>
         ))}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0">
-            <Crown className="w-5 h-5" />
+      </div>
+
+      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <div className="text-lg font-extrabold text-white truncate">{mrrLabel}</div>
-            <div className="text-[10px] uppercase tracking-wider text-slate-400">MRR estimado</div>
+            <div className="text-base font-extrabold text-white truncate">
+              {symbol}
+              {Math.round(mrr).toLocaleString('es-DO')}/mes
+            </div>
+            <div className="text-[9px] uppercase tracking-wider text-slate-400">MRR estimado</div>
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+            <CreditCard className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-base font-extrabold text-white truncate">
+              {symbol}
+              {Math.round(collectedMonth).toLocaleString('es-DO')}
+            </div>
+            <div className="text-[9px] uppercase tracking-wider text-slate-400">Cobrado este mes</div>
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0">
+            <CreditCard className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-base font-extrabold text-white truncate">
+              {symbol}
+              {Math.round(collectedTotal).toLocaleString('es-DO')}
+            </div>
+            <div className="text-[9px] uppercase tracking-wider text-slate-400">Cobrado acumulado</div>
+          </div>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
+            <Globe2 className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-base font-extrabold text-white truncate">{pastDue.length}</div>
+            <div className="text-[9px] uppercase tracking-wider text-slate-400">Morosas (PAST_DUE)</div>
           </div>
         </div>
       </div>
@@ -131,16 +204,18 @@ function OverviewSection({ tenants, onReload }: { tenants: PlatformTenantRow[]; 
                   </span>
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                      t.subscription_status === 'ACTIVE'
-                        ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
-                        : t.subscription_status === 'TRIAL'
-                          ? 'bg-indigo-950 text-indigo-300 border-indigo-800'
-                          : t.subscription_status === 'PAST_DUE'
-                            ? 'bg-amber-950 text-amber-400 border-amber-800'
-                            : 'bg-slate-800 text-slate-400 border-slate-700'
+                      t.tenant_status === 'SUSPENDED'
+                        ? 'bg-rose-950 text-rose-400 border-rose-800'
+                        : t.subscription_status === 'ACTIVE'
+                          ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                          : t.subscription_status === 'TRIAL'
+                            ? 'bg-indigo-950 text-indigo-300 border-indigo-800'
+                            : t.subscription_status === 'PAST_DUE'
+                              ? 'bg-amber-950 text-amber-400 border-amber-800'
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
                     }`}
                   >
-                    {t.subscription_status ?? 'SIN PLAN'}
+                    {t.tenant_status === 'SUSPENDED' ? 'SUSPENDED' : t.subscription_status ?? 'SIN PLAN'}
                   </span>
                 </div>
               </div>
@@ -152,7 +227,23 @@ function OverviewSection({ tenants, onReload }: { tenants: PlatformTenantRow[]; 
   );
 }
 
-function PlansSection({ plans, onReload }: { plans: PlanRow[]; onReload: () => void }) {
+function PlansSection({
+  plans,
+  onReload,
+  onNewPlan,
+  onEditPlan,
+  onTogglePlan,
+  onDuplicatePlan,
+  onDeletePlan,
+}: {
+  plans: PlanRow[];
+  onReload: () => void;
+  onNewPlan: () => void;
+  onEditPlan: (plan: PlanRow) => void;
+  onTogglePlan: (plan: PlanRow) => void;
+  onDuplicatePlan: (plan: PlanRow) => void;
+  onDeletePlan: (plan: PlanRow) => void;
+}) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -162,13 +253,22 @@ function PlansSection({ plans, onReload }: { plans: PlanRow[]; onReload: () => v
             Catálogo global de planes vendidos en la plataforma
           </p>
         </div>
-        <button
-          onClick={onReload}
-          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-semibold transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Actualizar</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onNewPlan}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 text-xs font-semibold transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Nuevo plan</span>
+          </button>
+          <button
+            onClick={onReload}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 text-xs font-semibold transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Actualizar</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -232,6 +332,40 @@ function PlansSection({ plans, onReload }: { plans: PlanRow[]; onReload: () => v
                 )}
               </div>
             )}
+            <div className="mt-4 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onEditPlan(p)}
+                className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 text-[11px] font-semibold transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>Editar</span>
+              </button>
+              <button
+                onClick={() => onTogglePlan(p)}
+                className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                  p.status === 'ACTIVE'
+                    ? 'bg-amber-950/50 text-amber-300 hover:bg-amber-900/50'
+                    : 'bg-emerald-950/50 text-emerald-300 hover:bg-emerald-900/50'
+                }`}
+              >
+                <Power className="w-3 h-3" />
+                <span>{p.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}</span>
+              </button>
+              <button
+                onClick={() => onDuplicatePlan(p)}
+                className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 text-[11px] font-semibold transition-colors"
+              >
+                <Copy className="w-3 h-3" />
+                <span>Duplicar</span>
+              </button>
+              <button
+                onClick={() => onDeletePlan(p)}
+                className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg bg-rose-950/50 text-rose-300 hover:bg-rose-900/50 text-[11px] font-semibold transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Eliminar</span>
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -253,14 +387,44 @@ export const PlatformPortalView: React.FC<PlatformPortalViewProps> = ({
   onReload,
   onReloadPlans,
   onEnter,
+  onEditTenant,
+  onNewTenant,
+  onNewPlan,
+  onEditPlan,
+  onTogglePlan,
+  onDuplicatePlan,
+  onDeletePlan,
+  onNotify,
 }) => {
   if (tab === 'OVERVIEW') {
     return <OverviewSection tenants={tenants} onReload={onReload} />;
   }
   if (tab === 'PLANS') {
-    return <PlansSection plans={plans} onReload={onReloadPlans} />;
+    return (
+      <PlansSection
+        plans={plans}
+        onReload={onReloadPlans}
+        onNewPlan={onNewPlan}
+        onEditPlan={onEditPlan}
+        onTogglePlan={onTogglePlan}
+        onDuplicatePlan={onDuplicatePlan}
+        onDeletePlan={onDeletePlan}
+      />
+    );
+  }
+  if (tab === 'USERS') {
+    return <UsersView tenants={tenants} onNotify={onNotify} />;
   }
   return (
-    <PlatformAdminView tenants={tenants} loading={loading} onReload={onReload} onEnter={onEnter} />
+    <PlatformAdminView
+      tenants={tenants}
+      loading={loading}
+      plans={plans}
+      onReload={onReload}
+      onEnter={onEnter}
+      onEditTenant={onEditTenant}
+      onNewTenant={onNewTenant}
+      onNotify={onNotify}
+    />
   );
 };
