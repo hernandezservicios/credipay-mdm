@@ -156,13 +156,13 @@ export async function updateClient(
   tenantId: number,
   id: number,
   patch: {
-    fullName?: string;
-    cedulaOrId?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-    notes?: string;
-    status?: string;
+    fullName?: string | null;
+    cedulaOrId?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    notes?: string | null;
+    status?: string | null;
   }
 ): Promise<void> {
   const fields: string[] = [];
@@ -171,13 +171,15 @@ export async function updateClient(
     fields.push(`${col} = ?`);
     params.push(value);
   };
-  if (patch.fullName !== undefined) assign('full_name', patch.fullName.trim());
-  if (patch.cedulaOrId !== undefined) assign('cedula_or_id', patch.cedulaOrId.trim() || null);
-  if (patch.phone !== undefined) assign('phone', patch.phone.trim() || null);
-  if (patch.email !== undefined) assign('email', patch.email.trim() || null);
-  if (patch.address !== undefined) assign('address', patch.address.trim() || null);
-  if (patch.notes !== undefined) assign('notes', patch.notes.trim() || null);
-  if (patch.status !== undefined) {
+  const trimField = (value: string | null | undefined): string | null =>
+    typeof value === 'string' ? value.trim() || null : null;
+  if (patch.fullName !== undefined) assign('full_name', patch.fullName?.trim() || '');
+  if (patch.cedulaOrId !== undefined) assign('cedula_or_id', trimField(patch.cedulaOrId));
+  if (patch.phone !== undefined) assign('phone', trimField(patch.phone));
+  if (patch.email !== undefined) assign('email', trimField(patch.email));
+  if (patch.address !== undefined) assign('address', trimField(patch.address));
+  if (patch.notes !== undefined) assign('notes', trimField(patch.notes));
+  if (patch.status !== undefined && patch.status !== null) {
     if (!['ACTIVE', 'INACTIVE', 'DELINQUENT'].includes(patch.status)) {
       throw ApiError.badRequest('invalid_status', 'Estado de cliente inválido');
     }

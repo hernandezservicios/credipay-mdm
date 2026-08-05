@@ -21,6 +21,12 @@ router.use(authRequired, csrfProtect);
 // ---------------------------------------------------------------------------
 
 router.get('/', requirePermission('tenants.view'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden(
+      'tenant_switch_forbidden',
+      'Solo el Super Administrador global puede ver el catálogo de empresas'
+    );
+  }
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT t.id, t.name, t.slug, t.domain, t.status, t.email, t.phone,
             t.currency_code, t.country_code, t.language_code, t.timezone,
@@ -41,6 +47,12 @@ router.get('/', requirePermission('tenants.view'), async (req: AuthRequest, res)
 });
 
 router.get('/:id', requirePermission('tenants.view'), async (req: AuthRequest, res) => {
+  if (req.auth!.userTenantId !== null) {
+    throw ApiError.forbidden(
+      'tenant_switch_forbidden',
+      'Solo el Super Administrador global puede consultar la información de empresas'
+    );
+  }
   const tenantId = Number(req.params.id);
   const [tenantRows] = await pool.query<RowDataPacket[]>(
     `SELECT t.id, t.name, t.slug, t.domain, t.status, t.email, t.phone,
