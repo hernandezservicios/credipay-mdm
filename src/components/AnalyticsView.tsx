@@ -55,7 +55,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
       <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 dark:text-indigo-200">
               KPIS MDM EN VIVO
             </span>
             <span className="text-xs text-slate-400">• Vista Stitch Estadísticas & Rendimiento</span>
@@ -152,13 +152,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
                 <span className="flex items-center text-emerald-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-50 dark:bg-emerald-500/100 mr-2"></span>
                   Al Día (Sin atraso)
                 </span>
                 <span className="text-slate-900 dark:text-slate-100">{alDiaCount} clientes ({alDiaPct}%)</span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${alDiaPct}%` }}></div>
+                <div className="bg-emerald-50 dark:bg-emerald-500/100 h-full rounded-full" style={{ width: `${alDiaPct}%` }}></div>
               </div>
             </div>
 
@@ -166,13 +166,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
                 <span className="flex items-center text-amber-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-50 dark:bg-amber-500/100 mr-2"></span>
                   Vencido (0 a 2 días - Período de gracia)
                 </span>
                 <span className="text-slate-900 dark:text-slate-100">{vencidoCount} clientes ({vencidoPct}%)</span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-amber-500 h-full rounded-full" style={{ width: `${vencidoPct}%` }}></div>
+                <div className="bg-amber-50 dark:bg-amber-500/100 h-full rounded-full" style={{ width: `${vencidoPct}%` }}></div>
               </div>
             </div>
 
@@ -180,7 +180,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
                 <span className="flex items-center text-rose-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 mr-2"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-50 dark:bg-rose-500/100 mr-2"></span>
                   Atrasado (+3 días, +RD$200 mora & Bloqueado MDM)
                 </span>
                 <span className="text-slate-900 dark:text-slate-100">{atrasadoCount} clientes ({atrasadoPct}%)</span>
@@ -194,7 +194,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
                 <span className="flex items-center text-indigo-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 mr-2"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-50 dark:bg-indigo-500/100 mr-2"></span>
                   Crédito Finalizado (Equipo Liberado)
                 </span>
                 <span className="text-slate-900 dark:text-slate-100">{pagadoCount} clientes ({pagadoPct}%)</span>

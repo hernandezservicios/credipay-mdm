@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   LayoutDashboard,
   Building2,
@@ -56,6 +56,15 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
       icon: Users,
     },
   ];
+
+  useEffect(() => {
+    if (!isOpenMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpenMobile]);
 
   return (
     <>

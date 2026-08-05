@@ -236,11 +236,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNotify }) => {
           </div>
           <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-emerald-500"></span>
+              <span className="w-3 h-3 rounded bg-emerald-50 dark:bg-emerald-500/100"></span>
               Recaudado
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-indigo-500"></span>
+              <span className="w-3 h-3 rounded bg-indigo-50 dark:bg-indigo-500/100"></span>
               Desembolsado
             </span>
           </div>
@@ -255,12 +255,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNotify }) => {
               <div key={s.month} className="flex-1 flex flex-col items-center gap-1 min-w-0">
                 <div className="flex items-end justify-center gap-1 w-full h-40">
                   <div
-                    className="w-3 md:w-4 rounded-t bg-emerald-500"
+                    className="w-3 md:w-4 rounded-t bg-emerald-50 dark:bg-emerald-500/100"
                     style={{ height: `${recPct}%` }}
                     title={`${monthShort(s.month)} — Recaudado: ${formatMoney(rec)}`}
                   ></div>
                   <div
-                    className="w-3 md:w-4 rounded-t bg-indigo-500"
+                    className="w-3 md:w-4 rounded-t bg-indigo-50 dark:bg-indigo-500/100"
                     style={{ height: `${desPct}%` }}
                     title={`${monthShort(s.month)} — Desembolsado: ${formatMoney(des)}`}
                   ></div>
@@ -318,7 +318,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNotify }) => {
                   </div>
                   <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-emerald-500"
+                      className="h-full rounded-full bg-emerald-50 dark:bg-emerald-500/100"
                       style={{ width: `${Math.max(2, pct)}%` }}
                     ></div>
                   </div>
@@ -386,7 +386,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNotify }) => {
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {summary.actas.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <tr key={a.id} className="hover:bg-slate-50 dark:bg-slate-500/10 dark:hover:bg-slate-800/50">
                     <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-300">
                       {new Date(a.created_at).toLocaleString('es-DO')}
                     </td>

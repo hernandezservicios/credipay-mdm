@@ -68,7 +68,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                   setIsOpen(false);
                   onUnlockDevice(clientId, 'Desbloqueo manual por operador');
                 }}
-                className="w-full text-left px-3 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center space-x-2 font-medium"
+                className="w-full text-left px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/10 flex items-center space-x-2 font-medium"
               >
                 <Unlock className="w-4 h-4 text-emerald-600" />
                 <span>Desbloquear Dispositivo (Unlock)</span>
@@ -79,7 +79,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                   setIsOpen(false);
                   onLockDevice(clientId, 'Bloqueo manual ordenado por operador');
                 }}
-                className="w-full text-left px-3 py-2 text-xs text-rose-700 hover:bg-rose-50 flex items-center space-x-2 font-medium"
+                className="w-full text-left px-3 py-2 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/20 dark:bg-rose-500/10 flex items-center space-x-2 font-medium"
               >
                 <Lock className="w-4 h-4 text-rose-600" />
                 <span>Bloquear Dispositivo (Lock MDM)</span>
@@ -92,7 +92,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                   setIsOpen(false);
                   onGenerateUnlockCode(clientId);
                 }}
-                className="w-full text-left px-3 py-2 text-xs text-indigo-700 hover:bg-indigo-50 flex items-center space-x-2 font-medium"
+                className="w-full text-left px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/10 flex items-center space-x-2 font-medium"
               >
                 <KeyRound className="w-4 h-4 text-indigo-600" />
                 <span>Generar Código Unlock Offline</span>
@@ -104,7 +104,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                 setIsOpen(false);
                 onCheckStatus(clientId);
               }}
-              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center space-x-2"
+              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-500/20 dark:bg-slate-500/10 flex items-center space-x-2"
             >
               <ShieldCheck className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               <span>Verificar Conexión / Sync API</span>
@@ -116,7 +116,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                   setIsOpen(false);
                   onRemoveDevice(clientId);
                 }}
-                className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center space-x-2"
+                className="w-full text-left px-3 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/20 dark:bg-rose-500/10 flex items-center space-x-2"
               >
                 <Trash2 className="w-4 h-4 text-rose-500" />
                 <span>Desvincular Dispositivo (Remove)</span>
@@ -134,7 +134,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                 setIsOpen(false);
                 onOpenInstallments();
               }}
-              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center space-x-2"
+              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-500/20 dark:bg-slate-500/10 flex items-center space-x-2"
             >
               <DollarSign className="w-4 h-4 text-amber-600" />
               <span>Ver Cuotas / Pagar & Aplicar Mora</span>
@@ -145,7 +145,7 @@ export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
                 setIsOpen(false);
                 onOpenAiCobranza();
               }}
-              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 flex items-center space-x-2"
+              className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-500/20 dark:bg-slate-500/10 flex items-center space-x-2"
             >
               <MessageSquare className="w-4 h-4 text-emerald-600" />
               <span>Mensaje Cobranza WhatsApp / Aviso</span>

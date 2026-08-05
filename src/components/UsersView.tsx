@@ -9,7 +9,6 @@ import {
   Trash2,
   ShieldCheck,
   Pencil,
-  X as XIcon,
 } from 'lucide-react';
 import {
   apiCreateUser,
@@ -23,6 +22,7 @@ import {
   type PlatformUserRow,
 } from '../services/api';
 import { useConfirm } from './ConfirmDialog';
+import { ModalShell } from './ui/ModalShell';
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800',
@@ -259,7 +259,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
           </button>
           <button
             onClick={openCreate}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-white text-xs font-bold transition-colors"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Crear usuario</span>
@@ -414,18 +414,20 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
       )}
 
       {form.open && (
-        <div className="fixed inset-0 z-[70] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 dark:border-slate-700">
-            <div className="bg-slate-900 px-5 py-3.5 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white tracking-tight flex items-center space-x-2">
-                <UsersIcon className="w-4 h-4 text-indigo-300" />
-                <span>{form.editing ? `Editar "${form.editing.name}"` : 'Crear usuario'}</span>
-              </h3>
-              <button onClick={closeForm} className="text-slate-400 hover:text-white transition-colors" aria-label="Cerrar">
-                <XIcon />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-5 space-y-4">
+        <ModalShell
+          isOpen
+          onClose={closeForm}
+          size="sm"
+          zIndex="z-[70]"
+          headerVariant="dark"
+          title={
+            <span className="flex items-center space-x-2">
+              <UsersIcon className="w-4 h-4 text-indigo-300" />
+              <span>{form.editing ? `Editar "${form.editing.name}"` : 'Crear usuario'}</span>
+            </span>
+          }
+        >
+          <form onSubmit={handleSave} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                   Nombre *
@@ -434,7 +436,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                   required
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="input-field bg-slate-100 dark:bg-slate-800"
                 />
               </div>
               <div>
@@ -446,7 +448,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="input-field bg-slate-100 dark:bg-slate-800"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -457,7 +459,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                   <input
                     value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="input-field bg-slate-100 dark:bg-slate-800"
                   />
                 </div>
                 <div>
@@ -467,7 +469,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                   <select
                     value={form.status}
                     onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="input-field bg-slate-100 dark:bg-slate-800"
                   >
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="PENDING">PENDING</option>
@@ -483,7 +485,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                   value={form.tenantId}
                   onChange={(e) => setForm((f) => ({ ...f, tenantId: e.target.value }))}
                   disabled={!!form.editing}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                  className="input-field bg-slate-100 dark:bg-slate-800 disabled:opacity-50"
                 >
                   <option value="">Plataforma (SUPER_ADMIN)</option>
                   {tenants.map((t) => (
@@ -501,7 +503,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                   value={form.roles}
                   onChange={(e) => setForm((f) => ({ ...f, roles: e.target.value }))}
                   placeholder="ADMIN,GESTOR"
-                  className="w-full px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="input-field bg-slate-100 dark:bg-slate-800"
                 />
               </div>
               {!form.editing && (
@@ -513,7 +515,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="input-field bg-slate-100 dark:bg-slate-800"
                   />
                 </div>
               )}
@@ -528,15 +530,14 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                 <button
                   type="submit"
                   disabled={busyId === -1}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-900/20 transition-colors disabled:opacity-60 flex items-center space-x-2"
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-white text-xs font-bold shadow-md shadow-indigo-900/20 transition-colors disabled:opacity-60 flex items-center space-x-2"
                 >
                   {busyId === -1 && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{form.editing ? 'Guardar' : 'Crear usuario'}</span>
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

@@ -256,7 +256,7 @@ function PlansSection({
         <div className="flex items-center space-x-2">
           <button
             onClick={onNewPlan}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 text-xs font-semibold transition-colors"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-xs font-semibold transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Nuevo plan</span>

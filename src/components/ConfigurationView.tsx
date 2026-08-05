@@ -29,6 +29,7 @@ import {
   type PlatformConfig,
   type LoanProductRow,
 } from '../services/api';
+import { ModalShell } from './ui/ModalShell';
 
 export interface ConfigurationViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -482,7 +483,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
                     {logRows.map((r, i) => (
-                      <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <tr key={i} className="hover:bg-slate-50 dark:bg-slate-500/10 dark:hover:bg-slate-800/40">
                         {logCols.map((c) => (
                           <td key={c} className="py-2.5 px-3 text-slate-700 dark:text-slate-200 align-top">
                             {fmtValue(r[c]).slice(0, 120)}
@@ -540,7 +541,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {products.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <tr key={p.id} className="hover:bg-slate-50 dark:bg-slate-500/10 dark:hover:bg-slate-800/40">
                     <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-slate-100">{p.name}</td>
                     <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{p.amortization_method}</td>
                     <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{p.annual_rate}%</td>
@@ -575,7 +576,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
                           type="button"
                           onClick={() => openEditModal(p)}
                           disabled={!canEdit}
-                          className="px-2 py-1 rounded-md text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded-md text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:bg-indigo-500/10 dark:hover:bg-indigo-50 dark:bg-indigo-500/100/10 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <Pencil className="w-3 h-3" />
                           Editar
@@ -584,7 +585,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
                           type="button"
                           onClick={() => handleDeleteProduct(p)}
                           disabled={!canEdit}
-                          className="px-2 py-1 rounded-md text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded-md text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:bg-rose-500/10 dark:hover:bg-rose-50 dark:bg-rose-500/100/10 inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <Trash2 className="w-3 h-3" />
                           Eliminar
@@ -650,21 +651,34 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
       {activeSection === 'products' && productsCard()}
 
       {productModal && (
-        <div className="fixed inset-0 bg-slate-950/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-lg border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                {editingId === null ? 'Nuevo producto' : 'Editar producto'}
-              </h2>
+        <ModalShell
+          isOpen
+          title={editingId === null ? 'Nuevo producto' : 'Editar producto'}
+          onClose={() => setProductModal(false)}
+          size="md"
+          footer={
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setProductModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProduct}
+                disabled={savingProducts}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingProducts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                {editingId === null ? 'Crear' : 'Guardar cambios'}
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block">
                   Nombre
@@ -787,27 +801,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
                 </label>
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                type="button"
-                onClick={() => setProductModal(false)}
-                className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5"
-              >
-                <X className="w-3.5 h-3.5" />
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveProduct}
-                disabled={savingProducts}
-                className="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {savingProducts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                {editingId === null ? 'Crear' : 'Guardar cambios'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

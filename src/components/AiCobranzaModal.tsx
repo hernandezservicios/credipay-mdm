@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ClientCredit } from '../types';
-import { X, MessageSquare, Copy, Check, Send, Sparkles, ShieldAlert, CheckCircle } from 'lucide-react';
+import { MessageSquare, Copy, Check, Send, Sparkles, ShieldAlert, CheckCircle } from 'lucide-react';
+import { ModalShell } from './ui/ModalShell';
 
 interface AiCobranzaModalProps {
   client: ClientCredit | null;
@@ -47,30 +48,27 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
-        {/* Cabecera */}
-        <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
-              <MessageSquare className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="font-bold text-lg">Asistente de Cobranza & Notificaciones WhatsApp</h2>
-              <p className="text-xs text-slate-300">
-                Cliente: {client.fullName} | {client.phone}
-              </p>
-            </div>
+    <ModalShell
+      isOpen
+      onClose={onClose}
+      size="lg"
+      headerVariant="dark"
+      ariaLabel="Asistente de Cobranza & Notificaciones WhatsApp"
+      title={
+        <span className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0">
+            <MessageSquare className="w-6 h-6" />
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
+          <span className="text-lg">Asistente de Cobranza & Notificaciones WhatsApp</span>
+        </span>
+      }
+      subtitle={
+        <span className="text-slate-300">
+          Cliente: {client.fullName} | {client.phone}
+        </span>
+      }
+    >
+      <div className="space-y-4">
           {/* Tonos / Tipos de Mensajes */}
           <div>
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-2">Seleccionar Tipo de Comunicación:</label>
@@ -123,7 +121,7 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
           </div>
 
           {/* Estado de riesgo */}
-          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-center justify-between">
+          <div className="p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-900 dark:text-amber-200 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
@@ -153,15 +151,14 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
               </button>
               <button
                 onClick={openWhatsApp}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-xs flex items-center space-x-1.5 transition-colors"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white font-semibold rounded-lg shadow-xs flex items-center space-x-1.5 transition-colors"
               >
                 <Send className="w-4 h-4" />
                 <span>Abrir Chat en WhatsApp</span>
               </button>
             </div>
           </div>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

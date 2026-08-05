@@ -43,6 +43,7 @@ import type {
   AgreementRow,
   LoanQuote,
 } from '../services/api';
+import { ModalShell } from './ui/ModalShell';
 
 export interface LoansViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -114,7 +115,7 @@ const INST_STYLE: Record<string, string> = {
 };
 
 const inputCls =
-  'px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm w-full';
+  'input-field';
 const labelCls = 'block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1';
 const btnPrimary =
   'px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed';
@@ -145,28 +146,6 @@ const badge = (cls: string, label: string) => (
   <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${cls}`}>
     {label}
   </span>
-);
-
-const Modal: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({
-  title,
-  onClose,
-  children,
-}) => (
-  <div className="fixed inset-0 bg-slate-950/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-xl border border-slate-200 dark:border-slate-700 my-10">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h3>
-        <button
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl leading-none"
-          aria-label="Cerrar"
-        >
-          ×
-        </button>
-      </div>
-      {children}
-    </div>
-  </div>
 );
 
 const QuoteSummary: React.FC<{ quote: LoanQuote }> = ({ quote }) => (
@@ -1032,7 +1011,7 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
       </div>
 
       {wizOpen && (
-        <Modal title="Nuevo Préstamo" onClose={() => setWizOpen(false)}>
+        <ModalShell isOpen title="Nuevo Préstamo" onClose={() => setWizOpen(false)} size="lg">
           <div className="space-y-4">
             <div>
               <label className={labelCls}>Cliente</label>
@@ -1062,7 +1041,7 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
                   {filteredClients.map((cl) => (
                     <button
                       key={cl.id}
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:bg-slate-500/10 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                       onClick={() => {
                         setWizClientId(cl.id);
                         setWizClientQuery('');
@@ -1186,11 +1165,12 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
               </div>
             )}
           </div>
-        </Modal>
+        </ModalShell>
       )}
 
       {fin && (
-        <Modal
+        <ModalShell
+          isOpen
           title={
             fin.kind === 'restructure'
               ? 'Reestructurar Préstamo'
@@ -1283,11 +1263,11 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
 
             {finQuote && <QuoteSummary quote={finQuote} />}
           </div>
-        </Modal>
+        </ModalShell>
       )}
 
       {cnd && (
-        <Modal title="Condonar Crédito" onClose={() => setCnd(null)}>
+        <ModalShell isOpen title="Condonar Crédito" onClose={() => setCnd(null)} size="lg">
           <div className="space-y-4">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Crédito <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{str(cnd.credit_number)}</span>
@@ -1325,11 +1305,11 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
               </button>
             </div>
           </div>
-        </Modal>
+        </ModalShell>
       )}
 
       {agr && (
-        <Modal title="Nuevo Acuerdo de Pago" onClose={() => setAgr(null)}>
+        <ModalShell isOpen title="Nuevo Acuerdo de Pago" onClose={() => setAgr(null)} size="lg">
           <div className="space-y-4">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {agr.client.full_name} · Crédito{' '}
@@ -1413,11 +1393,11 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
               </button>
             </div>
           </div>
-        </Modal>
+        </ModalShell>
       )}
 
       {instCnd && (
-        <Modal title="Condonar Cuota" onClose={() => setInstCnd(null)}>
+        <ModalShell isOpen title="Condonar Cuota" onClose={() => setInstCnd(null)} size="lg">
           <div className="space-y-4">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Cuota #{num(instCnd.installment_number)} · {money(instCnd.amount)}
@@ -1461,7 +1441,7 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
               </button>
             </div>
           </div>
-        </Modal>
+        </ModalShell>
       )}
     </div>
   );

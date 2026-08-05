@@ -86,7 +86,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
       {/* Encabezado */}
       <div className="bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-5 text-white flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <span className="w-11 h-11 rounded-xl bg-indigo-500/30 flex items-center justify-center">
+          <span className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-500/100/30 flex items-center justify-center">
             <BrainCircuit className="w-6 h-6 text-indigo-200" />
           </span>
           <div>
@@ -241,7 +241,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({
                       {r.status !== 'SENT' && permits.send && (
                         <button
                           onClick={() => onSend(r.id)}
-                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-semibold flex items-center space-x-1 transition-colors"
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white rounded-lg text-[11px] font-semibold flex items-center space-x-1 transition-colors"
                         >
                           <Send className="w-3 h-3" />
                           <span>Marcar Enviado</span>

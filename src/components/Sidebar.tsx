@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Users,
   Smartphone,
@@ -179,6 +179,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const visibleNavItems = navItems.filter((item) => !item.perm || (permissions ?? []).includes(item.perm));
 
+  useEffect(() => {
+    if (!isOpenMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpenMobile]);
+
   return (
     <>
       {/* Fondo Backdrop para móvil */}
@@ -250,7 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <Icon className="w-4 h-4" />
                     </div>
-                  {!isCollapsed && item.badge != null && (
+                  {!isCollapsed && (
                       <div className="text-left truncate">
                         <div className="leading-snug truncate">{item.label}</div>
                         <div className="text-[10px] text-slate-400 font-normal truncate">
@@ -260,7 +269,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     )}
                   </div>
 
-                  {!isCollapsed && (
+                  {!isCollapsed && item.badge != null && (
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ml-2 shrink-0 ${
                         isActive
@@ -291,7 +300,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onOpenNewCredit();
                   onCloseMobile();
                 }}
-                className={`w-full flex items-center px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm group ${
+                className={`w-full flex items-center px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white font-semibold text-xs transition-all shadow-sm group ${
                   isCollapsed ? 'justify-center' : 'space-x-3'
                 }`}
                 title="Añadir Nuevo Cliente & Crédito"

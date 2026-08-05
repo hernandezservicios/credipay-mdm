@@ -98,7 +98,7 @@ function Meter({ label, used, max, icon }: MeterProps) {
       </div>
       <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <div
-          className={`h-full rounded-full ${pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+          className={`h-full rounded-full ${pct >= 90 ? 'bg-rose-50 dark:bg-rose-500/100' : pct >= 70 ? 'bg-amber-50 dark:bg-amber-500/100' : 'bg-emerald-50 dark:bg-emerald-500/100'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -176,7 +176,7 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
         {plan && permits.renew && (
           <button
             onClick={handleRenew}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm"
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white text-xs font-semibold transition-colors shadow-sm"
           >
             <Repeat className="w-4 h-4" />
             <span>Renovar / Registrar Pago</span>

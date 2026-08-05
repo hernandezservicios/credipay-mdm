@@ -1109,7 +1109,7 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-800 dark:bg-slate-950 flex items-center justify-center">
+      <div className="min-h-dvh bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto mb-3" />
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-400">Cargando sesión...</p>
@@ -1125,7 +1125,7 @@ export default function App() {
   const isPortalMode = session.isGlobal && session.activeTenantId === null;
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-800 dark:bg-slate-950 text-slate-800 dark:text-slate-100 dark:text-slate-200 flex flex-col font-sans">
+    <div className="min-h-dvh bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex flex-col font-sans">
       {/* Toast de Notificación flotante */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 animate-bounce">
@@ -1375,7 +1375,7 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
                       {logs.map((log) => (
-                        <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={log.id} className="hover:bg-slate-50 dark:bg-slate-500/10/80 dark:hover:bg-slate-800/50 transition-colors">
                           <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {log.timestamp}
                           </td>

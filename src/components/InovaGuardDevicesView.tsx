@@ -16,7 +16,6 @@ import {
   Battery,
   Signal,
   Calendar,
-  X,
   ExternalLink,
   Handshake,
 } from 'lucide-react';
@@ -27,6 +26,7 @@ import {
   InovaGuardLicence,
   ClientCredit,
 } from '../types';
+import { ModalShell } from './ui/ModalShell';
 import {
   getInovaGuardDevices,
   getInovaGuardBalance,
@@ -323,7 +323,8 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
           {/* Tarjeta de Balance de Licencias InovaGuard */}
           {balance && (
-            <div className="bg-slate-900/80 border border-indigo-800/60 rounded-xl p-3 min-w-[320px]">
+            <div className="w-full overflow-x-auto">
+              <div className="bg-slate-900/80 border border-indigo-800/60 rounded-xl p-3 min-w-[320px]">
               <div className="grid grid-cols-3 gap-3 text-center sm:text-left">
                 <div className="px-2 border-r border-slate-800">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300 block">
@@ -363,6 +364,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                   ))}
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -391,7 +393,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
             <button
               onClick={handleOpenQr}
-              className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md transition-all duration-150"
+              className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-white font-semibold text-xs shadow-md transition-all duration-150"
             >
               <QrCode className="w-4 h-4" />
               <span>Enrolamiento Rápido QR</span>
@@ -523,7 +525,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2 min-w-0">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 shrink-0">
                           Código: {device.unlockCode || '—'}
                         </span>
                         <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate min-w-0">
@@ -614,7 +616,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                           {device.assignedClientName}
                         </span>
                       ) : (
-                        <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
                           Sin Asignar (En Stock)
                         </span>
                       )}
@@ -670,7 +672,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                   {!clientInfo && !device.assignedClientId && (
                     <button
                       onClick={() => onCreateLoanForDevice(device)}
-                      className="col-span-2 px-3 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-colors"
+                      className="col-span-2 px-3 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-colors"
                     >
                       <Handshake className="w-4 h-4" />
                       <span>Vincular a Préstamo (Stock → Nuevo Cliente)</span>
@@ -680,7 +682,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                   {isLocked ? (
                     <button
                       onClick={() => handleUnlockClick(device)}
-                      className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-colors"
+                      className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-colors"
                     >
                       <Unlock className="w-3.5 h-3.5" />
                       <span>Desbloquear</span>
@@ -688,7 +690,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
                   ) : (
                     <button
                       onClick={() => handleLockClick(device)}
-                      className="px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-colors"
+                      className="px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/20 dark:bg-rose-500/100 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition-colors"
                     >
                       <Lock className="w-3.5 h-3.5" />
                       <span>Bloquear MDM</span>
@@ -697,7 +699,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
                   <button
                     onClick={() => handleGenerateCodeClick(device)}
-                    className="px-3 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center justify-center space-x-1.5 border border-indigo-200 transition-colors"
+                    className="px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-semibold text-xs flex items-center justify-center space-x-1.5 border border-indigo-200 dark:border-indigo-800 transition-colors"
                   >
                     <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Código Offline</span>
@@ -705,7 +707,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
                   <button
                     onClick={() => handleRemoveClick(device)}
-                    className="col-span-2 px-3 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 text-xs font-medium flex items-center justify-center space-x-1.5 transition-colors"
+                    className="col-span-2 px-3 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/20 dark:bg-rose-500/10 text-xs font-medium flex items-center justify-center space-x-1.5 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                     <span>Desvincular del MDM</span>
@@ -719,21 +721,18 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
       {/* Modal QR de Enrolamiento */}
       {showQrModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-                <QrCode className="w-5 h-5 text-indigo-600" />
-                <span>Enrolamiento QR - InovaGuard MDM</span>
-              </h3>
-              <button
-                onClick={() => setShowQrModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
+        <ModalShell
+          isOpen
+          onClose={() => setShowQrModal(false)}
+          size="sm"
+          title={
+            <span className="flex items-center space-x-2">
+              <QrCode className="w-5 h-5 text-indigo-600" />
+              <span>Enrolamiento QR - InovaGuard MDM</span>
+            </span>
+          }
+        >
+          <div className="text-center space-y-4">
             <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 inline-block mx-auto">
               {qrData ? (
                 <img
@@ -754,7 +753,7 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
             </p>
 
             {qrData && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-left">
+              <div className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3 text-left">
                 <span className="text-[10px] font-bold text-indigo-700 uppercase block">
                   Token de Enrolamiento
                 </span>
@@ -766,33 +765,35 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
             <button
               onClick={() => setShowQrModal(false)}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold text-xs rounded-xl"
             >
               Cerrar QR
             </button>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Modal Código Offline generado */}
       {codeModal && codeModal.isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
+        <ModalShell
+          isOpen
+          onClose={() => setCodeModal(null)}
+          size="sm"
+          title="Código de Desbloqueo Offline"
+        >
+          <div className="text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
               <KeyRound className="w-6 h-6" />
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Código de Desbloqueo Offline
-              </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Para el dispositivo <strong>{codeModal.deviceName}</strong>{' '}
                 {codeModal.unlockCode ? `(InovaGuard ID: ${codeModal.unlockCode})` : ''}
               </p>
             </div>
 
-            <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 my-2">
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-300 rounded-xl p-4 my-2">
               <span className="text-[11px] font-bold text-amber-800 uppercase block mb-1">
                 PIN Temporal del Sistema MDM
               </span>
@@ -808,12 +809,12 @@ export const InovaGuardDevicesView: React.FC<InovaGuardDevicesViewProps> = ({
 
             <button
               onClick={() => setCodeModal(null)}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl"
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-white font-semibold text-xs rounded-xl"
             >
               Listo / Confirmar
             </button>
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

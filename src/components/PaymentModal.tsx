@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ClientCredit, Installment } from '../types';
 import {
-  X,
   Banknote,
   Wallet,
   ShieldCheck,
@@ -10,6 +9,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useConfirm } from './ConfirmDialog';
+import { ModalShell } from './ui/ModalShell';
 
 export type PaymentMethod = 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'DEPOSITO';
 
@@ -193,22 +193,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   // Vista de éxito con el vuelto destacado
   if (success) {
     return (
-      <div className="fixed inset-0 z-[55] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-emerald-200">
-          <div className="bg-emerald-600 px-6 py-4 text-white">
-            <h3 className="font-bold text-base flex items-center space-x-2">
-              <CheckCircle2 className="w-5 h-5" />
-              <span>Pago en Cascada Registrado</span>
-            </h3>
-          </div>
-          <div className="p-6 space-y-4 text-sm">
+      <ModalShell
+        isOpen
+        onClose={onClose}
+        size="sm"
+        zIndex="z-[55]"
+        headerVariant="dark"
+        headerClassName="bg-emerald-600! border-emerald-700!"
+        ariaLabel="Pago en Cascada Registrado"
+        title={
+          <span className="flex items-center space-x-2">
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="text-base">Pago en Cascada Registrado</span>
+          </span>
+        }
+      >
+        <div className="space-y-4 text-sm">
             <p className="text-slate-700 dark:text-slate-300">
               <strong>{success.clientName}</strong> — RD$
               {success.amountApplied.toLocaleString()} aplicados.
             </p>
 
             {fullyPaid.length > 0 && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3">
                 <span className="text-[10px] font-bold uppercase text-emerald-700 block mb-1">
                   Cuotas Completadas
                 </span>
@@ -219,7 +226,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             )}
 
             {abonos.length > 0 && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+              <div className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3">
                 <span className="text-[10px] font-bold uppercase text-indigo-700 block mb-1">
                   Abonos Parciales (siguientes cuotas)
                 </span>
@@ -235,7 +242,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             )}
 
             {success.change > 0 && (
-              <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 text-center">
+              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-300 rounded-xl p-4 text-center">
                 <span className="text-[10px] font-bold uppercase text-amber-700 block">
                   Vuelto a Devolver al Cliente
                 </span>
@@ -251,38 +258,32 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             >
               Cerrar
             </button>
-          </div>
         </div>
-      </div>
+    </ModalShell>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[55] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 dark:border-slate-700">
-        {/* Cabecera */}
-        <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
-              <HandCoins className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base">Registrar Pago en Cascada & Desbloquear</h3>
-              <p className="text-xs text-slate-400">
-                El excedente se distribuye automáticamente a las cuotas siguientes
-              </p>
-            </div>
+    <ModalShell
+      isOpen
+      onClose={onClose}
+      size="lg"
+      zIndex="z-[55]"
+      headerVariant="dark"
+      ariaLabel="Registrar Pago en Cascada & Desbloquear"
+      title={
+        <span className="flex items-center space-x-2.5">
+          <div className="p-2 bg-emerald-50 dark:bg-emerald-500/100/20 rounded-lg text-emerald-400">
+            <HandCoins className="w-5 h-5" />
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
-            aria-label="Cerrar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+          <span className="text-base">Registrar Pago en Cascada & Desbloquear</span>
+        </span>
+      }
+      subtitle={
+        <span>El excedente se distribuye automáticamente a las cuotas siguientes</span>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Cliente */}
           <div>
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -304,7 +305,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
 
           {target && pendingInstallments.length === 0 && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200">
               Este cliente no tiene cuotas pendientes. Financiamiento pagado.
             </div>
           )}
@@ -366,7 +367,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setMontoStr(String(nextAmount))}
-                    className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold border border-emerald-200 whitespace-nowrap"
+                    className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800 whitespace-nowrap"
                   >
                     Cuota completa (RD${nextAmount.toLocaleString()})
                   </button>
@@ -398,7 +399,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       </p>
                     )}
                   </div>
-                  <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex flex-col items-center justify-center">
+                  <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-300 rounded-xl p-2.5 flex flex-col items-center justify-center">
                     <span className="text-[10px] font-bold uppercase text-amber-700">
                       Vuelto a Devolver
                     </span>
@@ -450,7 +451,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 </div>
               )}
 
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 flex items-center space-x-2">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 flex items-center space-x-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
                 <span>
                   Al confirmar, las cuotas cubiertas pasan a <strong>PAGADO</strong>, los
@@ -463,7 +464,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-500/20 dark:bg-slate-500/10 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -478,7 +479,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </>
           )}
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ClientCredit, MobileDevice, Installment } from '../types';
-import { X, Smartphone, Plus, User, CreditCard, ShieldCheck, Link2, AlertCircle } from 'lucide-react';
+import { Smartphone, Plus, User, CreditCard, ShieldCheck, Link2, AlertCircle } from 'lucide-react';
 import { useConfirm } from './ConfirmDialog';
+import { ModalShell } from './ui/ModalShell';
 
 export interface LoanDevicePreselection {
   brand: string;
@@ -135,31 +136,23 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-        {/* Header */}
-        <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
-              <Plus className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="font-bold text-lg">Nuevo Crédito & Inscripción CrediPay MDM (RD$)</h2>
-              <p className="text-xs text-slate-300">
-                Registra un cliente, celular y plan de cuotas monitoreadas en Pesos Dominicanos
-              </p>
-            </div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      headerVariant="dark"
+      title={
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0">
+            <Plus className="w-6 h-6" />
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <span>Nuevo Crédito & Inscripción CrediPay MDM (RD$)</span>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-xs">
+      }
+      subtitle="Registra un cliente, celular y plan de cuotas monitoreadas en Pesos Dominicanos"
+    >
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-5 text-xs">
           {/* Datos del cliente */}
           <div>
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm mb-3 flex items-center space-x-1.5 border-b pb-2">
@@ -220,7 +213,7 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
             </h3>
 
             {isDeviceLinked && (
-              <div className="mb-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-900 flex items-start space-x-2">
+              <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 rounded-lg text-indigo-900 dark:text-indigo-200 flex items-start space-x-2">
                 <Link2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
                   Dispositivo vinculado desde{' '}
@@ -330,7 +323,7 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
           </div>
 
           {/* Nota */}
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 flex items-center space-x-2">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-900 dark:text-emerald-200 flex items-center space-x-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
             <span>
               Al crear el préstamo, el celular queda inscrito en el motor CrediPay MDM. Si una cuota pasa 3 días del vencimiento, se convertirá en <strong>ATRASADO</strong> (+RD$200 mora fija) y se enviará la orden de <strong>Bloqueo de pantalla</strong>.
@@ -348,13 +341,12 @@ export const NewCreditModal: React.FC<NewCreditModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-xs transition-colors"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white font-semibold rounded-lg shadow-xs transition-colors"
             >
               Registrar Cliente y Préstamo
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

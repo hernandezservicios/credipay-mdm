@@ -15,13 +15,13 @@ import {
   ShieldCheck,
   AlertCircle,
   Printer,
-  X,
   ExternalLink,
   FileSpreadsheet,
   Users,
 } from 'lucide-react';
 import { ClientCredit, Installment } from '../types';
 import { apiExportPaymentsCsv, apiGetPaymentStats, errorMessage, type PaymentStats } from '../services/api';
+import { ModalShell } from './ui/ModalShell';
 
 interface FinanceViewProps {
   clients: ClientCredit[];
@@ -522,7 +522,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:text-emerald-200">
               RD$ PESOS DOMINICANOS
             </span>
             <span className="text-xs text-slate-400">• Vista Stitch Caja & Finanzas</span>
@@ -577,7 +577,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Recaudado (Cuotas)</span>
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
@@ -593,7 +593,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Moras Cobradas (RD$200)</span>
-            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+            <div className="p-2.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">
               <CreditCard className="w-5 h-5" />
             </div>
           </div>
@@ -608,7 +608,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Cartera por Cobrar</span>
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
               <Calendar className="w-5 h-5" />
             </div>
           </div>
@@ -623,7 +623,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-slate-400">Efectividad Cobranza</span>
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
               <ShieldCheck className="w-5 h-5" />
             </div>
           </div>
@@ -641,7 +641,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
             <div className="flex items-center space-x-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:text-amber-200">
                 MORA & MOROSIDAD
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -650,7 +650,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             </div>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+            <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl border border-amber-200 dark:border-amber-800">
               <span className="text-[10px] font-bold uppercase text-amber-700 flex items-center">
                 <AlertCircle className="w-3.5 h-3.5 mr-1" /> Clientes morosos
               </span>
@@ -661,7 +661,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 Deuda atrasada: RD$ {stats.morosidad.deudaAtrasada.toLocaleString()}
               </p>
             </div>
-            <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-200 dark:border-indigo-800">
               <span className="text-[10px] font-bold uppercase text-indigo-700 flex items-center">
                 <Calendar className="w-3.5 h-3.5 mr-1" /> Mes actual
               </span>
@@ -672,7 +672,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 {stats.totalPagos} pagos registrados
               </p>
             </div>
-            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl border border-emerald-200 dark:border-emerald-800">
               <span className="text-[10px] font-bold uppercase text-emerald-700 flex items-center">
                 <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Efectividad
               </span>
@@ -745,7 +745,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowPdfReportModal(true)}
-              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs rounded-xl flex items-center space-x-1.5 transition-all cursor-pointer"
+              className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 font-semibold text-xs rounded-xl flex items-center space-x-1.5 transition-all cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5 text-indigo-600" />
               <span>Ver / Exportar Reporte PDF</span>
@@ -777,7 +777,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 </tr>
               ) : (
                 filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={payment.id} className="hover:bg-slate-50 dark:hover:bg-slate-500/20 dark:bg-slate-500/10/80 transition-colors">
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
                       {payment.id}
                     </td>
@@ -809,7 +809,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                       RD$ {payment.totalPaid.toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                         {payment.method}
                       </span>
                     </td>
@@ -835,59 +835,51 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 
       {/* Modal de Vista Previa y Exportación a PDF (Reporte de Cobranza) */}
       {showPdfReportModal && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            {/* Barra superior de acciones (no se imprime) */}
-            <div className="px-6 py-4 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center space-x-2.5">
-                <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm sm:text-base">Reporte de Cobranza & Flujo RD$ (Exportar PDF)</h3>
-                  <p className="text-xs text-slate-400">
-                    Incluye pagos realizados, fechas de vencimiento y estados actuales de los clientes
-                  </p>
-                </div>
+        <ModalShell
+          isOpen
+          onClose={() => setShowPdfReportModal(false)}
+          size="full"
+          headerVariant="dark"
+          title={
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-500/100/20 rounded-lg text-indigo-400">
+                <FileText className="w-5 h-5" />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrintModalContent}
-                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow-md transition-colors cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Imprimir / Guardar como PDF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownloadHtmlReport}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl flex items-center space-x-1.5 transition-colors cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Descargar Archivo</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenPdfWindow}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl flex items-center space-x-1 transition-colors cursor-pointer"
-                  title="Abrir en pestaña independiente para impresión directa"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Nueva Ventana</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPdfReportModal(false)}
-                  className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer ml-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+              <span>Reporte de Cobranza & Flujo RD$ (Exportar PDF)</span>
             </div>
+          }
+          subtitle="Incluye pagos realizados, fechas de vencimiento y estados actuales de los clientes"
+        >
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={handlePrintModalContent}
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow-md transition-colors cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Imprimir / Guardar como PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadHtmlReport}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-200 font-semibold text-xs rounded-lg flex items-center space-x-1.5 transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Descargar Archivo</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenPdfWindow}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-300 font-semibold text-xs rounded-lg flex items-center space-x-1 transition-colors cursor-pointer"
+              title="Abrir en pestaña independiente para impresión directa"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Nueva Ventana</span>
+            </button>
+          </div>
 
-            {/* Contenido Imprimible del Reporte */}
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-100 dark:bg-slate-800">
+          {/* Contenido Imprimible del Reporte */}
+          <div className="-mx-6 -mb-5 p-6 bg-slate-100 dark:bg-slate-800">
               <div
                 id="printable-report-area"
                 className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 max-w-4xl mx-auto text-slate-800 dark:text-slate-100"
@@ -895,7 +887,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                 {/* Cabecera Institucional del Reporte */}
                 <div className="border-b-2 border-emerald-600 pb-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2">
                   <div>
-                    <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 mb-1.5">
+                    <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:text-emerald-200 mb-1.5">
                       PESOS DOMINICANOS (RD$)
                     </span>
                     <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100">
@@ -991,7 +983,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                               : '🔒 BLOQUEADO';
 
                           return (
-                            <tr key={client.id} className="hover:bg-slate-50">
+                            <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-500/20 dark:bg-slate-500/10">
                               <td className="py-2.5 px-2.5 font-mono font-bold text-slate-700 dark:text-slate-300">
                                 {client.id}
                                 <div className="text-[10px] text-slate-400 font-normal">
@@ -1055,7 +1047,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {samplePayments.map((p) => (
-                          <tr key={p.id} className="hover:bg-slate-50">
+                          <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-500/20 dark:bg-slate-500/10">
                             <td className="py-2.5 px-2.5 font-mono font-bold text-slate-700 dark:text-slate-300">
                               {p.id}
                             </td>
@@ -1110,7 +1102,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
 
             {/* Estilos para impresión */}
             <style>{`
@@ -1134,7 +1125,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
               }
             `}</style>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Modal de Cobro Rápido (ahora usa PaymentModal en cascada desde App) */}

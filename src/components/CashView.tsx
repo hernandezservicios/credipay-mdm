@@ -3,7 +3,6 @@ import {
   Wallet,
   Banknote,
   PlusCircle,
-  X,
   RefreshCw,
   Loader2,
   ArrowDownLeft,
@@ -19,6 +18,7 @@ import {
   errorMessage,
 } from '../services/api';
 import type { CashCurrent, CashRegisterRow, CashMovementRow } from '../services/api';
+import { ModalShell } from './ui/ModalShell';
 
 export interface CashViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -56,7 +56,7 @@ const labelForMethod = (method: string | null | undefined) =>
   method ? METHOD_LABEL[method] ?? method : '—';
 
 const inputCls =
-  'px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm w-full';
+  'input-field';
 const btnPrimary =
   'px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white';
 const btnSecondary =
@@ -188,30 +188,25 @@ export const CashView: React.FC<CashViewProps> = ({ onNotify }) => {
   const totals = cash?.totals;
 
   const modalInner = (title: string, children: React.ReactNode, onOk: () => void, okLabel: string) => (
-    <div className="fixed inset-0 bg-slate-950/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md border border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h3>
-          <button
-            onClick={() => setModal(null)}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Cerrar"
-          >
-            <X size={16} />
-          </button>
-        </div>
-        {children}
-        {error && <p className="text-xs text-rose-500 mt-3">{error}</p>}
-        <div className="flex justify-end gap-2 mt-5">
+    <ModalShell
+      isOpen
+      title={title}
+      onClose={() => setModal(null)}
+      size="md"
+      footer={
+        <>
           <button onClick={() => setModal(null)} disabled={busy} className={btnSecondary}>
             Cancelar
           </button>
           <button onClick={onOk} disabled={busy} className={btnPrimary}>
             {busy ? <Loader2 size={14} className="inline animate-spin" /> : okLabel}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {children}
+      {error && <p className="text-xs text-rose-500 mt-3">{error}</p>}
+    </ModalShell>
   );
 
   return (

@@ -13,6 +13,7 @@
     "migrate": "npm --prefix server run migrate",
     "test:server": "npm --prefix server test",
     "test:e2e": "playwright test",
+    "test:audit": "playwright test --config playwright.audit.config.ts",
     "typecheck": "tsc --noEmit && npm --prefix server run typecheck",
     "lint": "npm run typecheck"
   },

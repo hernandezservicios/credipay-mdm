@@ -242,7 +242,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNotify }) => {
                     type="button"
                     onClick={handleCsv}
                     disabled={loadingCsv}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:text-slate-300 disabled:opacity-50"
                   >
                     {loadingCsv ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -254,7 +254,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNotify }) => {
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:text-slate-300"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     IMPRIMIR
@@ -306,7 +306,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNotify }) => {
                       setStatus('');
                       if (activeReport) fetchReport(activeReport, {});
                     }}
-                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:text-slate-300 flex items-center gap-1.5"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     Limpiar

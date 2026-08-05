@@ -99,7 +99,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center p-4 font-sans">
+    <div className="min-h-dvh bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center p-4 font-sans">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center justify-center space-x-3 mb-6">
@@ -117,7 +117,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           {step === 'LOGIN' ? (
             <form onSubmit={handleLogin} className="p-7 space-y-4">              <div className="text-center">
-                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mb-3">
+                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-700 dark:text-emerald-300 flex items-center justify-center mb-3">
                   <LogIn className="w-6 h-6" />
                 </div>
                 <h2 className="font-bold text-slate-900 dark:text-slate-100 text-lg">Iniciar Sesión</h2>
@@ -127,7 +127,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
               </div>
 
               {error && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-start space-x-2">
+                <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs font-medium flex items-start space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
@@ -182,7 +182,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
                 <span>{loading ? 'Autenticando...' : 'Entrar a la Consola'}</span>
@@ -191,7 +191,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
           ) : step === '2FA' ? (
             <form onSubmit={handleTotp} className="p-7 space-y-4">
               <div className="text-center">
-                <div className="w-12 h-12 mx-auto rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center mb-3">
+                <div className="w-12 h-12 mx-auto rounded-full bg-indigo-100 text-indigo-700 dark:text-indigo-300 flex items-center justify-center mb-3">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <h2 className="font-bold text-slate-900 dark:text-slate-100 text-lg">Verificación en Dos Pasos</h2>
@@ -202,7 +202,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
               </div>
 
               {error && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-start space-x-2">
+                <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs font-medium flex items-start space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
@@ -226,7 +226,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 <span>{loading ? 'Verificando...' : 'Verificar y Entrar'}</span>
@@ -245,7 +245,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
           ) : (
             <form onSubmit={handleChangePassword} className="p-7 space-y-4">
               <div className="text-center">
-                <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+                <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 text-amber-700 dark:text-amber-300 flex items-center justify-center mb-3">
                   <KeyRound className="w-6 h-6" />
                 </div>
                 <h2 className="font-bold text-slate-900 dark:text-slate-100 text-lg">Cambio de Contraseña Obligatorio</h2>
@@ -256,7 +256,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
               </div>
 
               {error && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-start space-x-2">
+                <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 text-xs font-medium flex items-start space-x-2">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
@@ -313,7 +313,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 <span>{loading ? 'Guardando...' : 'Actualizar y Continuar'}</span>

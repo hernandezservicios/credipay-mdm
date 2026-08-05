@@ -68,6 +68,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={onToggleMobileSidebar}
                 className="lg:hidden p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
                 title="Abrir menú de vistas (Sidebar)"
+                aria-label="Abrir menú de vistas"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -172,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">API MDM</span>
-              <span className={`w-2 h-2 rounded-full ${mdmConfigEnabled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              <span className={`w-2 h-2 rounded-full ${mdmConfigEnabled ? 'bg-emerald-50 dark:bg-emerald-500/100' : 'bg-amber-50 dark:bg-amber-500/100'}`} />
             </button>
             )}
 
@@ -203,7 +204,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {!isPortal && (
             <button
               onClick={onOpenNewCredit}
-              className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3.5 py-2 rounded-lg text-xs shadow-sm transition-colors"
+              className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white font-medium px-3.5 py-2 rounded-lg text-xs shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Nuevo Préstamo</span>

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  X,
   ShieldCheck,
   KeyRound,
   Trash2,
@@ -20,6 +19,7 @@ import {
   type ApiKeyRow,
 } from '../services/api';
 import { useConfirm } from './ConfirmDialog';
+import { ModalShell } from './ui/ModalShell';
 
 interface SecurityModalProps {
   onClose: () => void;
@@ -135,24 +135,23 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
-        <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="font-bold text-base">Seguridad & API</h2>
-              <p className="text-xs text-slate-400">2FA (TOTP) y llaves para integraciones externas</p>
-            </div>
+    <ModalShell
+      isOpen
+      onClose={onClose}
+      size="lg"
+      headerVariant="dark"
+      title={
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-6 h-6" />
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
+          <span>Seguridad & API</span>
         </div>
-
-        <div className="flex space-x-1 px-5 pt-4">
+      }
+      subtitle="2FA (TOTP) y llaves para integraciones externas"
+    >
+      <div className="text-xs">
+        <div className="flex space-x-1 pb-4">
           {tabs.map((t) => (
             <button
               key={t.id}
@@ -167,9 +166,9 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
           ))}
         </div>
 
-        <div className="p-5">
+        <div>
           {tfaError && (
-            <div className="mb-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 font-medium flex items-start space-x-2">
+            <div className="mb-3 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-200 font-medium flex items-start space-x-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{tfaError}</span>
             </div>
@@ -181,7 +180,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                 <div className="text-center text-slate-400 py-6">Cargando…</div>
               ) : tfaEnabled ? (
                 <div>
-                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-semibold flex items-center space-x-2">
+                  <div className="p-3.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-200 font-semibold flex items-center space-x-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
                     <span>2FA ACTIVO · tu cuenta exige un código TOTP en cada inicio de sesión.</span>
                   </div>
@@ -191,11 +190,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                       onChange={(e) => setTfaCode(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="Código TOTP actual"
                       maxLength={6}
+                      inputMode="numeric"
                       className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg font-mono text-center tracking-widest focus:ring-2 focus:ring-rose-500 focus:outline-none"
                     />
                     <button
                       onClick={handleDisable}
-                      className="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold"
+                      className="px-3 py-2 bg-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/20 dark:bg-rose-500/100 text-white rounded-lg font-semibold"
                     >
                       Desactivar
                     </button>
@@ -213,13 +213,13 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                   {!tfaSecret ? (
                     <button
                       onClick={handleSetup}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-white rounded-lg font-semibold"
                     >
                       Configurar 2FA
                     </button>
                   ) : (
                     <div className="space-y-3">
-                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
+                      <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-200">
                         <b>Escanea este secreto en tu app</b> (otpauth://):
                         <div className="mt-1 font-mono text-[10px] break-all bg-white border border-amber-200 rounded-lg p-2">
                           {tfaUrl}
@@ -229,7 +229,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                         </div>
                       </div>
                       {tfaRecovery ? (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 rounded-xl">
                           <p className="font-semibold text-emerald-800 mb-1">Códigos de recuperación (guárdalos):</p>
                           <div className="grid grid-cols-5 gap-1.5">
                             {tfaRecovery.map((c) => (
@@ -246,11 +246,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                             onChange={(e) => setTfaCode(e.target.value.replace(/[^0-9]/g, ''))}
                             placeholder="Código TOTP de confirmación"
                             maxLength={6}
+                            inputMode="numeric"
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg font-mono text-center tracking-widest focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                           />
                           <button
                             onClick={handleEnable}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-white rounded-lg font-semibold"
                           >
                             Activar 2FA
                           </button>
@@ -299,13 +300,13 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
               </form>
 
               {newKey && (
-                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 rounded-xl">
                   <p className="font-semibold text-emerald-800 mb-1">¡Llave creada! Cópiala ahora (no se volverá a mostrar):</p>
                   <div className="flex items-center space-x-2">
                     <code className="flex-1 bg-white border border-emerald-200 rounded-md p-2 font-mono text-[11px] break-all">
                       {newKey}
                     </code>
-                    <button onClick={copyKey} className="p-2 bg-white border border-emerald-200 rounded-md text-emerald-700 hover:bg-emerald-100">
+                    <button onClick={copyKey} className="p-2 bg-white border border-emerald-200 dark:border-emerald-800 rounded-md text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/30 dark:bg-emerald-500/15">
                       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
@@ -321,7 +322,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                       <div>
                         <div className="font-semibold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
                           <span>{k.key_name}</span>
-                          <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-bold">
+                          <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded text-[10px] font-bold">
                             {k.key_prefix}
                           </span>
                         </div>
@@ -332,7 +333,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                       </div>
                       <button
                         onClick={() => void handleRevoke(k.id, k.key_name)}
-                        className="px-2 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg flex items-center space-x-1 font-semibold"
+                        className="px-2 py-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/20 dark:bg-rose-500/10 rounded-lg flex items-center space-x-1 font-semibold"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Revocar</span>
@@ -345,6 +346,6 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
           )}
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

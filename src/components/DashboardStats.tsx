@@ -18,7 +18,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
       {/* Barra superior del motor y resumen de reglas de negocio */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-white">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
+          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-500/100/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
             <Cpu className="w-5 h-5" />
           </div>
           <div>
@@ -35,7 +35,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
 
         <button
           onClick={onRunEngine}
-          className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors shadow-sm self-stretch md:self-auto justify-center"
+          className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors shadow-sm self-stretch md:self-auto justify-center"
         >
           <Cpu className="w-4 h-4" />
           <span>Ejecutar Motor de Mora Ahora</span>
@@ -73,7 +73,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
             <span className="text-xs font-semibold uppercase tracking-wider text-rose-600">
               Dispositivos Bloqueados
             </span>
-            <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+            <div className="p-2 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-lg">
               <Lock className="w-4 h-4" />
             </div>
           </div>
@@ -97,7 +97,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
             <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
               Cuotas Atrasadas
             </span>
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+            <div className="p-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
@@ -117,7 +117,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
             <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
               Total Recaudado
             </span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+            <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
