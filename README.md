@@ -233,3 +233,5 @@ e2e/                  Suite Playwright (visual.spec.ts)
 - Fase 6 (motor de cobranza automática + IA de mensajería con scoring de riesgo): completada el 03/08/2026 — E2E 17/17
 - Fase 7 (producción: 2FA TOTP con códigos de recuperación, API keys para integraciones, OpenAPI/Swagger y tema oscuro): completada el 03/08/2026 — E2E 21/21
 - Fase 8 (plataforma de automatización: scheduler real + cola de jobs, rate limit por API key, webhooks con HMAC y reintentos, backups automáticos con mysqldump, email SMTP transaccional y canales de notificación): completada el 04/08/2026 — unit 39/39
+- Fase 9 (modo portal Super Admin: PlatformPortalView, PlatformSidebar, TenantSwitcher mejorado): completada
+- Fase 10 (auditoría UI/UX: sistema de diseño Tailwind v4, dark mode refinements, accesibilidad, test cross-browser viewport x tema x navegador): en progreso
