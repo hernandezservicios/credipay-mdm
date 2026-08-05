@@ -172,10 +172,13 @@ export async function listBackups(tenantId: number | null): Promise<RowDataPacke
   return rows;
 }
 
-export async function getBackupFile(backupId: number): Promise<{ filename: string; absPath: string }> {
+export async function getBackupFile(
+  backupId: number,
+  tenantId: number | null = null
+): Promise<{ filename: string; absPath: string }> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    'SELECT filename, status FROM backups WHERE id = ?',
-    [backupId]
+    `SELECT filename, status, tenant_id FROM backups WHERE id = ? AND (? IS NULL OR tenant_id = ?)`,
+    [backupId, tenantId, tenantId]
   );
   const row = rows[0] as { filename: string; status: string } | undefined;
   if (!row) throw ApiError.notFound('Respaldo no encontrado');

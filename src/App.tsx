@@ -4,8 +4,6 @@ import {
   Unlock,
   KeyRound,
   Trash2,
-  AlertTriangle,
-  CalendarClock,
   Cpu,
   Loader2,
 } from 'lucide-react';
@@ -38,6 +36,11 @@ import { LoginScreen } from './components/LoginScreen';
 import { SaaSAvView } from './components/SaaSAvView';
 import { CollectionsView } from './components/CollectionsView';
 import { SecurityModal } from './components/SecurityModal';
+import { DashboardView } from './components/DashboardView';
+import { CashView } from './components/CashView';
+import { ReportsView } from './components/ReportsView';
+import { ConfigurationView } from './components/ConfigurationView';
+import { LoansView } from './components/LoansView';
 import { PlatformSidebar, PortalTab } from './components/PlatformSidebar';
 import { PlatformPortalView } from './components/PlatformPortalView';
 import { TenantFormModal } from './components/TenantFormModal';
@@ -73,6 +76,7 @@ import {
   apiCollectionReminders,
   apiCollectionSendReminder,
   apiCollectionRuns,
+  apiRunOverdue,
   apiGetTenantDetail,
   apiTogglePlan,
   apiDuplicatePlan,
@@ -251,7 +255,7 @@ export default function App() {
   const [logs, setLogs] = useState<MdmApiLog[]>([]);
 
   // Estados de interfaz y modales
-  const [activeTab, setActiveTab] = useState<MainViewTab>('CLIENTS');
+  const [activeTab, setActiveTab] = useState<MainViewTab>('DASHBOARD');
   const [portalTab, setPortalTab] = useState<PortalTab>('OVERVIEW');
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [dark, setDark] = useState(() => {
@@ -969,180 +973,29 @@ export default function App() {
     }
   };
 
-  // SIMULAR QUE UNA CUOTA SE ATRASA 3 DÍAS (persistido vía API)
-  const handleSimulateOverdue = async (clientId: string, installmentId: string) => {
-    const cli = clients.find((c) => c.id === clientId);
-    if (!cli) return;
-    const ok = await confirmDialog({
-      icon: <AlertTriangle className="w-5 h-5" />,
-      tone: 'amber',
-      title: 'Simular Cuota Atrasada (+3 días)',
-      message: `¿Marcar la cuota de ${cli.fullName} como ATRASADA (+RD$200 de mora) y enviar el bloqueo MDM automático?\n\nEsto modifica el estado real de la cartera para pruebas.`,
-      confirmLabel: 'Sí, Simular Atraso',
-    });
-    if (!ok) return;
-
-    try {
-      await apiPatchInstallment(Number(installmentId), {
-        status: 'ATRASADO',
-        penaltyAmount: 200,
-      });
-      let locked = false;
-      if (
-        mdmConfig.autoLockOnOverdue &&
-        cli.device.mdmStatus !== 'LOCKED' &&
-        cli.device.inovaguardId
-      ) {
-        try {
-          const res = await lockInovaGuardDevice(mdmConfig, cli.device.inovaguardId);
-          locked = !res.err;
-        } catch {
-          locked = false;
-        }
-      }
-      await reloadAll();
-      showNotification(
-        `⚠️ CUOTA ATRASADA EN SIMULACIÓN: Mora fija de RD$200 aplicada a ${cli.fullName}${
-          locked ? ' y BLOQUEO MDM automático enviado.' : '.'
-        }`,
-        'LOCK'
-      );
-    } catch (err) {
-      showNotification(`❌ Error al simular el atraso: ${errorMessage(err)}`, 'LOCK');
-    }
-  };
-
-  // MOTOR AUTOMÁTICO: evaluar toda la cartera (PENDIENTE->VENCIDO->ATRASADO + lock)
+  // MOTOR DE MORA SERVER-SIDE: evalúa toda la cartera con la configuración del tenant
   const runAutoEngineNow = async () => {
     const ok = await confirmDialog({
       icon: <Cpu className="w-5 h-5" />,
       tone: 'rose',
-      title: 'Ejecutar Motor Automático',
+      title: 'Ejecutar Motor de Mora',
       message:
-        '¿EJECUTAR el Motor Automático sobre toda la cartera?\n\nSe evaluarán todas las cuotas: las vencidas por más de 3 días pasarán a ATRASADO con RD$200 de mora y bloqueo MDM automático.',
+        '¿EJECUTAR el Motor de Mora sobre toda la cartera?\n\nSe evaluarán todas las cuotas según la configuración del tenant (tipo de mora, porcentaje o monto, días de gracia) y se aplicarán bloqueos MDM automáticos cuando aplique.',
       confirmLabel: 'Sí, Ejecutar Motor',
     });
     if (!ok) return;
 
-    const DAY = 24 * 3600 * 1000;
-    const patches: { id: number; status: string; penaltyAmount?: number }[] = [];
-    const locks: { inovaguardId: string }[] = [];
-
-    for (const cli of clients) {
-      let needsLock = false;
-      for (const inst of cli.installments) {
-        const due = new Date(`${inst.dueDate}T00:00:00`).getTime();
-        const diffDays = Math.floor((Date.now() - due) / DAY);
-
-        if (inst.status !== 'PAGADO' && inst.status !== 'ATRASADO' && diffDays >= 3) {
-          patches.push({ id: Number(inst.id), status: 'ATRASADO', penaltyAmount: 200 });
-          needsLock = true;
-        } else if (inst.status === 'PENDIENTE' && diffDays >= 0 && diffDays < 3) {
-          patches.push({ id: Number(inst.id), status: 'VENCIDO' });
-        }
-      }
-      if (
-        needsLock &&
-        cli.device.mdmStatus !== 'LOCKED' &&
-        mdmConfig.autoLockOnOverdue &&
-        cli.device.inovaguardId
-      ) {
-        locks.push({ inovaguardId: cli.device.inovaguardId });
-      }
-    }
-
     try {
-      await Promise.all(
-        patches.map((p) =>
-          apiPatchInstallment(p.id, { status: p.status, penaltyAmount: p.penaltyAmount })
-        )
-      );
-      let lockedCount = 0;
-      for (const l of locks) {
-        try {
-          const res = await lockInovaGuardDevice(mdmConfig, l.inovaguardId);
-          if (!res.err) lockedCount++;
-        } catch {
-          // falla individual no detiene el motor
-        }
-      }
-      await reloadAll();
-      if (lockedCount > 0 || patches.length > 0) {
-        showNotification(
-          `⚙️ MOTOR MDM EJECUTADO: ${patches.length} cuota(s) actualizada(s), ${lockedCount} dispositivo(s) bloqueado(s) automáticamente.`,
-          lockedCount > 0 ? 'LOCK' : 'INFO'
-        );
-      } else {
-        showNotification(
-          `⚙️ MOTOR MDM EVALUADO: Todos los créditos verificados. No hubo nuevos atrasos mayores a 3 días.`,
-          'INFO'
-        );
-      }
-    } catch (err) {
-      showNotification(`❌ Error del motor automático: ${errorMessage(err)}`, 'LOCK');
-    }
-  };
-
-  // SIMULADOR: ADELANTAR FECHAS DE VENCIMIENTO 3 DÍAS
-  const handleSimulateDayPass = async () => {
-    const ok = await confirmDialog({
-      icon: <CalendarClock className="w-5 h-5" />,
-      tone: 'amber',
-      title: 'Simular Avance de Tiempo (+3 días)',
-      message:
-        '¿Adelantar el tiempo 3 días en toda la cartera?\n\nLas cuotas pendientes pasarán a VENCIDO, las vencidas a ATRASADO (+RD$200 de mora) y se ordenará el bloqueo MDM automático.',
-      confirmLabel: 'Sí, Avanzar 3 Días',
-    });
-    if (!ok) return;
-
-    const patches: { id: number; status: string; penaltyAmount?: number }[] = [];
-    const locks: { inovaguardId: string }[] = [];
-
-    for (const cli of clients) {
-      let hasOverdue = false;
-      for (const inst of cli.installments) {
-        if (inst.status === 'PAGADO') continue;
-        if (inst.status === 'PENDIENTE') {
-          patches.push({ id: Number(inst.id), status: 'VENCIDO' });
-        } else if (inst.status === 'VENCIDO') {
-          patches.push({ id: Number(inst.id), status: 'ATRASADO', penaltyAmount: 200 });
-          hasOverdue = true;
-        } else if (inst.status === 'ATRASADO') {
-          hasOverdue = true;
-        }
-      }
-      if (
-        hasOverdue &&
-        cli.device.mdmStatus !== 'LOCKED' &&
-        mdmConfig.autoLockOnOverdue &&
-        cli.device.inovaguardId
-      ) {
-        locks.push({ inovaguardId: cli.device.inovaguardId });
-      }
-    }
-
-    try {
-      await Promise.all(
-        patches.map((p) =>
-          apiPatchInstallment(p.id, { status: p.status, penaltyAmount: p.penaltyAmount })
-        )
-      );
-      let lockedCount = 0;
-      for (const l of locks) {
-        try {
-          const res = await lockInovaGuardDevice(mdmConfig, l.inovaguardId);
-          if (!res.err) lockedCount++;
-        } catch {
-          // continúa con el resto
-        }
-      }
+      const res = await apiRunOverdue();
       await reloadAll();
       showNotification(
-        `📅 SIMULACIÓN DE AVANCE EN TIEMPO (+3 DÍAS): Cuotas actualizadas (${patches.length}) y ${lockedCount} bloqueo(s) MDM automático(s) aplicados.`,
-        lockedCount > 0 ? 'LOCK' : 'INFO'
+        `⚙️ MOTOR DE MORA EJECUTADO: ${res.data.penalized} cuota(s) penalizada(s), ${res.data.defaulted} préstamo(s) en mora.${
+          res.data.errors?.length ? ` ${res.data.errors.length} error(es).` : ''
+        }`,
+        res.data.penalized > 0 ? 'LOCK' : 'INFO'
       );
     } catch (err) {
-      showNotification(`❌ Error en la simulación: ${errorMessage(err)}`, 'LOCK');
+      showNotification(`❌ Error del motor de mora: ${errorMessage(err)}`, 'LOCK');
     }
   };
 
@@ -1382,7 +1235,7 @@ export default function App() {
             <>
               <DashboardStats
                 metrics={metrics}
-                onSimulateDayPass={guard('installments.edit', handleSimulateDayPass)}
+                onRunEngine={guard('installments.edit', runAutoEngineNow)}
                 onOpenInstallmentsFilter={(s) => setFilterStatus(s)}
               />
 
@@ -1414,6 +1267,46 @@ export default function App() {
                 />
               </div>
             </>
+          )}
+
+          {activeTab === 'DASHBOARD' && (
+            <DashboardView onNotify={(text, type) => showNotification(text, type)} />
+          )}
+
+          {activeTab === 'LOANS' && (
+            <LoansView
+              onNotify={(text, type) => showNotification(text, type)}
+              onGoToClient={(clientId) => {
+                const matched = clients.find((c) => c.id === String(clientId));
+                if (matched) {
+                  setSelectedClientForInstallments(matched);
+                  setActiveTab('CLIENTS');
+                }
+              }}
+              permits={{
+                create: has('loans.manage'),
+                approve: has('loans.approve'),
+                disburse: has('loans.disburse'),
+                refinance: has('loans.refinance'),
+                condone: has('loans.condone'),
+                agreements: has('loans.agreements'),
+              }}
+            />
+          )}
+
+          {activeTab === 'CASH' && (
+            <CashView onNotify={(text, type) => showNotification(text, type)} />
+          )}
+
+          {activeTab === 'REPORTS' && (
+            <ReportsView onNotify={(text, type) => showNotification(text, type)} />
+          )}
+
+          {activeTab === 'CONFIG' && (
+            <ConfigurationView
+              onNotify={(text, type) => showNotification(text, type)}
+              permits={{ edit: has('config.edit') }}
+            />
           )}
 
           {activeTab === 'DEVICES' && (
@@ -1584,7 +1477,6 @@ export default function App() {
             installmentId,
           })
         }
-        onSimulateOverdue={handleSimulateOverdue}
       />
 
       <MdmApiConfigModal

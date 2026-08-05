@@ -76,7 +76,13 @@ export async function listClients(
 export async function getClientFull(tenantId: number, id: number): Promise<RowDataPacket> {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT cl.id, cl.full_name, cl.cedula_or_id, cl.phone, cl.email, cl.address,
-            cl.avatar_url, cl.notes, cl.status, cl.created_at, cl.updated_at
+            cl.avatar_url, cl.notes, cl.status, cl.created_at, cl.updated_at,
+            cl.customer_type, cl.birth_date, cl.occupation, cl.employer,
+            cl.work_address, cl.monthly_income, cl.monthly_expenses,
+            cl.whatsapp, cl.phone2, cl.city, cl.province, cl.country, cl.postal_code,
+            cl.personal_refs, cl.commercial_refs, cl.documents, cl.photos,
+            cl.signature_url, cl.gps_location, cl.internal_score, cl.classification,
+            cl.payment_capacity
        FROM clients cl
       WHERE cl.id = ? AND cl.tenant_id = ? AND cl.deleted_at IS NULL`,
     [id, tenantId]
@@ -84,9 +90,24 @@ export async function getClientFull(tenantId: number, id: number): Promise<RowDa
   const client = rows[0];
   if (!client) throw ApiError.notFound('Cliente no encontrado');
 
+  for (const col of ['personal_refs', 'commercial_refs', 'documents', 'photos', 'gps_location']) {
+    if (client[col] && typeof client[col] === 'string') {
+      try {
+        client[col] = JSON.parse(client[col] as string);
+      } catch {
+        client[col] = null;
+      }
+    }
+  }
+
   const [credits] = await pool.query<RowDataPacket[]>(
     `SELECT c.id, c.credit_number, c.start_date, c.total_amount, c.monthly_amount,
-            c.installments_count, c.status, c.created_at
+            c.installments_count, c.status, c.created_at,
+            c.principal_amount, c.annual_rate, c.amortization_method,
+            c.interest_total, c.financing_fee, c.pending_principal,
+            c.approval_date, c.disbursement_date, c.first_due_date,
+            c.last_payment_at, c.days_late, c.last_overdue_at, c.notes,
+            c.refinanced_from, c.previous_balance
        FROM credits c
       WHERE c.client_id = ? AND c.tenant_id = ? AND c.deleted_at IS NULL
       ORDER BY c.id`,
@@ -152,6 +173,28 @@ export async function createClient(
   return { id: res.insertId };
 }
 
+export const CLIENT_EXTENDED_COLUMNS = [
+  'customer_type',
+  'birth_date',
+  'occupation',
+  'employer',
+  'work_address',
+  'monthly_income',
+  'monthly_expenses',
+  'whatsapp',
+  'phone2',
+  'city',
+  'province',
+  'country',
+  'postal_code',
+  'personal_refs',
+  'commercial_refs',
+  'documents',
+  'photos',
+  'signature_url',
+  'gps_location',
+] as const;
+
 export async function updateClient(
   tenantId: number,
   id: number,
@@ -163,7 +206,7 @@ export async function updateClient(
     address?: string | null;
     notes?: string | null;
     status?: string | null;
-  }
+  } & Record<string, unknown>
 ): Promise<void> {
   const fields: string[] = [];
   const params: unknown[] = [];
@@ -184,6 +227,20 @@ export async function updateClient(
       throw ApiError.badRequest('invalid_status', 'Estado de cliente inválido');
     }
     assign('status', patch.status);
+  }
+
+  for (const col of CLIENT_EXTENDED_COLUMNS) {
+    if (patch[col] === undefined) continue;
+    const value = patch[col];
+    if (value === null) {
+      assign(col, null);
+    } else if (typeof value === 'boolean') {
+      assign(col, value ? 1 : 0);
+    } else if (typeof value === 'object') {
+      assign(col, JSON.stringify(value));
+    } else {
+      assign(col, value);
+    }
   }
   if (fields.length === 0) throw ApiError.badRequest('empty_patch', 'Sin cambios');
 
@@ -222,7 +279,9 @@ export async function listCredits(
   }
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT c.id, c.client_id, cl.full_name AS client_name, c.credit_number, c.start_date,
-            c.total_amount, c.monthly_amount, c.installments_count, c.status, c.created_at,
+            c.total_amount, c.principal_amount, c.annual_rate, c.amortization_method,
+            c.interest_total, c.pending_principal, c.days_late, c.last_payment_at,
+            c.monthly_amount, c.installments_count, c.status, c.created_at,
             (SELECT COUNT(*) FROM credit_installments ci
               WHERE ci.credit_id = c.id AND ci.deleted_at IS NULL AND ci.status <> 'PAGADO') AS pending_count
        FROM credits c
@@ -237,7 +296,11 @@ export async function listCredits(
 export async function getCredit(tenantId: number, id: number): Promise<RowDataPacket> {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT c.id, c.client_id, cl.full_name AS client_name, c.credit_number, c.start_date,
-            c.total_amount, c.monthly_amount, c.installments_count, c.status, c.created_at
+            c.total_amount, c.principal_amount, c.annual_rate, c.amortization_method,
+            c.interest_total, c.pending_principal, c.financing_fee, c.days_late,
+            c.last_payment_at, c.approval_date, c.disbursement_date, c.first_due_date,
+            c.previous_balance, c.refinanced_from, c.notes, c.monthly_amount,
+            c.installments_count, c.status, c.created_at
        FROM credits c
        JOIN clients cl ON cl.id = c.client_id
       WHERE c.id = ? AND c.tenant_id = ? AND c.deleted_at IS NULL`,
@@ -247,8 +310,9 @@ export async function getCredit(tenantId: number, id: number): Promise<RowDataPa
   if (!credit) throw ApiError.notFound('Crédito no encontrado');
 
   const [installments] = await pool.query<RowDataPacket[]>(
-    `SELECT id, installment_number, amount, due_date, status, penalty_amount,
-            total_amount, paid_date, payment_reference, COALESCE(paid_amount, 0) AS paid_amount
+    `SELECT id, installment_number, amount, principal_part, interest_part, due_date,
+            status, penalty_amount, total_amount, paid_date, payment_reference,
+            COALESCE(paid_amount, 0) AS paid_amount
        FROM credit_installments
       WHERE credit_id = ? AND tenant_id = ? AND deleted_at IS NULL
       ORDER BY installment_number`,
@@ -348,7 +412,8 @@ export async function listInstallments(
   }
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT ci.id, ci.credit_id, c.credit_number, c.client_id, cl.full_name AS client_name,
-            ci.installment_number, ci.amount, ci.due_date, ci.status, ci.penalty_amount,
+            ci.installment_number, ci.amount, ci.principal_part, ci.interest_part,
+            ci.due_date, ci.status, ci.penalty_amount,
             ci.total_amount, ci.paid_date, ci.payment_reference,
             COALESCE(ci.paid_amount, 0) AS paid_amount
        FROM credit_installments ci

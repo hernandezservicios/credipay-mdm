@@ -19,6 +19,11 @@ import {
   BarChart3,
   CreditCard,
   BrainCircuit,
+  LayoutDashboard,
+  HandCoins,
+  Wallet,
+  FileText,
+  Settings2,
 } from 'lucide-react';
 import { MainViewTab } from './Navbar';
 
@@ -63,6 +68,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navItems = [
     {
+      id: 'DASHBOARD' as MainViewTab,
+      label: 'Dashboard',
+      description: 'Cartera, cobros y mora en vivo',
+      icon: LayoutDashboard,
+      badge: null as string | null,
+      badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+      perm: 'dashboard.view',
+    },
+    {
+      id: 'LOANS' as MainViewTab,
+      label: 'Préstamos',
+      description: 'Solicitudes, desembolsos y acuerdos',
+      icon: HandCoins,
+      badge: null,
+      badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
+      perm: 'loans.view',
+    },
+    {
+      id: 'CASH' as MainViewTab,
+      label: 'Caja & Flujo',
+      description: 'Apertura, cierre y movimientos',
+      icon: Wallet,
+      badge: 'RD$',
+      badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+      perm: 'cash.view',
+    },
+    {
       id: 'CLIENTS' as MainViewTab,
       label: 'Créditos & Cobranza',
       description: 'Cartera, cuotas y mora',
@@ -76,16 +108,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Parque Dispositivos',
       description: 'Consola InovaGuard MDM',
       icon: Smartphone,
-      badge: 'LIVE',
+      badge: null,
       badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
       perm: 'devices.view',
     },
     {
+      id: 'REPORTS' as MainViewTab,
+      label: 'Reportes',
+      description: '26 reportes operativos + CSV',
+      icon: FileText,
+      badge: '26',
+      badgeColor: 'bg-sky-500/20 text-sky-300 border border-sky-500/30',
+      perm: 'reports.view',
+    },
+    {
+      id: 'COLLECTIONS' as MainViewTab,
+      label: 'Cobranza Inteligente IA',
+      description: 'Motor automático y recordatorios',
+      icon: BrainCircuit,
+      badge: 'IA',
+      badgeColor: 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30',
+      perm: 'collection.view',
+    },
+    {
       id: 'FINANCE' as MainViewTab,
-      label: 'Caja & Flujo Cobros',
-      description: 'Conciliación RD$ & abonos',
+      label: 'Conciliación & Abonos',
+      description: 'Pagos en cascada y parciales',
       icon: DollarSign,
-      badge: 'RD$',
+      badge: null,
       badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
       perm: 'payments.view',
     },
@@ -94,9 +144,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Estadísticas & KPIs',
       description: 'Tasa recuperación & mora',
       icon: BarChart3,
-      badge: '91.4%',
+      badge: null,
       badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
       perm: 'reports.view',
+    },
+    {
+      id: 'CONFIG' as MainViewTab,
+      label: 'Configuración',
+      description: 'Empresa, préstamos, mora y pagos',
+      icon: Settings2,
+      badge: null,
+      badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+      perm: 'config.view',
     },
     {
       id: 'LOGS' as MainViewTab,
@@ -115,15 +174,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: 'SaaS',
       badgeColor: 'bg-violet-500/20 text-violet-300 border border-violet-500/30',
       perm: 'subscriptions.view',
-    },
-    {
-      id: 'COLLECTIONS' as MainViewTab,
-      label: 'Cobranza Inteligente IA',
-      description: 'Motor automático y recordatorios',
-      icon: BrainCircuit,
-      badge: 'IA',
-      badgeColor: 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30',
-      perm: 'collection.view',
     },
   ];
 
@@ -200,7 +250,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <Icon className="w-4 h-4" />
                     </div>
-                    {!isCollapsed && (
+                  {!isCollapsed && item.badge != null && (
                       <div className="text-left truncate">
                         <div className="leading-snug truncate">{item.label}</div>
                         <div className="text-[10px] text-slate-400 font-normal truncate">
@@ -269,7 +319,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               )}
 
-              {/* Evaluar Moras (3 Días) */}
+              {/* Evaluar Moras (Motor server-side) */}
               <button
                 onClick={() => {
                   onRunEngineNow();
@@ -278,10 +328,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={`w-full flex items-center px-3 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white text-xs transition-all ${
                   isCollapsed ? 'justify-center' : 'space-x-3'
                 }`}
-                title="Evaluar 3 días de atraso y aplicar mora/bloqueo"
+                title="Ejecutar motor de mora configurable (server-side)"
               >
                 <Cpu className="w-4 h-4 shrink-0 text-amber-400" />
-                {!isCollapsed && <span>Evaluar Atrasos (3 Días)</span>}
+                {!isCollapsed && <span>Ejecutar Motor de Mora</span>}
               </button>
             </div>
           </div>

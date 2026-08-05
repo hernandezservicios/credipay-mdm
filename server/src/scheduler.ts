@@ -15,6 +15,7 @@ import { enqueueJob, jobPending, processPendingJobs } from './services/jobServic
 import { getSettingBoolean, getSettingNumber } from './services/settingsService.js';
 import { processDueReminders, runCollectionEngine } from './services/collectionService.js';
 import { runBackup } from './services/backupService.js';
+import { runOverdueEngine } from './services/loanService.js';
 import { deliverDelivery } from './services/webhookService.js';
 import { recordAudit } from './services/auditService.js';
 
@@ -70,6 +71,34 @@ async function ensureDailyBackupJob(): Promise<void> {
   if (new Date().getHours() !== hour) return;
   if (await jobPending('backup.run_daily', null, '')) return;
   await enqueueJob({ jobName: 'backup.run_daily', queue: 'backups', maxAttempts: 3 });
+}
+
+/**
+ * Motor de mora automática (diario): aplica penalizaciones
+ * configurables por tenant (monto fijo o porcentaje sobre capital/
+ * cuota/saldo, días de gracia, frecuencia y tope máximo) a las
+ * cuotas vencidas, actualiza estados y bloquea dispositivos por mora.
+ */
+async function runDailyOverdueEngine(): Promise<void> {
+  const [tenants] = await pool.query<RowDataPacket[]>(
+    `SELECT id FROM tenants WHERE status = 'ACTIVE' AND deleted_at IS NULL`
+  );
+  let totalPenalized = 0;
+  let totalDefaulted = 0;
+  for (const t of tenants) {
+    try {
+      const result = await runOverdueEngine(Number(t.id));
+      totalPenalized += result.penalized;
+      totalDefaulted += result.defaulted;
+    } catch (err) {
+      console.error(`[scheduler] motor de mora tenant ${t.id}:`, err);
+    }
+  }
+  if (totalPenalized + totalDefaulted > 0) {
+    console.log(
+      `[scheduler] motor de mora: ${totalPenalized} cuota(s) penalizada(s), ${totalDefaulted} crédito(s) en default`
+    );
+  }
 }
 
 /**
@@ -196,6 +225,7 @@ async function runTick(): Promise<void> {
     await ensureDailyCollectionJobs();
     await ensureDailyBackupJob();
     await expireSubscriptions();
+    await runDailyOverdueEngine();
     await processDueReminders(null, 50);
     await processPendingJobs(handlers as unknown as Record<string, (p: Record<string, unknown>) => Promise<void>>, 10);
   } catch (err) {

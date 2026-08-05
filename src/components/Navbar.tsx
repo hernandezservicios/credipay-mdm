@@ -3,7 +3,7 @@ import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, A
 import type { TenantRow } from '../services/api';
 import { TenantSwitcher } from './TenantSwitcher';
 
-export type MainViewTab = 'CLIENTS' | 'DEVICES' | 'FINANCE' | 'ANALYTICS' | 'LOGS' | 'BILLING' | 'COLLECTIONS';
+export type MainViewTab = 'DASHBOARD' | 'CLIENTS' | 'DEVICES' | 'LOANS' | 'CASH' | 'REPORTS' | 'FINANCE' | 'ANALYTICS' | 'CONFIG' | 'LOGS' | 'BILLING' | 'COLLECTIONS';
 
 interface NavbarProps {
   mode?: 'portal' | 'tenant';

@@ -1,44 +1,44 @@
 import React from 'react';
 import { SystemMetrics } from '../types';
-import { Smartphone, Lock, AlertTriangle, DollarSign, Calendar, Zap } from 'lucide-react';
+import { Smartphone, Lock, AlertTriangle, DollarSign, Cpu } from 'lucide-react';
 
 interface DashboardStatsProps {
   metrics: SystemMetrics;
-  onSimulateDayPass: () => void;
+  onRunEngine: () => void;
   onOpenInstallmentsFilter: (filter: 'ALL' | 'PENDIENTE' | 'VENCIDO' | 'ATRASADO' | 'PAGADO') => void;
 }
 
 export const DashboardStats: React.FC<DashboardStatsProps> = ({
   metrics,
-  onSimulateDayPass,
+  onRunEngine,
   onOpenInstallmentsFilter,
 }) => {
   return (
     <div className="mb-8">
-      {/* Barra superior del simulador y resumen de reglas de negocio */}
+      {/* Barra superior del motor y resumen de reglas de negocio */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-white">
         <div className="flex items-center space-x-3">
           <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg">
-            <Zap className="w-5 h-5" />
+            <Cpu className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-white">
-              Motor de Bloqueo MDM Automático y Control de Moras
+              Motor de Bloqueo MDM Automático y Control de Mora (Server-Side)
             </h2>
             <p className="text-xs text-slate-300">
-              Regla Activa: <span className="font-medium text-amber-300">Día 0-2 = VENCIDO</span> |{' '}
-              <span className="font-medium text-rose-300">Día 3+ = ATRASADO (+RD$200 mora fija + BLOQUEO MDM automático)</span> |{' '}
+              Configurable: <span className="font-medium text-amber-300">vencimiento = VENCIDO</span> |{' '}
+              <span className="font-medium text-rose-300">mora según configuración (tipo, % o monto, días de gracia) +BLOQUEO MDM automático</span> |{' '}
               <span className="font-medium text-emerald-300">Pago = DESBLOQUEO MDM automático</span>.
             </p>
           </div>
         </div>
 
         <button
-          onClick={onSimulateDayPass}
+          onClick={onRunEngine}
           className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors shadow-sm self-stretch md:self-auto justify-center"
         >
-          <Calendar className="w-4 h-4" />
-          <span>Simular Avance de 3 Días (Probar Bloqueo MDM & Mora RD$200)</span>
+          <Cpu className="w-4 h-4" />
+          <span>Ejecutar Motor de Mora Ahora</span>
         </button>
       </div>
 
@@ -103,9 +103,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
           </div>
           <div className="mt-3 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-amber-700">{metrics.overdueCount}</span>
-            <span className="text-xs font-semibold text-amber-600">+RD$200 Mora c/u</span>
+            <span className="text-xs font-semibold text-amber-600">Mora Configurada</span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">&gt;3 días vencidas (Genera mora fija)</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Vencidas según configuración de la empresa</p>
         </div>
 
         {/* Recaudado en el Mes */}

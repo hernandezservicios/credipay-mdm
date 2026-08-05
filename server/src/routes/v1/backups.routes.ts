@@ -50,7 +50,8 @@ router.get('/:id/download', async (req: AuthRequest, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) throw ApiError.badRequest('invalid_id', 'ID inválido');
   // El archivo se sirve con el nombre original y cabeceras de descarga.
-  const file = await getBackupFile(id);
+  // Solo respaldos del propio tenant (o globales FULL que no requieren tenant).
+  const file = await getBackupFile(id, req.auth!.tenantId);
   res.download(file.absPath, file.filename);
 });
 

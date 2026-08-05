@@ -6,14 +6,12 @@ interface InstallmentsModalProps {
   client: ClientCredit | null;
   onClose: () => void;
   onOpenPayment: (clientId: string, installmentId: string) => void;
-  onSimulateOverdue: (clientId: string, installmentId: string) => void;
 }
 
 export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
   client,
   onClose,
   onOpenPayment,
-  onSimulateOverdue,
 }) => {
   if (!client) return null;
 
@@ -138,8 +136,10 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                       )}
                     </td>
                     <td className="py-3.5 px-3">
-                      {isOverdue ? (
-                        <span className="text-rose-600 font-bold">+RD$200 (Fija)</span>
+                      {inst.penaltyAmount > 0 ? (
+                        <span className="text-rose-600 font-bold">
+                          +RD${inst.penaltyAmount.toLocaleString()}
+                        </span>
                       ) : (
                         <span className="text-slate-400">RD$0</span>
                       )}
@@ -160,16 +160,6 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                               {isOverdue && '& Desbloquear'}
                             </span>
                           </button>
-
-                          {inst.status !== 'ATRASADO' && (
-                            <button
-                              onClick={() => onSimulateOverdue(client.id, inst.id)}
-                              className="bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-rose-200 transition-colors"
-                              title="Simular que han pasado >3 días para probar aplicación de mora de RD$200 y Bloqueo MDM"
-                            >
-                              Simular +3 d
-                            </button>
-                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-slate-400 font-medium">Pago Completado</span>

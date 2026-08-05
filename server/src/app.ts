@@ -21,6 +21,11 @@ import collectionRoutes from './routes/v1/collection.routes.js';
 import apiKeysRoutes, { probeRouter } from './routes/v1/apiKeys.routes.js';
 import webhooksRoutes from './routes/v1/webhooks.routes.js';
 import backupsRoutes from './routes/v1/backups.routes.js';
+import configRoutes from './routes/v1/config.routes.js';
+import loanRoutes from './routes/v1/loans.routes.js';
+import cashRoutes from './routes/v1/cash.routes.js';
+import reportsRoutes from './routes/v1/reports.routes.js';
+import dashboardRoutes from './routes/v1/dashboard.routes.js';
 import { docsHtml, openApiSpec } from './docs/openapi.js';
 import { ApiError } from './utils/http.js';
 
@@ -78,6 +83,11 @@ app.use(probeRouter);
 app.use('/api/v1/api-keys', apiKeysRoutes);
 app.use('/api/v1/webhooks', webhooksRoutes);
 app.use('/api/v1/backups', backupsRoutes);
+app.use('/api/v1/config', configRoutes);
+app.use('/api/v1/loans', loanRoutes);
+app.use('/api/v1/cash', cashRoutes);
+app.use('/api/v1/reports', reportsRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 app.get('/api/v1/openapi.json', (_req: Request, res: Response) => {
   res.json(openApiSpec);

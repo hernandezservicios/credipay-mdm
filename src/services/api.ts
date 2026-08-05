@@ -1018,3 +1018,391 @@ export function apiCollectionSendReminder(id: number): Promise<{ data: Collectio
 export function apiCollectionRuns(): Promise<{ data: CollectionRunRow[] }> {
   return request('GET', '/collection/runs');
 }
+
+// ---------------------------------------------------------------------------
+// Plataforma profesional de préstamos (Fase 9)
+// Configuración por tenant, préstamos, caja, reportes y dashboard
+// ---------------------------------------------------------------------------
+
+// ---------------- Configuración por tenant ----------------
+
+export interface PlatformConfig {
+  companyInfo: Record<string, unknown>;
+  generalConfig: Record<string, unknown>;
+  loanConfig: Record<string, unknown>;
+  overdueConfig: Record<string, unknown>;
+  paymentConfig: Record<string, unknown>;
+  integrations: Array<Record<string, unknown>>;
+}
+
+export function apiGetConfig(): Promise<{ data: PlatformConfig }> {
+  return request('GET', '/config');
+}
+
+export function apiUpdateConfigSection(
+  section: string,
+  body: Record<string, unknown>
+): Promise<{ data: PlatformConfig }> {
+  return request('PUT', `/config/${section}`, body);
+}
+
+export interface LoanProductRow {
+  id: number;
+  name: string;
+  description: string | null;
+  amortization_method: string;
+  annual_rate: string;
+  min_amount: string | null;
+  max_amount: string | null;
+  min_terms: number;
+  max_terms: number;
+  default_terms: number;
+  is_default: number;
+  is_active: number;
+  created_at: string;
+}
+
+export function apiListLoanProducts(): Promise<{ data: LoanProductRow[] }> {
+  return request('GET', '/config/loan-products');
+}
+
+export function apiCreateLoanProduct(body: Record<string, unknown>): Promise<{ data: { id: number } }> {
+  return request('POST', '/config/loan-products', body);
+}
+
+export function apiPatchLoanProduct(id: number, body: Record<string, unknown>): Promise<{ data: { id: number } }> {
+  return request('PATCH', `/config/loan-products/${id}`, body);
+}
+
+export function apiDeleteLoanProduct(id: number): Promise<{ data: { id: number; deleted: boolean } }> {
+  return request('DELETE', `/config/loan-products/${id}`);
+}
+
+export function apiGetIntegrationLog(): Promise<{ data: unknown[] }> {
+  return request('GET', '/config/integration-log');
+}
+
+// ---------------- Préstamos ----------------
+
+export interface LoanQuote {
+  principal: number;
+  annualRatePercent: number;
+  method: string;
+  installmentsCount: number;
+  monthlyPayment: number;
+  totalPayment: number;
+  totalInterest: number;
+  schedule: Array<{
+    number: number;
+    dueDate: string;
+    amount: number;
+    principalPart: number;
+    interestPart: number;
+    capitalBalanceBefore: number;
+    capitalBalanceAfter: number;
+  }>;
+}
+
+export interface LoanResult {
+  id: number;
+  creditNumber: string;
+  status: string;
+  scheduleCount: number;
+  totalInterest: number;
+}
+
+export function apiLoanQuote(body: {
+  principal: number;
+  annualRate: number;
+  method: string;
+  installmentsCount: number;
+  startDate?: string;
+}): Promise<{ data: LoanQuote }> {
+  return request('POST', '/loans/quote', body);
+}
+
+export function apiCreateLoan(body: {
+  clientId: number;
+  principal: number;
+  annualRate: number;
+  method: string;
+  installmentsCount: number;
+  startDate?: string;
+  financingFee?: number;
+  notes?: string;
+  status?: 'PENDING' | 'ACTIVE';
+}): Promise<{ data: LoanResult }> {
+  return request('POST', '/loans', body);
+}
+
+export function apiApproveLoan(id: number): Promise<{ data: LoanResult }> {
+  return request('POST', `/loans/${id}/approve`);
+}
+
+export function apiRejectLoan(id: number, reason?: string): Promise<{ data: { id: number; status: string } }> {
+  return request('POST', `/loans/${id}/reject`, { reason });
+}
+
+export function apiDisburseLoan(id: number): Promise<{ data: LoanResult }> {
+  return request('POST', `/loans/${id}/disburse`);
+}
+
+export function apiLoanOutstanding(id: number): Promise<{
+  data: { remainingPrincipal: number; remainingInterest: number; pendingPenalty: number; total: number };
+}> {
+  return request('GET', `/loans/${id}/outstanding`);
+}
+
+export function apiRestructureLoan(
+  id: number,
+  body: { annualRate: number; method: string; installmentsCount: number; startDate?: string; notes?: string }
+): Promise<{ data: LoanResult }> {
+  return request('POST', `/loans/${id}/restructure`, body);
+}
+
+export function apiRefinanceLoan(
+  id: number,
+  body: { annualRate: number; method: string; installmentsCount: number; additionalAmount?: number; startDate?: string; notes?: string }
+): Promise<{ data: LoanResult }> {
+  return request('POST', `/loans/${id}/refinance`, body);
+}
+
+export function apiRenewLoan(
+  id: number,
+  body: { annualRate: number; method: string; installmentsCount: number; startDate?: string; notes?: string }
+): Promise<{ data: LoanResult }> {
+  return request('POST', `/loans/${id}/renew`, body);
+}
+
+export function apiCondoneCredit(id: number, body: { type: 'PENALTY' | 'INTEREST' | 'AMOUNT'; amount?: number }): Promise<{
+  data: { id: number; affected: number };
+}> {
+  return request('POST', `/loans/${id}/condone`, body);
+}
+
+export function apiCondoneInstallment(
+  installmentId: number,
+  body: { type: 'PENALTY' | 'INTEREST' | 'AMOUNT'; amount?: number }
+): Promise<{ data: { id: number } }> {
+  return request('POST', `/loans/installments/${installmentId}/condone`, body);
+}
+
+export function apiRunOverdue(): Promise<{
+  data: { tenantId: number; penalized: number; defaulted: number; errors: string[] };
+}> {
+  return request('POST', '/loans/run-overdue');
+}
+
+export interface AgreementRow {
+  id: number;
+  credit_id: number;
+  credit_number: string;
+  client_id: number;
+  client_name: string;
+  agreed_date: string;
+  total_amount: string;
+  initial_payment: string;
+  terms: number;
+  frequency: string;
+  first_due_date: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export function apiListAgreements(params?: { creditId?: number; clientId?: number; status?: string }): Promise<{ data: AgreementRow[] }> {
+  const qs = new URLSearchParams();
+  if (params?.creditId) qs.set('creditId', String(params.creditId));
+  if (params?.clientId) qs.set('clientId', String(params.clientId));
+  if (params?.status) qs.set('status', params.status);
+  return request('GET', `/loans/agreements?${qs.toString()}`);
+}
+
+export function apiCreateAgreement(body: {
+  creditId: number;
+  clientId: number;
+  agreedDate?: string;
+  totalAmount?: number;
+  initialPayment?: number;
+  terms: number;
+  frequency: string;
+  firstDueDate?: string;
+  notes?: string;
+}): Promise<{ data: { id: number } }> {
+  return request('POST', '/loans/agreements', body);
+}
+
+export function apiSetAgreementStatus(id: number, status: string): Promise<{ data: { id: number; status: string } }> {
+  return request('POST', `/loans/agreements/${id}/status`, { status });
+}
+
+// ---------------- Caja ----------------
+
+export interface CashRegisterRow {
+  id: number;
+  register_date: string;
+  status: 'OPEN' | 'CLOSED';
+  opening_balance: string;
+  expected_closing: string | null;
+  counted_cash: string | null;
+  difference: string | null;
+  opened_at: string;
+  closed_at: string | null;
+  closing_notes: string | null;
+  opened_by_name?: string | null;
+  closed_by_name?: string | null;
+  movements_count?: number;
+}
+
+export interface CashCurrent {
+  current: CashRegisterRow | null;
+  totals: {
+    registerId: number | null;
+    status: 'OPEN' | 'CLOSED' | null;
+    openingBalance: number;
+    cashIn: number;
+    cashOut: number;
+    expected: number;
+    movementsCount: number;
+  } | null;
+}
+
+export function apiGetCash(): Promise<{ data: CashCurrent }> {
+  return request('GET', '/cash');
+}
+
+export function apiOpenCash(openingBalance: number): Promise<{ data: CashRegisterRow }> {
+  return request('POST', '/cash/open', { openingBalance });
+}
+
+export function apiCloseCash(id: number, countedCash: number, notes?: string): Promise<{ data: CashRegisterRow }> {
+  return request('POST', `/cash/${id}/close`, { countedCash, notes });
+}
+
+export function apiListCashRegisters(params?: { from?: string; to?: string; page?: number; perPage?: number }): Promise<{
+  data: CashRegisterRow[];
+  pagination: { page: number; perPage: number; total: number };
+}> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  qs.set('page', String(params?.page ?? 1));
+  qs.set('perPage', String(params?.perPage ?? 200));
+  return request('GET', `/cash/registers?${qs.toString()}`);
+}
+
+export interface CashMovementRow {
+  id: number;
+  register_id: number | null;
+  type: string;
+  amount: string;
+  direction: 'IN' | 'OUT';
+  method: string;
+  reference: string | null;
+  description: string | null;
+  payment_id: number | null;
+  credit_id: number | null;
+  created_at: string;
+  created_by_name?: string | null;
+  register_date?: string | null;
+}
+
+export function apiListCashMovements(params?: {
+  registerId?: number;
+  from?: string;
+  to?: string;
+  type?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<{ data: CashMovementRow[]; pagination: { page: number; perPage: number; total: number } }> {
+  const qs = new URLSearchParams();
+  if (params?.registerId) qs.set('registerId', String(params.registerId));
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  if (params?.type) qs.set('type', params.type);
+  qs.set('page', String(params?.page ?? 1));
+  qs.set('perPage', String(params?.perPage ?? 100));
+  return request('GET', `/cash/movements?${qs.toString()}`);
+}
+
+export function apiCreateCashMovement(body: {
+  type: 'INCOME' | 'EXPENSE' | 'ADJUSTMENT';
+  amount: number;
+  description?: string;
+  method?: string;
+  reference?: string;
+}): Promise<{ data: { id: number } }> {
+  return request('POST', '/cash/movements', body);
+}
+
+// ---------------- Reportes ----------------
+
+export interface ReportRow {
+  [key: string]: string | number | null;
+}
+
+export function apiReportTypes(): Promise<{ data: Record<string, { key: string; label: string }[]> }> {
+  return request('GET', '/reports/types');
+}
+
+export function apiReport(
+  key: string,
+  params?: { from?: string; to?: string; status?: string; page?: number; perPage?: number }
+): Promise<{
+  key: string;
+  label: string;
+  from: string | null;
+  to: string | null;
+  data: ReportRow[];
+  headers: string[];
+  pagination: { page: number; perPage: number; total: number };
+}> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  if (params?.status) qs.set('status', params.status);
+  qs.set('page', String(params?.page ?? 1));
+  qs.set('perPage', String(params?.perPage ?? 100));
+  return request('GET', `/reports/${encodeURIComponent(key)}?${qs.toString()}`);
+}
+
+export async function apiReportCsv(
+  key: string,
+  params?: { from?: string; to?: string; status?: string }
+): Promise<void> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set('from', params.from);
+  if (params?.to) qs.set('to', params.to);
+  if (params?.status) qs.set('status', params.status);
+  const res = await fetch(`/api/v1/reports/${encodeURIComponent(key)}?${qs.toString()}&format=csv`, {
+    method: 'GET',
+    headers: { Accept: 'text/csv' },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new ApiError(res.status, 'export_error', 'No se pudo exportar el CSV');
+  const csv = await res.text();
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `credipay-${key}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// ---------------- Dashboard ----------------
+
+export interface DashboardSummary {
+  cards: Record<string, number>;
+  series: { month: string; recaudado: number; desembolsado: number; prestamos: number }[];
+  porEstado: { status: string; count: number }[];
+  porMetodo: { method: string; total: number }[];
+  porClasificacion: { classification: string; count: number }[];
+  actas: { id: number; type: string; message: string; user: string; created_at: string }[];
+}
+
+export function apiDashboardSummary(): Promise<{ data: DashboardSummary }> {
+  return request('GET', '/dashboard/summary');
+}

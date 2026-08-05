@@ -3,6 +3,8 @@ import { pool } from '../db/pool.js';
 import { ApiError } from '../utils/http.js';
 import { recordActivity, recordAudit } from './auditService.js';
 import { unlockInovaGuardDevice } from './inovaGuardService.js';
+import { addCashMovement } from './cashService.js';
+import { recomputeClientScore } from './loanService.js';
 import { notifyPayment } from './notifService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import type { TenantRequest } from '../middleware/tenant.js';
@@ -130,11 +132,11 @@ export async function applyCascadePayment(
 
   const [instRows] = await pool.query<RowDataPacket[]>(
     `SELECT ci.id, ci.credit_id, ci.installment_number, ci.total_amount,
-            COALESCE(ci.paid_amount, 0) AS paid_amount, ci.status
+            COALESCE(ci.paid_amount, 0) AS paid_amount, ci.status, ci.principal_part
        FROM credit_installments ci
        JOIN credits c ON c.id = ci.credit_id
       WHERE ci.tenant_id = ? AND c.client_id = ? AND c.deleted_at IS NULL
-        AND c.status = 'ACTIVE' AND ci.deleted_at IS NULL
+        AND c.status IN ('ACTIVE', 'RESTRUCTURED') AND ci.deleted_at IS NULL
         AND ci.status IN ('PENDIENTE', 'VENCIDO', 'ATRASADO')
       ORDER BY ci.installment_number, ci.id`,
     [tenantId, input.clientId]
@@ -187,6 +189,22 @@ export async function applyCascadePayment(
           WHERE id = ? AND tenant_id = ?`,
         [newPaid, newStatus, paidDate, reference, a.installmentId, tenantId]
       );
+      if (a.becamePaid && info.status !== 'PAGADO') {
+        const [pRows] = await conn.query<RowDataPacket[]>(
+          'SELECT principal_part FROM credit_installments WHERE id = ? AND tenant_id = ?',
+          [a.installmentId, tenantId]
+        );
+        const principalPart = Number(pRows[0]?.principal_part) || 0;
+        if (principalPart > 0) {
+          await conn.query(
+            `UPDATE credits
+                SET pending_principal = GREATEST(COALESCE(pending_principal, total_amount) - ?, 0),
+                    last_payment_at = ?
+              WHERE id = ? AND tenant_id = ?`,
+            [principalPart, today, a.creditId, tenantId]
+          );
+        }
+      }
     }
 
     const firstCreditId = affected[0].creditId;
@@ -210,6 +228,44 @@ export async function applyCascadePayment(
       ]
     );
     const paymentId = payRes.insertId;
+
+    // Movimiento de caja por el cobro (si hay caja abierta)
+    try {
+      await addCashMovement(
+        tenantId,
+        userId,
+        {
+          type: 'COLLECTION',
+          amount: amountApplied,
+          direction: 'IN',
+          method: METHOD_TO_DB[input.method],
+          reference: input.bank || `PAG-${today}-${paymentId}`,
+          description: `Cobro en cascada a ${client.full_name}`,
+          paymentId,
+          creditId: firstCreditId,
+        },
+        conn
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.code !== 'register_closed') throw err;
+      // Sin caja abierta: el cobro se registra igualmente (movimiento sin caja)
+      await conn.query(
+        `INSERT INTO cash_movements
+          (tenant_id, register_id, type, amount, direction, method, reference,
+           description, payment_id, credit_id, created_by)
+         VALUES (?, NULL, 'COLLECTION', ?, 'IN', ?, ?, ?, ?, ?, ?)`,
+        [
+          tenantId,
+          amountApplied,
+          METHOD_TO_DB[input.method],
+          input.bank || `PAG-${today}-${paymentId}`,
+          `Cobro en cascada a ${client.full_name}`,
+          paymentId,
+          firstCreditId,
+          userId,
+        ]
+      );
+    }
 
     // Crédito liquidado -> PAID_OFF
     const [left] = await conn.query<RowDataPacket[]>(
@@ -289,6 +345,8 @@ export async function applyCascadePayment(
     }
 
     await conn.commit();
+
+    void recomputeClientScore(tenantId, input.clientId).catch(() => undefined);
 
     const payment: CascadePaymentResult = {
       paymentId,
