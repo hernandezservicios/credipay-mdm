@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ClientCredit } from '../types';
-import { MessageSquare, Copy, Check, Send, Sparkles, ShieldAlert, CheckCircle } from 'lucide-react';
+import { MessageSquare, Copy, Check, Send, ShieldAlert } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
+import { formatCurrencyRD } from '../utils/formatters';
+import { FIXED_PENALTY_AMOUNT } from '../constants';
 
 interface AiCobranzaModalProps {
   client: ClientCredit | null;
@@ -16,13 +18,12 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
 
   const isLocked = client.device.mdmStatus === 'LOCKED';
   const overdueInstallments = client.installments.filter((i) => i.status === 'ATRASADO');
-  const dueInstallments = client.installments.filter((i) => i.status === 'VENCIDO');
   const totalPenalty = overdueInstallments.reduce((sum, i) => sum + i.penaltyAmount, 0);
 
   // Generador inteligente de mensaje para WhatsApp según el tono y estado
   const generateMessage = (): string => {
     if (tone === 'ALERTA_BLOQUEO' || (isLocked && tone === 'RESPETUOSO')) {
-      return `🔴 AVISO DE SISTEMA CREDIPAY MDM - CRÉDITO DE CELULAR\n\nEstimado(a) *${client.fullName}*,\nLe informamos que su cuota mensual de *${client.device.model}* ha superado los 3 días después de la fecha de pago, cambiando a estado *ATRASADO*.\n\n🔒 *Estado del Equipo:* BLOQUEADO (MDM)\n💵 *Monto de Cuota:* RD$${client.monthlyInstallmentAmount.toLocaleString()}\n⚠️ *Mora fija aplicada:* RD$${totalPenalty || 200}\n👉 *Total para Desbloquear:* RD$${(client.monthlyInstallmentAmount + (totalPenalty || 200)).toLocaleString()}\n\nTan pronto realice su pago por WhatsApp o en nuestras tiendas, el sistema ejecutará el *desbloqueo de pantalla automáticamente en segundos*. ¡Contáctenos para apoyarle!`;
+      return `🔴 AVISO DE SISTEMA CREDIPAY MDM - CRÉDITO DE CELULAR\n\nEstimado(a) *${client.fullName}*,\nLe informamos que su cuota mensual de *${client.device.model}* ha superado los 3 días después de la fecha de pago, cambiando a estado *ATRASADO*.\n\n🔒 *Estado del Equipo:* BLOQUEADO (MDM)\n💵 *Monto de Cuota:* ${formatCurrencyRD(client.monthlyInstallmentAmount)}\n⚠️ *Mora fija aplicada:* ${formatCurrencyRD(totalPenalty || FIXED_PENALTY_AMOUNT)}\n👉 *Total para Desbloquear:* ${formatCurrencyRD(client.monthlyInstallmentAmount + (totalPenalty || FIXED_PENALTY_AMOUNT))}\n\nTan pronto realice su pago por WhatsApp o en nuestras tiendas, el sistema ejecutará el *desbloqueo de pantalla automáticamente en segundos*. ¡Contáctenos para apoyarle!`;
     }
 
     if (tone === 'CONFIRMACION_PAGO') {
@@ -30,7 +31,7 @@ export const AiCobranzaModal: React.FC<AiCobranzaModalProps> = ({ client, onClos
     }
 
     // Respetuoso / Recordatorio amigable
-    return `Hola *${client.fullName}*, le saludamos de su financiamiento de celular *${client.device.model}* 📱 con CrediPay MDM.\n\nLe recordamos que su cuota mensual de *RD$${client.monthlyInstallmentAmount.toLocaleString()}* está en fecha de vencimiento. Recuerde que el sistema aplica un bloqueo de pantalla automático y RD$200 de mora fija tras cumplir 3 días de vencido.\n\nPara pagar o reportar su depósito, escríbanos por aquí. ¡Que tenga un excelente día! ✨`;
+    return `Hola *${client.fullName}*, le saludamos de su financiamiento de celular *${client.device.model}* 📱 con CrediPay MDM.\n\nLe recordamos que su cuota mensual de *${formatCurrencyRD(client.monthlyInstallmentAmount)}* está en fecha de vencimiento. Recuerde que el sistema aplica un bloqueo de pantalla automático y ${formatCurrencyRD(FIXED_PENALTY_AMOUNT, false)} de mora fija tras cumplir 3 días de vencido.\n\nPara pagar o reportar su depósito, escríbanos por aquí. ¡Que tenga un excelente día! ✨`;
   };
 
   const messageText = generateMessage();

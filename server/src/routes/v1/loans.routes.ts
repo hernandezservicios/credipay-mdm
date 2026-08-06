@@ -21,6 +21,13 @@ import {
   setAgreementStatus,
 } from '../../services/loanService.js';
 import { AMORTIZATION_METHODS, type AmortizationMethod } from '../../services/loanEngine.js';
+import { listLoans, getLoanDetail } from '../../modules/loans/loanRepository.js';
+import { getLoanTimeline } from '../../modules/loans/loanEvents.js';
+import {
+  applyLoanPayment,
+  simulateLoanPayment,
+} from '../../modules/loans/paymentApplier.js';
+import { normalizePaymentMethod } from '../../services/paymentService.js';
 
 const router = Router();
 router.use(authRequired, requireTenant, csrfProtect);
@@ -219,6 +226,62 @@ router.post('/agreements/:id/status', requirePermission('loans.agreements'), asy
     req as AuthRequest
   );
   res.json({ data: { id: Number(req.params.id), status: req.body.status } });
+});
+
+// ---------------------------------------------------------------------------
+// Fase E: listado/consulta unificada (D24) + cobro por préstamo (D20/D22, R13)
+// ---------------------------------------------------------------------------
+
+router.get('/', requirePermission('loans.view'), async (req: TenantRequest, res) => {
+  const result = await listLoans(req.ctx!.tenantId, {
+    search: typeof req.query.search === 'string' ? req.query.search : undefined,
+    status: typeof req.query.status === 'string' ? req.query.status : undefined,
+    page: Number(req.query.page) || 1,
+    perPage: Number(req.query.perPage) || 20,
+  });
+  res.json(result);
+});
+
+router.get('/:id', requirePermission('loans.view'), async (req: TenantRequest, res) => {
+  const detail = await getLoanDetail(req.ctx!.tenantId, Number(req.params.id));
+  res.json({ data: detail });
+});
+
+router.get('/:id/timeline', requirePermission('loans.view'), async (req: TenantRequest, res) => {
+  const timeline = await getLoanTimeline(req.ctx!.tenantId, Number(req.params.id));
+  res.json({ data: timeline });
+});
+
+router.post('/:id/pay/simulate', requirePermission('loans.view'), async (req: TenantRequest, res) => {
+  const simulation = await simulateLoanPayment(
+    req.ctx!.tenantId,
+    Number(req.params.id),
+    Number(req.body?.amount) || 0
+  );
+  res.json({ data: simulation });
+});
+
+router.post('/:id/pay', requirePermission('payments.create'), async (req: TenantRequest, res) => {
+  const body = req.body as {
+    amount?: number;
+    method?: string;
+    bank?: string;
+    received?: number;
+    change?: number;
+    idempotencyKey?: string;
+    notes?: string;
+  };
+  const result = await applyLoanPayment(req, {
+    creditId: Number(req.params.id),
+    amount: Number(body.amount) || 0,
+    method: normalizePaymentMethod(body.method ?? 'EFECTIVO'),
+    bank: typeof body.bank === 'string' ? body.bank : undefined,
+    received: Number(body.received) || 0,
+    change: Number(body.change) || 0,
+    idempotencyKey: typeof body.idempotencyKey === 'string' ? body.idempotencyKey : undefined,
+    notes: typeof body.notes === 'string' ? body.notes : undefined,
+  });
+  res.status(result.duplicate ? 200 : 201).json({ data: result });
 });
 
 export default router;

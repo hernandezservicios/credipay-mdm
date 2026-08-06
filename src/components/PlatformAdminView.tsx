@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   ArrowRight,
@@ -27,6 +27,7 @@ import {
 } from '../services/api';
 import { useConfirm } from './ConfirmDialog';
 import { ModalShell } from './ui/ModalShell';
+import { formatDate, formatCurrencyRD } from '../utils/formatters';
 
 const CYCLE_LABEL: Record<string, string> = {
   MONTHLY: 'Mensual',
@@ -35,16 +36,10 @@ const CYCLE_LABEL: Record<string, string> = {
   ANNUAL: 'Anual',
 };
 
-function formatDate(value: string | null | undefined): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 function formatMoney(value: string | number | null | undefined, code: string | null): string {
   const n = Number(value) || 0;
   const symbol = code === 'USD' ? 'US$' : code === 'DOP' ? 'RD$' : `${code ?? ''} `;
-  return `${symbol}${n.toLocaleString('es-DO', { maximumFractionDigits: 2 })}`;
+  return formatCurrencyRD(n, true, symbol);
 }
 
 function StatusChip({ status }: { status: string | null }) {
@@ -166,7 +161,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
     setBusyId(t.tenant_id);
     try {
       const res = await apiRenewSubscription(t.tenant_id);
-      onNotify(`✅ Renovado hasta ${new Date(res.data.periodEnd).toLocaleDateString('es-DO')}.`);
+      onNotify(`✅ Renovado hasta ${formatDate(res.data.periodEnd)}.`);
       onReload();
     } catch (err) {
       onNotify(`❌ No se pudo renovar: ${errorMessage(err)}`, 'LOCK');
@@ -181,7 +176,7 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
     setWorking(true);
     try {
       const res = await apiExtendSubscription(days, t.tenant_id);
-      onNotify(`✅ Período extendido hasta ${new Date(res.data.periodEnd).toLocaleDateString('es-DO')}.`);
+      onNotify(`✅ Período extendido hasta ${formatDate(res.data.periodEnd)}.`);
       setExtendFor(null);
       onReload();
     } catch (err) {

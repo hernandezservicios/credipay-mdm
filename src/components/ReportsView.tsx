@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { FileText, Download, Printer, Filter, RefreshCw, Loader2, CalendarRange, Search } from 'lucide-react';
 import { apiReportTypes, apiReport, apiReportCsv, errorMessage, type ReportRow } from '../services/api';
+import { formatCurrencyRD } from '../utils/formatters';
 
 export interface ReportsViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -50,7 +51,7 @@ function formatMoney(value: string | number | null): string {
   if (value === null || value === undefined || value === '') return '';
   const n = Number(value);
   if (Number.isNaN(n)) return String(value);
-  return `RD$ ${n.toLocaleString('es-DO', { maximumFractionDigits: 2 })}`;
+  return formatCurrencyRD(n);
 }
 
 function formatDate(header: string, value: string | number | null): string | number | null {

@@ -118,7 +118,7 @@ export async function authenticateApiKey(rawKey: string): Promise<ApiKeyAuthResu
   if (!key.startsWith(KEY_PREFIX)) return null;
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT a.id AS key_id, a.key_name, a.user_id, u.tenant_id AS user_tenant_id,
-            a.expires_at, a.status, a.rate_limit_per_min
+            a.expires_at, a.status, a.rate_limit_per_min, a.scopes
        FROM api_keys a
        JOIN users u ON u.id = a.user_id
       WHERE a.key_hash = ? AND a.status = 'ACTIVE'
@@ -132,15 +132,32 @@ export async function authenticateApiKey(rawKey: string): Promise<ApiKeyAuthResu
 
   await pool.query('UPDATE api_keys SET last_used_at = NOW() WHERE id = ?', [row.key_id]);
   const permissions = await loadApiKeyPermissions(Number(row.user_id), row.user_tenant_id as number | null);
+  // D: scopes reales - la llave solo puede usar la interseccion entre sus
+  // scopes declarados y los permisos del usuario (nunca mas que el usuario).
+  const scopes = parseScopes(row.scopes);
+  const effective = scopes.length > 0 ? permissions.filter((p) => scopes.includes(p)) : permissions;
   return {
     userId: Number(row.user_id),
     tenantId: row.user_tenant_id as number | null,
     userTenantId: row.user_tenant_id as number | null,
     keyName: row.key_name,
-    permissions,
+    permissions: effective,
     keyId: Number(row.key_id),
     rateLimitPerMin: Number(row.rate_limit_per_min ?? 60),
   };
+}
+
+function parseScopes(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map((s) => String(s));
+  if (typeof raw === 'string' && raw) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) return parsed.map((s) => String(s));
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 async function loadApiKeyPermissions(userId: number, tenantId: number | null): Promise<string[]> {

@@ -23,6 +23,7 @@ import {
 } from '../services/api';
 import { useConfirm } from './ConfirmDialog';
 import { ModalShell } from './ui/ModalShell';
+import { formatDateTime } from '../utils/formatters';
 
 const STATUS_STYLES: Record<string, string> = {
   ACTIVE: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800',
@@ -359,7 +360,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ tenants, onNotify }) => {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-slate-400">
-                      {u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('es-DO') : 'Nunca'}
+                      {u.last_login_at ? formatDateTime(u.last_login_at) : 'Nunca'}
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-1.5">

@@ -19,6 +19,7 @@ import {
   type ApiKeyRow,
 } from '../services/api';
 import { useConfirm } from './ConfirmDialog';
+import { formatDate, formatDateTime } from '../utils/formatters';
 import { ModalShell } from './ui/ModalShell';
 
 interface SecurityModalProps {
@@ -83,7 +84,15 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
   };
 
   const handleDisable = async () => {
-    if (!(await confirm('Desactivar autenticación en dos pasos?', 'Confirmar'))) return;
+    if (
+      !(await confirm({
+        title: 'Desactivar autenticación',
+        message: '¿Desactivar la verificación en dos pasos? Esta llave dejará de requerir el código TOTP.',
+        confirmLabel: 'Confirmar',
+        tone: 'rose',
+      }))
+    )
+      return;
     setTfaError(null);
     try {
       await apiTwoFactorDisable(tfaCode.trim());
@@ -113,7 +122,15 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
   };
 
   const handleRevoke = async (id: number, name: string) => {
-    if (!(await confirm(`Revocar API key "${name}"?`, 'Sí, Revocar'))) return;
+    if (
+      !(await confirm({
+        title: 'Revocar API key',
+        message: `¿Revocar la API key "${name}"? Los consumidores dejarán de autenticarse.`,
+        confirmLabel: 'Sí, Revocar',
+        tone: 'rose',
+      }))
+    )
+      return;
     try {
       await apiRevokeApiKey(id);
       await reload();
@@ -327,8 +344,8 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({ onClose }) => {
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-400">
-                          Última uso: {k.last_used_at ? new Date(k.last_used_at).toLocaleString('es-DO') : 'nunca'}
-                          {k.expires_at ? ` · Expira: ${new Date(k.expires_at).toLocaleDateString('es-DO')}` : ''}
+                          Última uso: {k.last_used_at ? formatDateTime(k.last_used_at) : 'nunca'}
+                          {k.expires_at ? ` · Expira: ${formatDate(k.expires_at)}` : ''}
                         </div>
                       </div>
                       <button

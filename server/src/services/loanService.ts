@@ -19,7 +19,7 @@ import {
 } from './loanEngine.js';
 import { getPlatformConfig, recordIntegrationStatus } from './configService.js';
 import { addCashMovement } from './cashService.js';
-import { lockInovaGuardDevice } from './inovaGuardService.js';
+import { lockInovaGuardDevice } from '../integrations/inovaGuard/index.js';
 import { DEFAULT_MDM_CONFIG, type MdmConfig } from './tenantService.js';
 
 export interface CreateLoanInput {

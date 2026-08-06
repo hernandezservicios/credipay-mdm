@@ -19,6 +19,7 @@ import {
 } from '../services/api';
 import type { CashCurrent, CashRegisterRow, CashMovementRow } from '../services/api';
 import { ModalShell } from './ui/ModalShell';
+import { formatCurrencyRD, formatDateTime } from '../utils/formatters';
 
 export interface CashViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -26,13 +27,13 @@ export interface CashViewProps {
 
 const money = (n: number | string | null | undefined): string => {
   const num = typeof n === 'string' ? parseFloat(n) : n;
-  if (num === null || num === undefined || Number.isNaN(num)) return 'RD$ 0';
-  return 'RD$ ' + num.toLocaleString('es-DO', { maximumFractionDigits: 2 });
+  if (num === null || num === undefined || Number.isNaN(num)) return formatCurrencyRD(0);
+  return formatCurrencyRD(num);
 };
 
 const dateShort = (d: string | null | undefined): string => {
   if (!d) return '—';
-  return d.slice(0, 19);
+  return formatDateTime(d);
 };
 
 const TYPE_LABEL: Record<string, { label: string; cls: string }> = {
@@ -434,7 +435,6 @@ export const CashView: React.FC<CashViewProps> = ({ onNotify }) => {
                       .map((r) => {
                         const diff = typeof r.difference === 'string' ? parseFloat(r.difference) : null;
                         const diffNum = diff ?? 0;
-                        const diffStr = diff !== null ? money(diff) : '—';
                         const diffCls =
                           diff === null
                             ? 'text-slate-500 dark:text-slate-400'

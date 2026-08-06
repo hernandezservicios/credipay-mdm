@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MdmApiConfig, MdmApiLog } from '../types';
-import { Settings, ShieldCheck, Cpu, Code, CheckCircle, AlertCircle, RefreshCw, Send, Key, Save, Trash2 } from 'lucide-react';
+import { Settings, CheckCircle, Send, Key, Save, Trash2 } from 'lucide-react';
 import { loginInovaGuard, getInovaGuardBalance } from '../services/inovaGuardApi';
 import { useConfirm } from './ConfirmDialog';
 import { ModalShell } from './ui/ModalShell';
@@ -289,7 +289,8 @@ export const MdmApiConfigModal: React.FC<MdmApiConfigProps> = ({
                 <button
                   type="button"
                   onClick={handleTestApi}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                  disabled={isTesting}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                   <span>Probar Conexión API (Test cURL)</span>

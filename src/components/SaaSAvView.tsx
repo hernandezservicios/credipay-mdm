@@ -13,6 +13,7 @@ import {
   Repeat,
 } from 'lucide-react';
 import { useConfirm } from './ConfirmDialog';
+import { formatCurrencyRD, formatDateTime } from '../utils/formatters';
 import type {
   BillingPaymentRow,
   BillingCycle,
@@ -29,24 +30,14 @@ const CYCLE_LABEL: Record<BillingCycle, string> = {
   ANNUAL: 'Anual',
 };
 
-function formatPrice(price: string, code: string, withDecimals = true): string {
+function formatPrice(price: string, code: string): string {
   const n = Number(price) || 0;
   const symbol = code === 'USD' ? 'US$' : code === 'DOP' ? 'RD$' : `${code} `;
-  return `${symbol}${n.toLocaleString('es-DO', {
-    minimumFractionDigits: withDecimals ? 2 : 0,
-    maximumFractionDigits: 2,
-  })}`;
+  return formatCurrencyRD(n, true, symbol);
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('es-DO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  return formatDateTime(value);
 }
 
 function StatusChip({ status }: { status: string }) {
@@ -214,7 +205,7 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                     </span>
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                    setup {Number(plan.setup_fee) > 0 ? formatPrice(plan.setup_fee, plan.currency_code) : 'RD$0'}
+                    setup {Number(plan.setup_fee) > 0 ? formatPrice(plan.setup_fee, plan.currency_code) : formatCurrencyRD(0)}
                   </div>
                 </div>
                 <div className="bg-slate-800/80 rounded-xl p-3">
@@ -424,7 +415,7 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                       <td className="py-2 pr-2 text-slate-600 dark:text-slate-400 max-w-[180px] truncate">
                         {p.description ?? p.plan_name ?? 'Pago de suscripción'}
                       </td>
-                      <td className="py-2 pr-2 font-bold text-slate-800 dark:text-slate-100">RD${Number(p.amount).toLocaleString('es-DO', { maximumFractionDigits: 2 })}</td>
+                      <td className="py-2 pr-2 font-bold text-slate-800 dark:text-slate-100">{formatCurrencyRD(Number(p.amount))}</td>
                       <td className="py-2 pr-2 text-slate-500 dark:text-slate-400">{formatDate(p.paid_at ?? p.created_at)}</td>
                       <td className="py-2">
                         <StatusChip status={p.status} />

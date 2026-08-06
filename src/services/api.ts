@@ -53,7 +53,7 @@ async function request<T>(
       credentials: 'include',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch (err) {
+  } catch {
     throw new ApiError(0, 'network_error', 'No se pudo conectar con el servidor. Verifica que esté en línea.');
   }
 
@@ -335,34 +335,6 @@ export function apiCreateClient(body: {
   notes?: string;
 }): Promise<{ data: { id: number } }> {
   return request('POST', '/clients', body);
-}
-
-export function apiCreateCredit(body: {
-  clientId: number;
-  totalAmount: number;
-  monthlyAmount: number;
-  installmentsCount: number;
-  startDate?: string;
-}): Promise<{ data: { id: number; creditNumber: string } }> {
-  return request('POST', '/credits', body);
-}
-
-export function apiPatchInstallment(
-  id: number,
-  patch: { status?: string; amount?: number; penaltyAmount?: number }
-): Promise<{ data: { id: number } }> {
-  return request('PATCH', `/installments/${id}`, patch);
-}
-
-export function apiCascadePayment(body: {
-  clientId: number;
-  amount: number;
-  method: string;
-  bank: string;
-  received: number;
-  change: number;
-}): Promise<{ data: Record<string, unknown> }> {
-  return request('POST', '/payments/cascade', body);
 }
 
 export interface PaymentStats {
@@ -1234,6 +1206,151 @@ export function apiCreateAgreement(body: {
 
 export function apiSetAgreementStatus(id: number, status: string): Promise<{ data: { id: number; status: string } }> {
   return request('POST', `/loans/agreements/${id}/status`, { status });
+}
+
+// ---------------------------------------------------------------------------
+// Fase E/F: servicio único de cobranza por préstamo (F11). /loans unificado.
+// ---------------------------------------------------------------------------
+
+export type PayMethod = 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'DEPOSITO';
+
+export interface LoanListRow {
+  id: number;
+  clientId: number;
+  clientName: string;
+  clientPhone: string | null;
+  creditNumber: string;
+  startDate: string;
+  totalAmount: number;
+  outstanding: number;
+  monthlyAmount: number;
+  installmentsCount: number;
+  pendingCount: number;
+  nextDue: string | null;
+  status: string;
+  daysLate: number;
+  lastPaymentAt: string | null;
+}
+
+export interface PagedResult<T> {
+  data: T[];
+  pagination: { page: number; perPage: number; total: number };
+}
+
+export function apiListLoans(params?: {
+  search?: string;
+  status?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<PagedResult<LoanListRow>> {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set('search', params.search);
+  if (params?.status) qs.set('status', params.status);
+  qs.set('page', String(params?.page ?? 1));
+  qs.set('perPage', String(params?.perPage ?? 20));
+  return request('GET', `/loans?${qs.toString()}`);
+}
+
+export interface LoanInstallmentRow {
+  id: number;
+  installment_number: number;
+  amount: number;
+  principal_part: number;
+  interest_part: number;
+  due_date: string;
+  status: string;
+  penalty_amount: number;
+  total_amount: number;
+  paid_amount: number;
+  paid_date: string | null;
+  payment_reference: string | null;
+}
+
+export interface LoanDetailPayload {
+  credit: Record<string, unknown> & {
+    id: number;
+    client_id: number;
+    credit_number: string;
+    start_date: string;
+    total_amount: number;
+    status: string;
+    outstanding?: number;
+  };
+  client: Record<string, unknown> | null;
+  installments: LoanInstallmentRow[];
+}
+
+export function apiGetLoanDetail(id: number): Promise<{ data: LoanDetailPayload }> {
+  return request('GET', `/loans/${id}`);
+}
+
+export interface LoanTimelineEntry {
+  id: number;
+  eventType: string;
+  description: string | null;
+  data: unknown;
+  createdAt: string;
+  userName: string | null;
+}
+
+export function apiGetLoanTimeline(id: number): Promise<{ data: LoanTimelineEntry[] }> {
+  return request('GET', `/loans/${id}/timeline`);
+}
+
+export interface AllocatedLine {
+  installmentId: number;
+  installmentNumber: number;
+  creditId: number;
+  allocated: number;
+  bucket: string;
+  becamePaid: boolean;
+  remainingAfter: number;
+}
+
+export interface SimulatePaymentResult {
+  creditId: number;
+  amount: number;
+  config: {
+    application_order: string[];
+    overpayment_mode: string;
+    rounding: number;
+  };
+  lines: AllocatedLine[];
+  totalAllocated: number;
+  remainder: number;
+  coveredInstallmentIds: number[];
+}
+
+export function apiSimulateLoanPayment(id: number, amount: number): Promise<{ data: SimulatePaymentResult }> {
+  return request('POST', `/loans/${id}/pay/simulate`, { amount });
+}
+
+export interface LoanPaymentResult {
+  paymentId: number;
+  creditId: number;
+  amountApplied: number;
+  received: number;
+  change: number;
+  method: string;
+  remainder: number;
+  duplicate: boolean;
+  affected: AllocatedLine[];
+  unlock: { deviceId: number; success: boolean; simulated: boolean; message: string } | null;
+}
+
+export function apiPayLoan(
+  id: number,
+  body: {
+    amount: number;
+    method?: PayMethod;
+    bank?: string;
+    received?: number;
+    change?: number;
+    idempotencyKey?: string;
+    notes?: string;
+  }
+): Promise<{ data: LoanPaymentResult }> {
+  return request('POST', `/loans/${id}/pay`, body);
 }
 
 // ---------------- Caja ----------------

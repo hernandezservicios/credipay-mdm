@@ -4,7 +4,7 @@ import { authRequired, csrfProtect, requirePermission, type AuthRequest } from '
 import { requireTenant, type TenantRequest } from '../../middleware/tenant.js';
 import { pool } from '../../db/pool.js';
 import { listDevices, updateDevice } from '../../services/repoService.js';
-import { findInovaGuardDevice, invalidateInovaGuardCache } from '../../services/inovaGuardService.js';
+import { findInovaGuardDevice, invalidateInovaGuardCache } from '../../integrations/inovaGuard/index.js';
 import { recordAudit, recordActivity } from '../../services/auditService.js';
 import { assertPlanLimit } from '../../services/planService.js';
 

@@ -11,9 +11,10 @@ import {
   getInovaGuardQrEnrollment,
   invalidateInovaGuardCache,
   lockInovaGuardDevice,
+  redactMdmConfig,
   removeInovaGuardDevice,
   unlockInovaGuardDevice,
-} from '../../services/inovaGuardService.js';
+} from '../../integrations/inovaGuard/index.js';
 import { recordAudit, recordActivity } from '../../services/auditService.js';
 import { syncInovaGuardInventory } from '../../services/inventorySyncService.js';
 import type { RowDataPacket } from 'mysql2';
@@ -27,7 +28,7 @@ router.use(authRequired, requireTenant, csrfProtect);
 // Configuración del MDM (solo mdm.config — contiene secretos)
 // ---------------------------------------------------------------------------
 router.get('/config', requirePermission('mdm.config'), async (req: TenantRequest, res) => {
-  res.json({ data: req.ctx!.mdmConfig });
+  res.json({ data: redactMdmConfig(req.ctx!.mdmConfig) });
 });
 
 router.put('/config', requirePermission('mdm.config'), async (req: TenantRequest, res) => {
@@ -39,7 +40,7 @@ router.put('/config', requirePermission('mdm.config'), async (req: TenantRequest
     'unlockCodeEndpoint', 'removeEndpoint', 'qrEndpoint', 'balanceEndpoint',
     'statusEndpoint', 'enabled', 'autoLockOnOverdue', 'autoUnlockOnPaid', 'liveMode',
   ]) {
-    if (patch[key] !== undefined) allowed[key] = patch[key];
+    if (patch[key] !== undefined && patch[key] !== '********') allowed[key] = patch[key];
   }
   if (Object.keys(allowed).length === 0) {
     res.status(400).json({ error: 'empty_patch', message: 'Sin cambios' });

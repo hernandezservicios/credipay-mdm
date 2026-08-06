@@ -26,3 +26,6 @@ Thumbs.db
 
 
 **/error-context.md
+
+# DB respaldos locales
+server/backups/

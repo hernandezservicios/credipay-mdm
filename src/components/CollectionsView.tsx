@@ -18,6 +18,7 @@ import type {
   CollectionRunRow,
   CollectionSummaryRow,
 } from '../services/api';
+import { formatCurrencyRD, formatDateTime } from '../utils/formatters';
 
 const RISK_LABEL: Record<CollectionRisk, string> = {
   BAJO: 'Bajo',
@@ -40,16 +41,12 @@ const TYPE_LABEL: Record<CollectionReminderType, string> = {
 const MINI_ICON = 'w-8 h-8 rounded-lg flex items-center justify-center';
 
 function fmtMoney(n: number): string {
-  return `RD$${n.toLocaleString('es-DO', { maximumFractionDigits: 0 })}`;
+  return formatCurrencyRD(n);
 }
 
 function fmtDate(value: string | number | null | undefined): string {
   if (!value) return '—';
-  const d = new Date(typeof value === 'number' ? value : String(value));
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('es-DO', { day: '2-digit', month: 'short' }) +
-    ' ' +
-    d.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' });
+  return formatDateTime(value);
 }
 
 export interface CollectionPermits {

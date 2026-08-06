@@ -2,11 +2,12 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { pool } from '../db/pool.js';
 import { ApiError } from '../utils/http.js';
 import { recordActivity, recordAudit } from './auditService.js';
-import { unlockInovaGuardDevice } from './inovaGuardService.js';
+import { unlockInovaGuardDevice } from '../integrations/inovaGuard/index.js';
 import { addCashMovement } from './cashService.js';
 import { recomputeClientScore } from './loanService.js';
 import { notifyPayment } from './notifService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
+import { insertLoanEvent } from '../modules/loans/loanEvents.js';
 import type { TenantRequest } from '../middleware/tenant.js';
 
 export type PaymentMethod = 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'DEPOSITO';
@@ -273,13 +274,28 @@ export async function applyCascadePayment(
         WHERE credit_id = ? AND deleted_at IS NULL AND status <> 'PAGADO'`,
       [firstCreditId]
     );
+    let creditClosed = false;
     if (Number(left[0].cnt) === 0) {
       await conn.query('UPDATE credits SET status = ? WHERE id = ? AND tenant_id = ?', [
         'PAID_OFF',
         firstCreditId,
         tenantId,
       ]);
+      creditClosed = true;
     }
+
+    // Timeline del préstamo (D25): evento de gogo registrado, dentro de la TX
+    await insertLoanEvent(conn, {
+      tenantId,
+      creditId: firstCreditId,
+      clientId: input.clientId,
+      userId,
+      eventType: creditClosed ? 'LOAN_CLOSED' : 'PAYMENT',
+      description: creditClosed
+        ? `Préstamo liquidado tras pago ${amountApplied.toLocaleString()}`
+        : `Pago en cascada ${amountApplied.toLocaleString()} (${affected.length} cuota(s))`,
+      data: { paymentId, amount: amountApplied, method: input.method, breakdown },
+    });
 
     // Desbloqueo MDM automático si el cliente quedó sin atrasos
     let unlock: CascadePaymentResult['unlock'] = null;

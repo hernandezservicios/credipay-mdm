@@ -5,7 +5,6 @@ import { MobileDevice } from '../types';
 interface MdmActionDropdownProps {
   device: MobileDevice;
   clientId: string;
-  clientName: string;
   onLockDevice: (clientId: string, reason: string) => void;
   onUnlockDevice: (clientId: string, reason: string) => void;
   onCheckStatus: (clientId: string) => void;
@@ -18,7 +17,6 @@ interface MdmActionDropdownProps {
 export const MdmActionDropdown: React.FC<MdmActionDropdownProps> = ({
   device,
   clientId,
-  clientName,
   onLockDevice,
   onUnlockDevice,
   onCheckStatus,

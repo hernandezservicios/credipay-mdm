@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authRequired, csrfProtect, requirePermission } from '../../middleware/auth.js';
 import { requireTenant, type TenantRequest } from '../../middleware/tenant.js';
+import { markDeprecated } from '../../utils/deprecation.js';
 import {
   applyCascadePayment,
   getPaymentStats,
@@ -63,7 +64,11 @@ router.get('/', requirePermission('payments.view'), async (req: TenantRequest, r
   res.json(result);
 });
 
-router.post('/cascade', requirePermission('payments.create'), async (req: TenantRequest, res) => {
+router.post(
+  '/cascade',
+  markDeprecated('POST /api/v1/payments/cascade', 'POST /api/v1/loans/:id/pay'),
+  requirePermission('payments.create'),
+  async (req: TenantRequest, res) => {
   const body = req.body as {
     clientId?: number;
     amount?: number;

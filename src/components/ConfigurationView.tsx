@@ -30,6 +30,7 @@ import {
   type LoanProductRow,
 } from '../services/api';
 import { ModalShell } from './ui/ModalShell';
+import { useConfirm } from './ConfirmDialog';
 
 export interface ConfigurationViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -133,6 +134,7 @@ const EMPTY_PRODUCT_FORM: Record<string, unknown> = {
 };
 
 export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, permits }) => {
+  const confirm = useConfirm();
   const canEdit = permits?.edit !== false;
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -308,7 +310,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
 
   const handleDeleteProduct = async (p: LoanProductRow) => {
     if (!canEdit) return;
-    if (!window.confirm(`¿Eliminar el producto "${p.name}"?`)) return;
+    if (!(await confirm({ title: 'Eliminar producto', message: `¿Eliminar el producto "${p.name}"?`, tone: 'rose', confirmLabel: 'Eliminar' }))) return;
     try {
       await apiDeleteLoanProduct(p.id);
       onNotify?.('✅ Producto eliminado', 'INFO');
@@ -551,7 +553,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
                       {p.min_terms}–{p.max_terms}
                     </td>
                     <td className="py-2.5 px-3">
-                      {Boolean(p.is_default) ? (
+                      {p.is_default ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                           DEFAULT
                         </span>
@@ -560,7 +562,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
                       )}
                     </td>
                     <td className="py-2.5 px-3">
-                      {Boolean(p.is_active) ? (
+                      {p.is_active ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                           ACTIVO
                         </span>

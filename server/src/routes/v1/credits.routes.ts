@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authRequired, csrfProtect, requirePermission, type AuthRequest } from '../../middleware/auth.js';
 import { requireTenant, type TenantRequest } from '../../middleware/tenant.js';
+import { markDeprecated } from '../../utils/deprecation.js';
 import { cancelCredit, createCredit, getCredit, listCredits } from '../../services/repoService.js';
 import { recordActivity, recordAudit } from '../../services/auditService.js';
 import { assertPlanLimit } from '../../services/planService.js';
@@ -9,7 +10,9 @@ const router = Router();
 
 router.use(authRequired, requireTenant, csrfProtect);
 
-router.get('/', requirePermission('credits.view'), async (req: TenantRequest, res) => {
+const deprecatedToLoans = markDeprecated('/api/v1/credits', '/api/v1/loans');
+
+router.get('/', deprecatedToLoans, requirePermission('credits.view'), async (req: TenantRequest, res) => {
   const data = await listCredits(req.ctx!.tenantId, {
     clientId: req.query.clientId ? Number(req.query.clientId) : undefined,
     status: typeof req.query.status === 'string' ? req.query.status : undefined,
@@ -17,7 +20,7 @@ router.get('/', requirePermission('credits.view'), async (req: TenantRequest, re
   res.json({ data });
 });
 
-router.get('/:id', requirePermission('credits.view'), async (req: TenantRequest, res) => {
+router.get('/:id', deprecatedToLoans, requirePermission('credits.view'), async (req: TenantRequest, res) => {
   const credit = await getCredit(req.ctx!.tenantId, Number(req.params.id));
   res.json({ data: credit });
 });

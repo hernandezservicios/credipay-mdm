@@ -1,19 +1,16 @@
 import React from 'react';
-import { ClientCredit, Installment } from '../types';
-import { CheckCircle, AlertTriangle, Clock, Lock, Unlock, DollarSign, Calendar, Zap } from 'lucide-react';
+import { ClientCredit } from '../types';
+import { CheckCircle, AlertTriangle, Clock, Lock, Unlock, DollarSign, Zap } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
+import { formatCurrencyRD, formatDate } from '../utils/formatters';
+import { FIXED_PENALTY_AMOUNT } from '../constants';
 
 interface InstallmentsModalProps {
   client: ClientCredit | null;
   onClose: () => void;
-  onOpenPayment: (clientId: string, installmentId: string) => void;
 }
 
-export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
-  client,
-  onClose,
-  onOpenPayment,
-}) => {
+export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ client, onClose }) => {
   if (!client) return null;
 
   const isDeviceLocked = client.device.mdmStatus === 'LOCKED';
@@ -62,7 +59,7 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
             <Zap className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
               <strong>Regla Automática:</strong> Tras 3 días de vencimiento el estado cambia a <strong>ATRASADO</strong>, suma{' '}
-              <strong>RD$200 pesos dominicanos fijos de mora</strong> y <strong>BLOQUEA el celular</strong> vía MDM. Al registrar el pago se <strong>DESBLOQUEA automáticamente</strong>.
+              <strong>{formatCurrencyRD(FIXED_PENALTY_AMOUNT)} pesos dominicanos fijos de mora</strong> y <strong>BLOQUEA el celular</strong> vía MDM. Al registrar el pago se <strong>DESBLOQUEA automáticamente</strong>.
             </span>
           </div>
         </div>
@@ -95,15 +92,15 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                   >
                     <td className="py-3.5 px-3 font-semibold text-slate-900 dark:text-slate-100">Cuota #{inst.number}</td>
                     <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 font-mono text-xs">
-                      {inst.dueDate}
+                      {formatDate(inst.dueDate)}
                       {inst.paidDate && (
                         <div className="text-[11px] text-emerald-600 font-sans">
-                          Pagada: {inst.paidDate}
+                          Pagada: {formatDate(inst.paidDate)}
                         </div>
                       )}
                     </td>
                     <td className="py-3.5 px-3 text-slate-700 dark:text-slate-300 font-medium">
-                      RD${inst.amount.toLocaleString()}
+                      {formatCurrencyRD(inst.amount)}
                     </td>
                     <td className="py-3.5 px-3">
                       {isOverdue && (
@@ -134,8 +131,7 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                         <span className="inline-flex items-center space-x-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 dark:text-indigo-200 border border-indigo-300 rounded-full text-xs font-semibold">
                           <DollarSign className="w-3 h-3" />
                           <span>
-                            ABONADO RD${(inst.paidAmount || 0).toLocaleString()} — falta RD$
-                            {Math.max(0, inst.totalAmount - (inst.paidAmount || 0)).toLocaleString()}
+                            ABONADO {formatCurrencyRD(inst.paidAmount || 0)} — falta {formatCurrencyRD(Math.max(0, inst.totalAmount - (inst.paidAmount || 0)))}
                           </span>
                         </span>
                       )}
@@ -143,31 +139,22 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({
                     <td className="py-3.5 px-3">
                       {inst.penaltyAmount > 0 ? (
                         <span className="text-rose-600 font-bold">
-                          +RD${inst.penaltyAmount.toLocaleString()}
+                          +{formatCurrencyRD(inst.penaltyAmount)}
                         </span>
                       ) : (
-                        <span className="text-slate-400">RD$0</span>
+                        <span className="text-slate-400">{formatCurrencyRD(0)}</span>
                       )}
                     </td>
                     <td className="py-3.5 px-3 font-bold text-slate-900 dark:text-slate-100">
-                      RD${inst.totalAmount.toLocaleString()}
+                      {formatCurrencyRD(inst.totalAmount)}
                     </td>
                     <td className="py-3.5 px-3 text-right">
-                      {!isPaid ? (
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => onOpenPayment(client.id, inst.id)}
-                            className="bg-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 dark:bg-emerald-500/100 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center space-x-1"
-                          >
-                            <DollarSign className="w-3.5 h-3.5" />
-                            <span>
-                              {(inst.paidAmount || 0) > 0 ? 'Registrar Abono' : 'Registrar Pago'}{' '}
-                              {isOverdue && '& Desbloquear'}
-                            </span>
-                          </button>
-                        </div>
-                      ) : (
+                      {isPaid ? (
                         <span className="text-xs text-slate-400 font-medium">Pago Completado</span>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-medium">
+                          Cobrar desde Préstamos ›
+                        </span>
                       )}
                     </td>
                   </tr>

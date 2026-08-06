@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ClientCredit, InstallmentStatus } from '../types';
-import { Smartphone, Lock, Unlock, AlertTriangle, CheckCircle, Clock, Search, Filter, Calendar } from 'lucide-react';
+import { Smartphone, Lock, Unlock, Search } from 'lucide-react';
 import { MdmActionDropdown } from './MdmActionDropdown';
+import { formatCurrencyRD } from '../utils/formatters';
 
 interface ClientListProps {
   clients: ClientCredit[];
@@ -41,13 +42,12 @@ export const ClientList: React.FC<ClientListProps> = ({
     const overdue = client.installments.filter((i) => i.status === 'ATRASADO');
     const due = client.installments.filter((i) => i.status === 'VENCIDO');
     const pending = client.installments.filter((i) => i.status === 'PENDIENTE');
-    const paid = client.installments.filter((i) => i.status === 'PAGADO');
 
     if (overdue.length > 0) {
       const penalty = overdue.reduce((sum, item) => sum + item.penaltyAmount, 0);
       return {
         status: 'ATRASADO',
-        label: `Atrasado (${overdue.length} cuotas >3 días) - Mora RD$${penalty}`,
+        label: `Atrasado (${overdue.length} cuotas >3 días) - Mora ${formatCurrencyRD(penalty)}`,
         badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
         overdueInstallmentsCount: overdue.length,
         penaltyTotal: penalty,
@@ -226,7 +226,7 @@ export const ClientList: React.FC<ClientListProps> = ({
                         </span>
 
                         <span className="text-xs text-slate-500 dark:text-slate-400">
-                          Cuotas mes: <strong>RD${client.monthlyInstallmentAmount.toLocaleString()}</strong> ({client.installments.filter(i => i.status === 'PAGADO').length}/{client.totalInstallmentsCount} pagadas)
+                          Cuotas mes: <strong>{formatCurrencyRD(client.monthlyInstallmentAmount)}</strong> ({client.installments.filter(i => i.status === 'PAGADO').length}/{client.totalInstallmentsCount} pagadas)
                         </span>
 
                         {client.notes && (

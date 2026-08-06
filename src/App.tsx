@@ -14,7 +14,6 @@ import {
   MdmApiConfig,
   MdmApiLog,
   SystemMetrics,
-  InovaGuardDeviceItem,
   Installment,
   MobileDevice,
 } from './types';
@@ -26,11 +25,9 @@ import { ClientList } from './components/ClientList';
 import { InovaGuardDevicesView } from './components/InovaGuardDevicesView';
 import { InstallmentsModal } from './components/InstallmentsModal';
 import { MdmApiConfigModal } from './components/MdmApiConfigModal';
-import { NewCreditModal } from './components/NewCreditModal';
 import { AiCobranzaModal } from './components/AiCobranzaModal';
 import { FinanceView } from './components/FinanceView';
 import { AnalyticsView } from './components/AnalyticsView';
-import { PaymentModal, CascadePaymentPayload } from './components/PaymentModal';
 import { useConfirm } from './components/ConfirmDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { SaaSAvView } from './components/SaaSAvView';
@@ -50,11 +47,6 @@ import {
   apiLogout,
   apiListClients,
   apiGetClient,
-  apiCreateClient,
-  apiCreateCredit,
-  apiCreateDevice,
-  apiPatchInstallment,
-  apiCascadePayment,
   apiSyncDevice,
   apiGetMdmConfig,
   apiPutMdmConfig,
@@ -103,6 +95,7 @@ import {
   generateInovaGuardUnlockCode,
   removeInovaGuardDevice,
 } from './services/inovaGuardApi';
+import { formatDate } from './utils/formatters';
 
 // ---------------------------------------------------------------------------
 // Helpers de mapeo servidor (snake_case + Date de mysql2) -> tipos del frontend
@@ -286,12 +279,12 @@ export default function App() {
     useState<ClientCredit | null>(null);
   const [selectedClientForAi, setSelectedClientForAi] = useState<ClientCredit | null>(null);
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
-  const [isNewCreditModalOpen, setIsNewCreditModalOpen] = useState(false);
-  const [pendingLoanDevice, setPendingLoanDevice] = useState<InovaGuardDeviceItem | null>(null);
-  const [paymentModal, setPaymentModal] = useState<{
-    client: ClientCredit | null;
-    installmentId?: string;
-  } | null>(null);
+  const [loanWizardToken, setLoanWizardToken] = useState(0);
+
+  const openLoanWizard = useCallback(() => {
+    setActiveTab('LOANS');
+    setLoanWizardToken((n) => n + 1);
+  }, []);
 
   // Toast / Banner de notificación para feedback de acciones
   const [notification, setNotification] = useState<{
@@ -607,9 +600,9 @@ export default function App() {
     try {
       const res = await apiRenewSubscription();
       showNotification(
-        `✅ Pago de renovación registrado para ${res.data.planName} (vigente hasta ${new Date(
+        `✅ Pago de renovación registrado para ${res.data.planName} (vigente hasta ${formatDate(
           res.data.periodEnd
-        ).toLocaleDateString('es-DO')}).`,
+        )}).`,
         'INFO'
       );
       await reloadSaas();
@@ -725,7 +718,7 @@ export default function App() {
   const handleLockDevice = async (
     clientId: string,
     reason: string,
-    trigger: 'AUTOMATIC_OVERDUE' | 'MANUAL_OPERATOR' = 'MANUAL_OPERATOR',
+    _trigger: 'AUTOMATIC_OVERDUE' | 'MANUAL_OPERATOR' = 'MANUAL_OPERATOR',
     skipConfirm = false
   ) => {
     const target = clients.find((c) => c.id === clientId);
@@ -760,7 +753,7 @@ export default function App() {
   const handleUnlockDevice = async (
     clientId: string,
     reason: string,
-    trigger: 'AUTOMATIC_PAYMENT' | 'MANUAL_OPERATOR' = 'MANUAL_OPERATOR',
+    _trigger: 'AUTOMATIC_PAYMENT' | 'MANUAL_OPERATOR' = 'MANUAL_OPERATOR',
     skipConfirm = false
   ) => {
     const target = clients.find((c) => c.id === clientId);
@@ -920,60 +913,8 @@ export default function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // REGISTRAR PAGO EN CASCADA (el servidor distribuye, desbloquea y audita)
-  // ---------------------------------------------------------------------------
-  const handleCascadePayment = async (payload: CascadePaymentPayload) => {
-    try {
-      const result = await apiCascadePayment({
-        clientId: Number(payload.clientId),
-        amount: payload.amountApplied,
-        method: payload.method,
-        bank: payload.bank,
-        received: payload.received,
-        change: payload.change,
-      });
-      await reloadAll();
-
-      const d = result.data as {
-        amountApplied?: number;
-        change?: number;
-        unlock?: { success?: boolean; simulated?: boolean; message?: string } | null;
-      };
-      const applied = d.amountApplied ?? payload.amountApplied;
-      const change = d.change ?? payload.change;
-      const fullyPaidNumbers = payload.affected
-        .filter((a) => a.becamePaid)
-        .map((a) => a.installment.number);
-      const abonoNumbers = payload.affected
-        .filter((a) => !a.becamePaid)
-        .map((a) => a.installment.number);
-
-      let msg = `💵 PAGO EN CASCADA REGISTRADO: RD$${applied.toLocaleString()} aplicados a ${payload.clientName}.`;
-      if (fullyPaidNumbers.length > 0) {
-        msg += ` Cuota${fullyPaidNumbers.length > 1 ? 's' : ''} ${fullyPaidNumbers
-          .map((n) => `#${n}`)
-          .join(', ')} pagada${fullyPaidNumbers.length > 1 ? 's' : ''}.`;
-      }
-      if (abonoNumbers.length > 0) {
-        msg += ` Abono${abonoNumbers.length > 1 ? 's' : ''} en cuota${abonoNumbers.length > 1 ? 's' : ''} ${abonoNumbers
-          .map((n) => `#${n}`)
-          .join(', ')}.`;
-      }
-      if (change > 0) msg += ` Vuelto a entregar: RD$${change.toLocaleString()}.`;
-      showNotification(msg, 'INFO');
-
-      if (d.unlock?.success) {
-        showNotification(
-          `🎉 DESBLOQUEO AUTOMÁTICO: El celular de ${payload.clientName} fue desbloqueado por MDM al quedar al día con el pago en cascada.`,
-          'UNLOCK'
-        );
-      }
-    } catch (err) {
-      showNotification(`❌ Error al registrar el pago: ${errorMessage(err)}`, 'LOCK');
-    }
-  };
-
   // MOTOR DE MORA SERVER-SIDE: evalúa toda la cartera con la configuración del tenant
+  // ---------------------------------------------------------------------------
   const runAutoEngineNow = async () => {
     const ok = await confirmDialog({
       icon: <Cpu className="w-5 h-5" />,
@@ -996,50 +937,6 @@ export default function App() {
       );
     } catch (err) {
       showNotification(`❌ Error del motor de mora: ${errorMessage(err)}`, 'LOCK');
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // NUEVO CRÉDITO (cliente -> crédito -> dispositivo)
-  // ---------------------------------------------------------------------------
-  const handleCreateCredit = async (newClient: ClientCredit) => {
-    try {
-      const client = await apiCreateClient({
-        fullName: newClient.fullName,
-        cedulaOrId: newClient.cedulaOrId !== '—' ? newClient.cedulaOrId : undefined,
-        phone: newClient.phone !== '—' ? newClient.phone : undefined,
-        email: newClient.email,
-        address: newClient.address,
-        notes: newClient.notes,
-      });
-      await apiCreateCredit({
-        clientId: client.data.id,
-        totalAmount: newClient.totalCreditAmount,
-        monthlyAmount: newClient.monthlyInstallmentAmount,
-        installmentsCount: newClient.totalInstallmentsCount,
-      });
-      const dev = newClient.device;
-      if (dev.imei && dev.imei !== '—') {
-        await apiCreateDevice({
-          clientId: client.data.id,
-          brand: dev.brand,
-          model: dev.model,
-          imei: dev.imei,
-          serialNumber: dev.serialNumber,
-          inovaguardId: dev.inovaguardId,
-          unlockCode: dev.unlockCode,
-          deviceName: dev.deviceName,
-          mdmStatus: 'UNLOCKED',
-        });
-      }
-      setPendingLoanDevice(null);
-      await reloadAll();
-      showNotification(
-        `✅ Nuevo crédito y celular ${dev.model} registrados para ${newClient.fullName}.`,
-        'INFO'
-      );
-    } catch (err) {
-      showNotification(`❌ Error al crear el crédito: ${errorMessage(err)}`, 'LOCK');
     }
   };
 
@@ -1147,7 +1044,7 @@ export default function App() {
       <Navbar
         mode={isPortalMode ? 'portal' : 'tenant'}
         onExitTenant={!isPortalMode && session.isGlobal ? handleExitTenant : undefined}
-        onOpenNewCredit={guard('credits.create', () => setIsNewCreditModalOpen(true))}
+        onOpenNewCredit={guard('loans.manage', openLoanWizard)}
         onOpenApiConfig={guard('mdm.config', () => setIsApiModalOpen(true))}
         autoEngineActive={autoEngineActive}
         onToggleAutoEngine={() => setAutoEngineActive(!autoEngineActive)}
@@ -1191,7 +1088,7 @@ export default function App() {
           autoEngineActive={autoEngineActive}
           onToggleAutoEngine={() => setAutoEngineActive(!autoEngineActive)}
           onRunEngineNow={guard('installments.edit', runAutoEngineNow)}
-          onOpenNewCredit={guard('credits.create', () => setIsNewCreditModalOpen(true))}
+          onOpenNewCredit={guard('loans.manage', openLoanWizard)}
           onOpenApiConfig={guard('mdm.config', () => setIsApiModalOpen(true))}
           onSyncInovaGuard={guard('devices.view', handleSyncInovaGuard)}
           mdmConfigEnabled={mdmConfig.enabled}
@@ -1291,6 +1188,7 @@ export default function App() {
                 condone: has('loans.condone'),
                 agreements: has('loans.agreements'),
               }}
+              openWizardToken={loanWizardToken}
             />
           )}
 
@@ -1324,20 +1222,15 @@ export default function App() {
                   setActiveTab('CLIENTS');
                 }
               }}
-              onCreateLoanForDevice={(device) => {
-                setPendingLoanDevice(device);
-                setIsNewCreditModalOpen(true);
+              onCreateLoanForDevice={(_device) => {
+                openLoanWizard();
               }}
               onSyncComplete={handleSyncInovaGuard}
             />
           )}
 
           {activeTab === 'FINANCE' && (
-            <FinanceView
-              clients={clients}
-              onOpenPayment={() => setPaymentModal({ client: null })}
-              onOpenNewCredit={() => setIsNewCreditModalOpen(true)}
-            />
+            <FinanceView onNotify={showNotification} />
           )}
 
           {activeTab === 'ANALYTICS' && (
@@ -1471,12 +1364,6 @@ export default function App() {
       <InstallmentsModal
         client={selectedClientForInstallments}
         onClose={() => setSelectedClientForInstallments(null)}
-        onOpenPayment={(clientId, installmentId) =>
-          setPaymentModal({
-            client: clients.find((c) => c.id === clientId) ?? null,
-            installmentId,
-          })
-        }
       />
 
       <MdmApiConfigModal
@@ -1488,41 +1375,10 @@ export default function App() {
         onClearLogs={() => setLogs([])}
       />
 
-      <NewCreditModal
-        isOpen={isNewCreditModalOpen}
-        onClose={() => {
-          setIsNewCreditModalOpen(false);
-          setPendingLoanDevice(null);
-        }}
-        initialDevice={
-          pendingLoanDevice
-            ? {
-                brand: pendingLoanDevice.brand,
-                model: pendingLoanDevice.model,
-                imei: pendingLoanDevice.imei,
-                inovaguardId: pendingLoanDevice.id,
-                unlockCode: pendingLoanDevice.unlockCode,
-                deviceName: pendingLoanDevice.deviceName,
-              }
-            : null
-        }
-        onCreateCredit={handleCreateCredit}
-      />
-
       <AiCobranzaModal
         client={selectedClientForAi}
         onClose={() => setSelectedClientForAi(null)}
       />
-
-      {paymentModal && (
-        <PaymentModal
-          clients={clients}
-          client={paymentModal?.client ?? null}
-          initialInstallmentId={paymentModal?.installmentId}
-          onClose={() => setPaymentModal(null)}
-          onConfirm={handleCascadePayment}
-        />
-      )}
 
       {isSecurityModalOpen && <SecurityModal onClose={() => setIsSecurityModalOpen(false)} />}
 

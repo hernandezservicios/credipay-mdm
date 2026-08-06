@@ -12,6 +12,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { apiDashboardSummary, errorMessage, type DashboardSummary } from '../services/api';
+import { formatCurrencyRD, formatDateTime } from '../utils/formatters';
 
 export interface DashboardViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -99,7 +100,7 @@ function titleCase(value: string): string {
 }
 
 function formatMoney(n: number): string {
-  return 'RD$ ' + Number(n).toLocaleString('es-DO', { maximumFractionDigits: 2 });
+  return formatCurrencyRD(Number(n));
 }
 
 function monthShort(month: string): string {
@@ -388,7 +389,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNotify }) => {
                 {summary.actas.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-50 dark:bg-slate-500/10 dark:hover:bg-slate-800/50">
                     <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                      {new Date(a.created_at).toLocaleString('es-DO')}
+                      {formatDateTime(a.created_at)}
                     </td>
                     <td className="py-3 px-4">
                       <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">

@@ -2,7 +2,6 @@ import React from 'react';
 import {
   RefreshCw,
   Building2,
-  Crown,
   Users,
   CreditCard,
   Globe2,
@@ -17,6 +16,7 @@ import { PlatformAdminView } from './PlatformAdminView';
 import { UsersView } from './UsersView';
 import type { PlatformTenantRow, PlanRow, BillingCycle } from '../services/api';
 import type { PortalTab } from './PlatformSidebar';
+import { formatCurrencyRD } from '../utils/formatters';
 
 const CYCLE_LABEL: Record<BillingCycle, string> = {
   MONTHLY: 'Mensual',
@@ -35,7 +35,7 @@ const CYCLE_MONTHS: Record<BillingCycle, number> = {
 function formatPrice(value: string | null, code: string | null): string {
   const n = Number(value) || 0;
   const symbol = code === 'USD' ? 'US$' : code === 'DOP' ? 'RD$' : `${code ?? ''} `;
-  return `${symbol}${n.toLocaleString('es-DO', { maximumFractionDigits: 2 })}`;
+  return formatCurrencyRD(n, true, symbol);
 }
 
 interface PlatformPortalViewProps {
@@ -128,8 +128,7 @@ function OverviewSection({
           </div>
           <div className="min-w-0">
             <div className="text-base font-extrabold text-white truncate">
-              {symbol}
-              {Math.round(mrr).toLocaleString('es-DO')}/mes
+              {formatCurrencyRD(mrr, true, symbol)}/mes
             </div>
             <div className="text-[9px] uppercase tracking-wider text-slate-400">MRR estimado</div>
           </div>
@@ -140,8 +139,7 @@ function OverviewSection({
           </div>
           <div className="min-w-0">
             <div className="text-base font-extrabold text-white truncate">
-              {symbol}
-              {Math.round(collectedMonth).toLocaleString('es-DO')}
+              {formatCurrencyRD(collectedMonth, true, symbol)}
             </div>
             <div className="text-[9px] uppercase tracking-wider text-slate-400">Cobrado este mes</div>
           </div>
@@ -152,8 +150,7 @@ function OverviewSection({
           </div>
           <div className="min-w-0">
             <div className="text-base font-extrabold text-white truncate">
-              {symbol}
-              {Math.round(collectedTotal).toLocaleString('es-DO')}
+              {formatCurrencyRD(collectedTotal, true, symbol)}
             </div>
             <div className="text-[9px] uppercase tracking-wider text-slate-400">Cobrado acumulado</div>
           </div>

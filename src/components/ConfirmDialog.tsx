@@ -10,6 +10,14 @@ import { ModalShell } from './ui/ModalShell';
 
 export type ConfirmTone = 'rose' | 'emerald' | 'indigo' | 'amber';
 
+export interface ConfirmInputOptions {
+  label?: string;
+  placeholder?: string;
+  initialValue?: string;
+  multiline?: boolean;
+  required?: boolean;
+}
+
 export interface ConfirmOptions {
   title: string;
   message: string;
@@ -18,13 +26,18 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmOnly?: boolean;
+  /** Si se provee, el diálogo pide texto libre (reemplaza window.prompt) y la
+   *  promesa resuelve con el texto (o null si se cancela). F7. */
+  input?: ConfirmInputOptions;
 }
+
+export type ConfirmResult = boolean | string | null;
 
 interface ConfirmDialogState extends ConfirmOptions {
-  resolve: (value: boolean) => void;
+  resolve: (value: ConfirmResult) => void;
 }
 
-const ConfirmContext = createContext<(options: ConfirmOptions) => Promise<boolean>>(
+const ConfirmContext = createContext<(options: ConfirmOptions) => Promise<ConfirmResult>>(
   () => Promise.resolve(false)
 );
 
@@ -59,21 +72,38 @@ const TONE_STYLES: Record<
 export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [dialog, setDialog] = useState<ConfirmDialogState | null>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const [inputValue, setInputValue] = useState('');
 
   const confirm = useCallback((options: ConfirmOptions) => {
-    return new Promise<boolean>((resolve) => {
+    return new Promise<ConfirmResult>((resolve) => {
       setDialog({ ...options, resolve });
+      setInputValue(options.input?.initialValue ?? '');
     });
   }, []);
 
-  const close = useCallback((result: boolean) => {
-    setDialog((current) => {
-      if (current) current.resolve(result);
-      return null;
-    });
-  }, []);
+  const close = useCallback(
+    (result: ConfirmResult) => {
+      setDialog((current) => {
+        if (current) current.resolve(result);
+        return null;
+      });
+    },
+    []
+  );
 
-  // Cerrar con tecla Escape (y Enter en modo solo confirmar)
+  const closeCurrent = useCallback(() => {
+    const d = dialog;
+    if (!d?.input) {
+      close(true);
+      return;
+    }
+    const value = inputValue.trim();
+    if (value === '' && d.input.required) return;
+    close(value);
+  }, [dialog, inputValue, close]);
+
+  // Cerrar con tecla Escape (y Enter en modo solo confirmar o con input)
   useEffect(() => {
     if (!dialog) return;
     const onKey = (e: KeyboardEvent) => {
@@ -81,20 +111,20 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
         e.preventDefault();
         close(false);
       }
-      if (e.key === 'Enter' && dialog.confirmOnly) {
+      if (e.key === 'Enter' && (dialog.confirmOnly || dialog.input)) {
         e.preventDefault();
-        close(true);
+        closeCurrent();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialog, close]);
+  }, [dialog, close, closeCurrent]);
 
-  // Enfocar el botón de confirmación para uso con teclado
+  // Enfocar el campo o el botón de confirmación para uso con teclado
   useEffect(() => {
-    if (dialog && confirmRef.current) {
-      confirmRef.current.focus();
-    }
+    if (!dialog) return;
+    const ref = dialog.input ? inputRef.current : confirmRef.current;
+    if (ref) ref.focus();
   }, [dialog]);
 
   if (!dialog) {
@@ -118,7 +148,7 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
         closeOnEscape={false}
         closeOnBackdrop={!dialog.confirmOnly}
         showCloseButton={!dialog.confirmOnly}
-        initialFocusRef={confirmRef}
+        initialFocusRef={dialog.input ? inputRef : confirmRef}
         ariaLabel="Diálogo de confirmación"
       >
         <div className="flex items-start gap-3.5">
@@ -134,6 +164,34 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
           </p>
         </div>
 
+        {dialog.input && (
+          <div className="mt-4">
+            {dialog.input.label && (
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                {dialog.input.label}
+              </label>
+            )}
+            {dialog.input.multiline ? (
+              <textarea
+                ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={dialog.input.placeholder}
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+              />
+            ) : (
+              <input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={dialog.input.placeholder}
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+              />
+            )}
+          </div>
+        )}
+
         <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
           {!dialog.confirmOnly && (
             <button
@@ -145,7 +203,7 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
           )}
           <button
             ref={confirmRef}
-            onClick={() => close(true)}
+            onClick={closeCurrent}
             className={`px-4 py-2 rounded-lg text-white text-xs font-bold shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${tone.button} ${tone.focus}`}
           >
             {dialog.confirmLabel || 'Confirmar'}

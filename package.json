@@ -15,7 +15,7 @@
     "test:e2e": "playwright test",
     "test:audit": "playwright test --config playwright.audit.config.ts",
     "typecheck": "tsc --noEmit && npm --prefix server run typecheck",
-    "lint": "npm run typecheck"
+    "lint": "eslint src"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -28,14 +28,19 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.4",
     "esbuild": "^0.25.0",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
+    "typescript-eslint": "^8.66.0",
     "vite": "^6.2.3"
   }
 }

@@ -12,6 +12,7 @@ import {
   Network,
   FileSignature,
   Handshake,
+  Eye,
 } from 'lucide-react';
 import {
   errorMessage,
@@ -44,6 +45,10 @@ import type {
   LoanQuote,
 } from '../services/api';
 import { ModalShell } from './ui/ModalShell';
+import { useConfirm } from './ConfirmDialog';
+import { CobranzaModal } from './CobranzaModal';
+import { LoanDetailModal } from './LoanDetailModal';
+import { formatCurrencyRD, formatDate } from '../utils/formatters';
 
 export interface LoansViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -56,6 +61,8 @@ export interface LoansViewProps {
     condone?: boolean;
     agreements?: boolean;
   };
+  /** Incrementa cada vez que una acción externa pide abrir el wizard de préstamo. */
+  openWizardToken?: number;
 }
 
 type CreditEx = CreditRow & Record<string, string | number | Date | null>;
@@ -78,10 +85,14 @@ const num = (v: unknown): number => {
 
 const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
 
-const money = (v: unknown): string =>
-  'RD$ ' + num(v).toLocaleString('es-DO', { maximumFractionDigits: 2 });
+const money = (v: unknown): string => formatCurrencyRD(num(v));
 
 const datePart = (v: unknown): string => (v ? str(v).slice(0, 10) : '');
+
+const fmtDate = (v: unknown): string => {
+  const iso = datePart(v);
+  return iso ? formatDate(iso) : '—';
+};
 
 const todayStr = (): string => new Date().toISOString().slice(0, 10);
 
@@ -183,7 +194,7 @@ const QuoteSummary: React.FC<{ quote: LoanQuote }> = ({ quote }) => (
           {quote.schedule.map((s) => (
             <tr key={s.number}>
               <td className="py-2 px-3">{s.number}</td>
-              <td className="py-2 px-3">{datePart(s.dueDate)}</td>
+              <td className="py-2 px-3">{fmtDate(s.dueDate)}</td>
               <td className="py-2 px-3">{money(s.amount)}</td>
               <td className="py-2 px-3">{money(s.principalPart)}</td>
               <td className="py-2 px-3">{money(s.interestPart)}</td>
@@ -195,7 +206,8 @@ const QuoteSummary: React.FC<{ quote: LoanQuote }> = ({ quote }) => (
   </div>
 );
 
-export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, permits }) => {
+export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, permits, openWizardToken }) => {
+  const confirmDialog = useConfirm();
   const p = {
     create: true,
     approve: true,
@@ -268,6 +280,13 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
 
   const [overdueRunning, setOverdueRunning] = useState(false);
   const [agrBusy, setAgrBusy] = useState<number | null>(null);
+  const [cobranzaLoan, setCobranzaLoan] = useState<{
+    id: number;
+    creditNumber: string;
+    clientName: string;
+    outstanding: number;
+  } | null>(null);
+  const [detailLoanId, setDetailLoanId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -325,6 +344,12 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (openWizardToken && openWizardToken > 0) {
+      setWizOpen(true);
+    }
+  }, [openWizardToken]);
+
   const runLoan = useCallback(
     async (busyKey: number, fn: () => Promise<unknown>, okMsg: string) => {
       setBusyId(busyKey);
@@ -344,12 +369,22 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
   const approve = (c: CreditEx) =>
     runLoan(num(c.id), () => apiApproveLoan(num(c.id)), 'Préstamo aprobado correctamente');
 
-  const reject = (c: CreditEx) => {
-    const reason = window.prompt('Motivo del rechazo:');
-    if (reason === null) return;
-    return runLoan(
+  const reject = async (c: CreditEx) => {
+    const reason = await confirmDialog({
+      title: 'Rechazar préstamo',
+      message: `¿Rechazar el préstamo ${str(c.credit_number)}?`,
+      confirmLabel: 'Rechazar',
+      tone: 'rose',
+      input: { label: 'Motivo (opcional)', placeholder: 'Ej.: documentación incompleta' },
+    });
+    if (reason === null || reason === false) return;
+    await runLoan(
       num(c.id),
-      () => apiRejectLoan(num(c.id), reason || undefined),
+      () =>
+        apiRejectLoan(
+          num(c.id),
+          typeof reason === 'string' && reason.trim() ? reason.trim() : undefined
+        ),
       'Préstamo rechazado'
     );
   };
@@ -497,7 +532,15 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
   };
 
   const runOverdue = async () => {
-    if (!window.confirm('¿Ejecutar el motor de mora? Se procesarán vencidos y penalizaciones.')) return;
+    if (
+      !(await confirmDialog({
+        title: 'Motor de mora',
+        message: '¿Ejecutar el motor de mora? Se procesarán vencidos y penalizaciones.',
+        confirmLabel: 'Ejecutar',
+        tone: 'amber',
+      }))
+    )
+      return;
     setOverdueRunning(true);
     try {
       const res = await apiRunOverdue();
@@ -741,12 +784,12 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
                         <td className={tdCls}>{a.id}</td>
                         <td className={tdCls}>{a.credit_number}</td>
                         <td className={tdCls}>{a.client_name}</td>
-                        <td className={tdCls}>{datePart(a.agreed_date)}</td>
+                        <td className={tdCls}>{fmtDate(a.agreed_date)}</td>
                         <td className={tdCls}>{money(a.total_amount)}</td>
                         <td className={tdCls}>{money(a.initial_payment)}</td>
                         <td className={tdCls}>{a.terms}</td>
                         <td className={tdCls}>{a.frequency}</td>
-                        <td className={tdCls}>{datePart(a.first_due_date)}</td>
+                        <td className={tdCls}>{fmtDate(a.first_due_date)}</td>
                         <td className={tdCls}>{badge(cls, lbl)}</td>
                         <td className={tdCls}>{str(a.notes) || '—'}</td>
                         <td className={tdCls}>
@@ -823,7 +866,7 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
                             {r.client.full_name}
                           </button>
                         </td>
-                        <td className={tdCls}>{datePart(c.start_date)}</td>
+                        <td className={tdCls}>{fmtDate(c.start_date)}</td>
                         <td className={tdCls}>{money(disbursed)}</td>
                         <td className={tdCls}>{num(c.annual_rate)}</td>
                         <td className={tdCls}>
@@ -843,7 +886,7 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
                         <td className={tdCls}>
                           {r.nextInstallment ? (
                             <span className="text-xs">
-                              <span className="block">{datePart(r.nextInstallment.due_date)}</span>
+                              <span className="block">{fmtDate(r.nextInstallment.due_date)}</span>
                               <span className="block font-semibold text-slate-900 dark:text-slate-100">
                                 {money(r.nextInstallment.amount)}
                               </span>
@@ -923,6 +966,32 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
                                 Acuerdo de Pago
                               </button>
                             )}
+                            {(st === 'ACTIVE' || st === 'DEFAULTED') && (
+                              <button
+                                className={btnPrimary}
+                                disabled={busy}
+                                onClick={() =>
+                                  setCobranzaLoan({
+                                    id: num(c.id),
+                                    creditNumber: str(c.credit_number),
+                                    clientName: r.client.full_name,
+                                    outstanding: pending,
+                                  })
+                                }
+                              >
+                                <HandCoins className="h-3 w-3 inline mr-1" />
+                                Cobrar
+                              </button>
+                            )}
+                            {canAct && (
+                              <button
+                                className={btnSecondary}
+                                onClick={() => setDetailLoanId(num(c.id))}
+                              >
+                                <Eye className="h-3 w-3 inline mr-1" />
+                                Detalle
+                              </button>
+                            )}
                             {canAct && (
                               <button
                                 className={btnSecondary}
@@ -961,7 +1030,7 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
                                     {r.installments.map((inst) => (
                                       <tr key={inst.id}>
                                         <td className="py-2 px-3">{num(inst.installment_number)}</td>
-                                        <td className="py-2 px-3">{datePart(inst.due_date)}</td>
+                                        <td className="py-2 px-3">{fmtDate(inst.due_date)}</td>
                                         <td className="py-2 px-3">{num(inst.amount)}</td>
                                         <td className="py-2 px-3">
                                           {money((inst as unknown as Record<string, unknown>).principal_part)}
@@ -978,7 +1047,7 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
                                           )}
                                         </td>
                                         <td className="py-2 px-3">{money(inst.paid_amount)}</td>
-                                        <td className="py-2 px-3">{datePart(inst.paid_date)}</td>
+                                        <td className="py-2 px-3">{fmtDate(inst.paid_date)}</td>
                                         <td className="py-2 px-3">
                                           {p.condone && inst.status !== 'PAGADO' && (
                                             <button
@@ -1442,6 +1511,19 @@ export const LoansView: React.FC<LoansViewProps> = ({ onNotify, onGoToClient, pe
             </div>
           </div>
         </ModalShell>
+      )}
+
+      {cobranzaLoan && (
+        <CobranzaModal
+          loan={cobranzaLoan}
+          onClose={() => setCobranzaLoan(null)}
+          onNotify={onNotify}
+          onSuccess={() => void load()}
+        />
+      )}
+
+      {detailLoanId !== null && (
+        <LoanDetailModal loanId={detailLoanId} onClose={() => setDetailLoanId(null)} />
       )}
     </div>
   );

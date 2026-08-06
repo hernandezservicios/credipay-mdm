@@ -1,6 +1,7 @@
 import React from 'react';
 import { SystemMetrics } from '../types';
 import { Smartphone, Lock, AlertTriangle, DollarSign, Cpu } from 'lucide-react';
+import { formatCurrencyRD } from '../utils/formatters';
 
 interface DashboardStatsProps {
   metrics: SystemMetrics;
@@ -123,7 +124,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
           </div>
           <div className="mt-3 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              RD${metrics.totalCollectedThisMonth.toLocaleString()}
+              {formatCurrencyRD(metrics.totalCollectedThisMonth)}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">RD$ (DOP)</span>
           </div>

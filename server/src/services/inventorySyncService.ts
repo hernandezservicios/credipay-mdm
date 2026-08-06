@@ -1,7 +1,7 @@
 import type { RowDataPacket } from 'mysql2';
 import { pool } from '../db/pool.js';
 import type { MdmConfig } from './tenantService.js';
-import { getInovaGuardDevices } from './inovaGuardService.js';
+import { getInovaGuardDevices } from '../integrations/inovaGuard/index.js';
 
 /**
  * Reconciliación del inventario InovaGuard con la tabla local `devices`

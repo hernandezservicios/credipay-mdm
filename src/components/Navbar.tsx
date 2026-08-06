@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Lock, ShieldCheck, Settings, Plus, RefreshCw, Cpu, Users, Activity, Menu, LogOut, KeyRound, Sun, Moon, ArrowLeft } from 'lucide-react';
+import { Smartphone, Settings, Plus, RefreshCw, Cpu, Menu, LogOut, KeyRound, Sun, Moon, ArrowLeft } from 'lucide-react';
 import type { TenantRow } from '../services/api';
 import { TenantSwitcher } from './TenantSwitcher';
 
@@ -36,13 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onExitTenant,
   onOpenNewCredit,
   onOpenApiConfig,
-  autoEngineActive,
-  onToggleAutoEngine,
   onRunEngineNow,
   mdmConfigEnabled,
   onSyncInovaGuard,
-  activeTab = 'CLIENTS',
-  onSelectTab,
   onToggleMobileSidebar,
   userName,
   userEmail,
