@@ -31,6 +31,7 @@ import {
 } from '../services/api';
 import { ModalShell } from './ui/ModalShell';
 import { useConfirm } from './ConfirmDialog';
+import { setMoneyConfig } from '../utils/formatters';
 
 export interface ConfigurationViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -214,6 +215,14 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
       });
       const res = await apiUpdateConfigSection(sec, body);
       setConfig(res.data);
+      const c = res.data.currency;
+      setMoneyConfig({
+        code: String(c.code ?? 'DOP'),
+        symbol: String(c.symbol ?? 'RD$'),
+        decimals: Number(c.decimals ?? 2),
+        thousandSeparator: String(c.thousand_separator ?? ','),
+        decimalSeparator: String(c.decimal_separator ?? '.'),
+      });
       rebuildForms(res.data);
       onNotify?.(`✅ Configuración de ${TABS.find((t) => t.id === sec)?.label ?? sec} guardada`, 'INFO');
     } catch (err) {

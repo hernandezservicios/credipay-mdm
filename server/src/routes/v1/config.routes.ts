@@ -16,7 +16,7 @@ import { ApiError } from '../../utils/http.js';
 const router = Router();
 router.use(authRequired, requireTenant, csrfProtect);
 
-router.get('/', requirePermission('config.view'), async (req: TenantRequest, res) => {
+router.get('/', async (req: TenantRequest, res) => {
   const config = await getPlatformConfig(req.ctx!.tenantId);
   res.json({ data: config });
 });

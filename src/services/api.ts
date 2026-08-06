@@ -998,6 +998,14 @@ export function apiCollectionRuns(): Promise<{ data: CollectionRunRow[] }> {
 
 // ---------------- Configuración por tenant ----------------
 
+export interface PlatformCurrency {
+  code: string;
+  symbol: string;
+  decimals: number;
+  thousand_separator: string;
+  decimal_separator: string;
+}
+
 export interface PlatformConfig {
   companyInfo: Record<string, unknown>;
   generalConfig: Record<string, unknown>;
@@ -1005,6 +1013,7 @@ export interface PlatformConfig {
   overdueConfig: Record<string, unknown>;
   paymentConfig: Record<string, unknown>;
   integrations: Array<Record<string, unknown>>;
+  currency: PlatformCurrency;
 }
 
 export function apiGetConfig(): Promise<{ data: PlatformConfig }> {

@@ -30,25 +30,47 @@ export interface CompanyInfo {
   email: string;
   website: string;
   tax_id: string;
-  currency: string;
   timezone: string;
   language: string;
   date_format: string;
-  currency_format: string;
-  decimals: number;
 }
 
 export interface GeneralConfig {
   credit_number_prefix: string;
   receipt_prefix: string;
   invoice_prefix: string;
-  decimals: number;
   rounding: 'HALF_UP' | 'CEIL' | 'FLOOR';
   work_days: number[];
   week_start_day: number;
   holidays: string[];
   default_payment_method: string;
 }
+
+// Moneda única (Adenda v2.5 / Plan Maestro v2.9, FASE 1).
+// Única fuente: `tenants.currency_code` + tabla `currencies`.
+export interface CurrencyConfig {
+  code: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  thousand_separator: string;
+  decimal_separator: string;
+}
+
+// Catálogo por defecto (solo si la tabla `currencies` está vacía).
+const DEFAULT_CURRENCY_BY_CODE: Record<string, Omit<CurrencyConfig, 'code'>> = {
+  DOP: { name: 'Peso Dominicano', symbol: 'RD$', decimals: 2, thousand_separator: ',', decimal_separator: '.' },
+  USD: { name: 'Dólar Estadounidense', symbol: 'US$', decimals: 2, thousand_separator: ',', decimal_separator: '.' },
+  EUR: { name: 'Euro', symbol: '€', decimals: 2, thousand_separator: '.', decimal_separator: ',' },
+  MXN: { name: 'Peso Mexicano', symbol: 'MX$', decimals: 2, thousand_separator: ',', decimal_separator: '.' },
+  ARS: { name: 'Peso Argentino', symbol: 'AR$', decimals: 2, thousand_separator: '.', decimal_separator: ',' },
+  CLP: { name: 'Peso Chileno', symbol: 'CL$', decimals: 0, thousand_separator: '.', decimal_separator: ',' },
+  COP: { name: 'Peso Colombiano', symbol: 'CO$', decimals: 2, thousand_separator: '.', decimal_separator: ',' },
+  BRL: { name: 'Real Brasileño', symbol: 'R$', decimals: 2, thousand_separator: '.', decimal_separator: ',' },
+  PEN: { name: 'Sol Peruano', symbol: 'S/', decimals: 2, thousand_separator: ',', decimal_separator: '.' },
+};
+
+const DEFAULT_CURRENCY: CurrencyConfig = { code: 'DOP', ...DEFAULT_CURRENCY_BY_CODE.DOP };
 
 export interface LoanConfig {
   default_method: string;
@@ -96,6 +118,7 @@ export interface PlatformConfig {
   overdueConfig: OverdueConfig;
   paymentConfig: PaymentConfig;
   integrations: IntegrationConfig[];
+  currency: CurrencyConfig;
 }
 
 export const CONFIG_SECTIONS = [
@@ -131,18 +154,14 @@ export function defaultPlatformConfig(tenant?: { currency_code?: string; timezon
       email: '',
       website: '',
       tax_id: '',
-      currency: tenant?.currency_code ?? 'DOP',
       timezone: tenant?.timezone ?? 'America/Santo_Domingo',
       language: 'es',
       date_format: 'DD/MM/YYYY',
-      currency_format: 'Lc',
-      decimals: 2,
     },
     generalConfig: {
       credit_number_prefix: 'CR',
       receipt_prefix: 'REC',
       invoice_prefix: 'INV',
-      decimals: 2,
       rounding: 'HALF_UP',
       work_days: [1, 2, 3, 4, 5],
       week_start_day: 1,
@@ -174,7 +193,16 @@ export function defaultPlatformConfig(tenant?: { currency_code?: string; timezon
       accept_methods: ['CASH', 'TRANSFER', 'CARD', 'OTHER'],
     },
     integrations: [],
+    currency: resolveDefaultCurrency(tenant?.currency_code),
   };
+}
+
+// Resuelve la moneda desde el catálogo por código (fallback DOP).
+function resolveDefaultCurrency(code?: string | null): CurrencyConfig {
+  if (code && DEFAULT_CURRENCY_BY_CODE[code]) {
+    return { code, ...DEFAULT_CURRENCY_BY_CODE[code] };
+  }
+  return { ...DEFAULT_CURRENCY };
 }
 
 // ---------------------------------------------------------------------------
@@ -252,12 +280,50 @@ export async function getPlatformConfig(tenantId: number): Promise<PlatformConfi
   }
 
   return {
-    companyInfo: load('companyInfo'),
-    generalConfig: load('generalConfig'),
+    companyInfo: stripLegacyCompanyKeys(load<CompanyInfo>('companyInfo')),
+    generalConfig: stripLegacyGeneralKeys(load<GeneralConfig>('generalConfig')),
     loanConfig: load('loanConfig'),
     overdueConfig: overdue,
     paymentConfig: load('paymentConfig'),
     integrations: normalizeIntegrations(parseJson(raw?.['integrations'] as string | null)),
+    currency: await loadCurrency(tenant.currency_code),
+  };
+}
+
+// Moneda única (FASE 1): estas claves duplicadas ya NO existen en el tipo; se
+// descartan de respuestas antiguas para mantener una única fuente de verdad.
+const LEGACY_COMPANY_KEYS = ['currency', 'currency_format', 'decimals'] as const;
+const LEGACY_GENERAL_KEYS = ['decimals'] as const;
+
+function stripLegacyCompanyKeys(company: CompanyInfo): CompanyInfo {
+  const out = { ...company };
+  for (const k of LEGACY_COMPANY_KEYS) delete (out as Record<string, unknown>)[k];
+  return out;
+}
+
+function stripLegacyGeneralKeys(general: GeneralConfig): GeneralConfig {
+  const out = { ...general };
+  for (const k of LEGACY_GENERAL_KEYS) delete (out as Record<string, unknown>)[k];
+  return out;
+}
+
+// Moneda única: `tenants.currency_code` + tabla `currencies` (FASE 1).
+export async function loadCurrency(code: string): Promise<CurrencyConfig> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT code, name, symbol, decimals, thousand_separator, decimal_separator
+       FROM currencies
+      WHERE code = ? AND is_active = 1`,
+    [code]
+  );
+  const c = rows[0] as RowDataPacket | undefined;
+  if (!c) return resolveDefaultCurrency(code);
+  return {
+    code: String(c.code),
+    name: String(c.name),
+    symbol: String(c.symbol),
+    decimals: Number(c.decimals),
+    thousand_separator: String(c.thousand_separator ?? ','),
+    decimal_separator: String(c.decimal_separator ?? '.'),
   };
 }
 

@@ -181,7 +181,8 @@ describe('daysBetween', () => {
 describe('defaultPlatformConfig', () => {
   it('incluye todas las secciones requeridas', () => {
     const cfg = defaultPlatformConfig();
-    expect(cfg.companyInfo.currency).toBe('DOP');
+    expect(cfg.currency.code).toBe('DOP');
+    expect(cfg.currency.symbol).toBe('RD$');
     expect(cfg.loanConfig.default_method).toBe('FRENCH');
     expect(cfg.overdueConfig.grace_days).toBe(3);
     expect(Array.isArray(cfg.integrations)).toBe(true);
@@ -189,7 +190,8 @@ describe('defaultPlatformConfig', () => {
 
   it('hereda moneda y zona horaria del tenant', () => {
     const cfg = defaultPlatformConfig({ currency_code: 'USD', timezone: 'America/New_York' });
-    expect(cfg.companyInfo.currency).toBe('USD');
+    expect(cfg.currency.code).toBe('USD');
+    expect(cfg.currency.symbol).toBe('US$');
     expect(cfg.companyInfo.timezone).toBe('America/New_York');
   });
 });

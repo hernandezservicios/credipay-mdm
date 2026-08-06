@@ -73,6 +73,7 @@ import {
   apiTogglePlan,
   apiDuplicatePlan,
   apiDeletePlan,
+  apiGetConfig,
   errorMessage,
   type Session,
   type ClientFullRow,
@@ -88,6 +89,7 @@ import {
   type CollectionSummaryRow,
   type CollectionReminderRow,
   type CollectionRunRow,
+  type PlatformConfig,
 } from './services/api';
 import {
   lockInovaGuardDevice,
@@ -95,7 +97,7 @@ import {
   generateInovaGuardUnlockCode,
   removeInovaGuardDevice,
 } from './services/inovaGuardApi';
-import { formatDate } from './utils/formatters';
+import { formatDate, resetMoneyConfig, setMoneyConfig } from './utils/formatters';
 
 // ---------------------------------------------------------------------------
 // Helpers de mapeo servidor (snake_case + Date de mysql2) -> tipos del frontend
@@ -234,6 +236,29 @@ const mapEvent = (e: DeviceEventRow): MdmApiLog => ({
 export default function App() {
   const confirmDialog = useConfirm();
 
+  // Moneda única por tenant (FASE 1): resolver module-level alimentado con `GET /config`
+  const applyConfigCurrency = useCallback((cfg: PlatformConfig | null) => {
+    const c = cfg?.currency;
+    if (!c) return;
+    setMoneyConfig({
+      code: String(c.code ?? 'DOP'),
+      symbol: String(c.symbol ?? 'RD$'),
+      decimals: Number(c.decimals ?? 2),
+      thousandSeparator: String(c.thousand_separator ?? ','),
+      decimalSeparator: String(c.decimal_separator ?? '.'),
+    });
+  }, []);
+
+  const reloadConfig = useCallback(async () => {
+    try {
+      const res = await apiGetConfig();
+      applyConfigCurrency(res.data);
+    } catch (err) {
+      console.warn('No se pudo cargar la configuración (moneda):', err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Sesión y RBAC
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -356,8 +381,8 @@ export default function App() {
   }, [session]);
 
   const reloadAll = useCallback(async () => {
-    await Promise.all([reloadMdmConfig(), reloadClients(), reloadLogs()]);
-  }, [reloadMdmConfig, reloadClients, reloadLogs]);
+    await Promise.all([reloadConfig(), reloadMdmConfig(), reloadClients(), reloadLogs()]);
+  }, [reloadConfig, reloadMdmConfig, reloadClients, reloadLogs]);
 
   const reloadTenants = useCallback(async () => {
     try {
@@ -665,13 +690,17 @@ export default function App() {
       void reloadPlatform();
       void loadPortalPlans();
     }
-    if (session.activeTenantId === null) return;
+    if (session.activeTenantId === null) {
+      resetMoneyConfig();
+      return;
+    }
+    void reloadConfig();
     void reloadMdmConfig();
     void reloadClients();
     void reloadLogs();
     void reloadSaas();
     void reloadCollection();
-  }, [session, reloadTenants, reloadPlatform, loadPortalPlans, reloadMdmConfig, reloadClients, reloadLogs, reloadSaas, reloadCollection]);
+  }, [session, reloadConfig, reloadTenants, reloadPlatform, loadPortalPlans, reloadMdmConfig, reloadClients, reloadLogs, reloadSaas, reloadCollection]);
 
   // ---------------------------------------------------------------------------
   // Sesión
@@ -683,6 +712,7 @@ export default function App() {
     } catch (err) {
       console.warn('Error al cerrar sesión:', err);
     }
+    resetMoneyConfig();
     setSession(null);
     setClients([]);
     setLogs([]);
@@ -699,9 +729,10 @@ export default function App() {
   };
 
   // VOLVER A LA PLATAFORMA (Super Admin global) — limpia la empresa activa
-  const handleExitTenant = async () => {
+const handleExitTenant = async () => {
     try {
       await apiSwitchTenantExit();
+      resetMoneyConfig();
       setSession((prev) => (prev ? { ...prev, activeTenantId: null } : prev));
       setActiveTab('CLIENTS');
       setPortalTab('OVERVIEW');
