@@ -400,11 +400,20 @@ export async function updatePlatformConfig(
     }
   }
 
+  // Moneda única (FASE 1): las claves legadas no se vuelven a persistir al guardar.
+  const cleanPatch = { ...patch };
+  if (section === 'companyInfo') {
+    for (const k of LEGACY_COMPANY_KEYS) delete cleanPatch[k];
+  }
+  if (section === 'generalConfig') {
+    for (const k of LEGACY_GENERAL_KEYS) delete cleanPatch[k];
+  }
+
   await pool.query<RowDataPacket[]>(
     `INSERT INTO tenant_settings (tenant_id, ${COLUMN_BY_SECTION[section]})
      VALUES (?, ?)
      ON DUPLICATE KEY UPDATE ${COLUMN_BY_SECTION[section]} = VALUES(${COLUMN_BY_SECTION[section]})`,
-    [tenantId, JSON.stringify(patch)]
+    [tenantId, JSON.stringify(cleanPatch)]
   );
   return getPlatformConfig(tenantId);
 }

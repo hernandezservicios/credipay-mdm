@@ -1234,7 +1234,7 @@ const handleExitTenant = async () => {
           {activeTab === 'CONFIG' && (
             <ConfigurationView
               onNotify={(text, type) => showNotification(text, type)}
-              permits={{ edit: has('config.edit') }}
+              permits={{ edit: has('config.manage') }}
             />
           )}
 
