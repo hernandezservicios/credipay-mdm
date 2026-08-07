@@ -66,15 +66,16 @@ WHERE NOT EXISTS (
 );
 
 -- -------------------- CONFIG MDM CANÓNICA (tenant 1) --------------------
+-- FASE 8: credenciales ficticias (TEST_*) — nunca valores reales.
 INSERT INTO tenant_settings (tenant_id, mdm_config, theme, grace_days, overdue_penalty, receipt_prefix, invoice_prefix, notifications)
 VALUES (1,
   JSON_OBJECT(
     'provider', 'INOVAGUARD',
     'baseUrl', 'https://dashboard.inovaguardapp.com/api/v1/customer',
     'apiKey', '',
-    'appClient', 'd13cb763-1998-4cf8-9bb4-c6dbc8b513cb',
-    'secret', 'kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm',
-    'bearerToken', '9164|Z6Qg7uS91iRNt4jVrwFAZx4MkyJivl1IOTp97mjE9540f41b',
+    'appClient', 'TEST_APP_CLIENT',
+    'secret', 'TEST_SECRET',
+    'bearerToken', 'TEST_BEARER',
     'authLoginEndpoint', '/auth/login',
     'devicesEndpoint', '/devices',
     'lockEndpoint', '/devices/lock/{id}',

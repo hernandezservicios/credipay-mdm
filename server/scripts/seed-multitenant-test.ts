@@ -124,8 +124,8 @@ const MODEL: Record<string, string[]> = {
   alpha: ['Galaxy S24 Ultra 256GB', 'Galaxy A55 5G', 'Redmi Note 13 Pro+ 5G', 'Redmi 13 256GB'],
   creditplus: ['iPhone 15 Pro 128GB', 'iPhone 14 128GB', 'Edge 50 Pro 512GB', 'Moto G84 5G'],
 };
-const IMEI_PREFIX: Record<string, string> = { alpha: '358921', creditplus: '354891' };
-const SERIAL_PREFIX: Record<string, string> = { alpha: 'RF8WA', creditplus: 'F17HK' };
+const IMEI_PREFIX: Record<string, string> = { alpha: 'DEMO-IMEI', creditplus: 'DEMO-IMEI' };
+const SERIAL_PREFIX: Record<string, string> = { alpha: 'DEMO-SERIAL', creditplus: 'DEMO-SERIAL' };
 
 // ---------------------------------------------------------------------------
 // Especificación de los dos tenants
@@ -360,9 +360,9 @@ async function createTenant(spec: TenantSpec, passwordHash: string): Promise<Ctx
         provider: 'INOVAGUARD',
         baseUrl: 'https://dashboard.inovaguardapp.com/api/v1/customer',
         apiKey: '',
-        appClient: 'd13cb763-1998-4cf8-9bb4-c6dbc8b513cb',
-        secret: 'kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm',
-        bearerToken: '9164|Z6Qg7uS91iRNt4jVrwFAZx4MkyJivl1IOTp97mjE9540f41b',
+        appClient: 'TEST_APP_CLIENT',
+        secret: 'TEST_SECRET',
+        bearerToken: 'TEST_BEARER',
         authLoginEndpoint: '/auth/login',
         devicesEndpoint: '/devices',
         lockEndpoint: '/devices/lock/{id}',

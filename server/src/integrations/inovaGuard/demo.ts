@@ -14,55 +14,55 @@ export function fallbackDevices(): InovaGuardDeviceItem[] {
   const now = new Date().toISOString();
   return [
     {
-      id: '3168',
+      id: 'DEMO-DEVICE-000001',
       deviceName: 'S24-Carlos-Mendoza',
       brand: 'Samsung',
       model: 'Galaxy S24 Ultra 256GB',
-      imei: '358921098234101',
+      imei: 'DEMO-IMEI-000001',
       status: 'LOCKED',
       lastSeen: now,
       assignedClientName: 'Carlos Andrés Mendoza',
       assignedClientId: 'CLI-001',
     },
     {
-      id: '4177',
+      id: 'DEMO-DEVICE-000002',
       deviceName: 'iPhone15-Mariana-V',
       brand: 'Apple',
       model: 'iPhone 15 Pro 128GB',
-      imei: '354891098234882',
+      imei: 'DEMO-IMEI-000002',
       status: 'UNLOCKED',
       lastSeen: now,
       assignedClientName: 'Mariana Valenzuela Ortiz',
       assignedClientId: 'CLI-002',
     },
     {
-      id: '5102',
+      id: 'DEMO-DEVICE-000003',
       deviceName: 'Redmi-Rodolfo-Pena',
       brand: 'Xiaomi',
       model: 'Redmi Note 13 Pro+ 5G',
-      imei: '868123069182374',
+      imei: 'DEMO-IMEI-000003',
       status: 'UNLOCKED',
       lastSeen: now,
       assignedClientName: 'Rodolfo Peña Castro',
       assignedClientId: 'CLI-003',
     },
     {
-      id: '2891',
+      id: 'DEMO-DEVICE-000004',
       deviceName: 'Edge50-Yomaira-R',
       brand: 'Motorola',
       model: 'Edge 50 Pro 512GB',
-      imei: '351928374650192',
+      imei: 'DEMO-IMEI-000004',
       status: 'LOCKED',
       lastSeen: now,
       assignedClientName: 'Yomaira Rosario Jiménez',
       assignedClientId: 'CLI-004',
     },
     {
-      id: '6019',
+      id: 'DEMO-DEVICE-000005',
       deviceName: 'Tecno-Spark20-Nuevo',
       brand: 'Tecno',
       model: 'Spark 20 Pro+ 256GB',
-      imei: '869102938475610',
+      imei: 'DEMO-IMEI-000005',
       status: 'UNLOCKED',
       lastSeen: now,
       assignedClientName: 'Dispositivo Nuevo (En Stock InovaGuard)',
@@ -102,7 +102,7 @@ export function fallbackDeviceItem(id: string): InovaGuardDeviceItem {
     deviceName: `InovaGuard-Device-#${id}`,
     brand: 'Samsung',
     model: 'Galaxy A55 5G',
-    imei: '359182736451092',
+    imei: 'DEMO-IMEI-000006',
     status: 'UNLOCKED',
     lastSeen: new Date().toISOString(),
   };
@@ -114,8 +114,8 @@ export function fallbackUnlockCode(): string {
 
 export const FALLBACK_QR = {
   qrDataUrl:
-    'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=INOVAGUARD-ENROLL-CLIENT-D13CB763',
-  enrollmentToken: 'ENROLL-D13C-B763-1998',
+    'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=INOVAGUARD-ENROLL-CLIENT-TEST-APP-CLIENT',
+  enrollmentToken: 'ENROLL-TEST-APP-CLIENT',
 };
 
 export function nextLockDate(plusHours = 24): string {

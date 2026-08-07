@@ -52,8 +52,8 @@ export interface MdmApiConfig {
   provider: 'INOVAGUARD' | 'GENERIC';
   baseUrl: string;
   apiKey: string;
-  appClient: string;        // InovaGuard app client d13cb763-1998-4cf8-9bb4-c6dbc8b513cb
-  secret: string;           // InovaGuard secret kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm
+  appClient: string;        // InovaGuard app client (formato UUID)
+  secret: string;           // InovaGuard secret (nunca valores reales en el repo)
   bearerToken: string;      // Token autenticado vía /auth/login
   authLoginEndpoint: string;
   devicesEndpoint: string;

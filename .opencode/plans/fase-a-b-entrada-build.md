@@ -41,7 +41,7 @@ los fixes de semántica P0 → Fase C).
 ### B2 Respaldo (mysqldump)
 ```powershell
 # Detectar mysqldump: WAMP -> C:\wamp64\bin\mysql\mysql8.x\bin\mysqldump.exe
-& "C:\wamp64\bin\mysql\mysql8.*\bin\mysqldump.exe" --user=credipay --password="nf9sGFI1l4xJAhVu3mSHrLPD" --databases credipay_mdm --result-file="<repo>\\..\\credipay_mdm_0015_backup_$(Get-Date -Format yyyyMMdd_HHmmss).sql"
+& "C:\wamp64\bin\mysql\mysql8.*\bin\mysqldump.exe" --user=credipay --password="<DB_PASSWORD>" --databases credipay_mdm --result-file="<repo>\\..\\credipay_mdm_0015_backup_$(Get-Date -Format yyyyMMdd_HHmmss).sql"
 ```
 
 ### B3 Contenido de `server/migraciones/0015_arquitectura_consolidada.sql`

@@ -14,6 +14,7 @@ VALUES
   (1, 'CrediPay Principal', 'credipay-demo', NULL, 'ACTIVE', 'soporte@credipay.local', '+1 809-555-0000',
    'DOP', 'DO', 'es', 'America/Santo_Domingo');
 
+-- FASE 8: credenciales ficticias (TEST_*) — nunca valores reales.
 INSERT INTO tenant_settings
   (tenant_id, mdm_config, theme, grace_days, overdue_penalty, receipt_prefix, invoice_prefix, notifications)
 VALUES
@@ -22,9 +23,9 @@ VALUES
      'provider', 'INOVAGUARD',
      'baseUrl', 'https://dashboard.inovaguardapp.com/api/v1/customer',
      'apiKey', '',
-     'appClient', 'd13cb763-1998-4cf8-9bb4-c6dbc8b513cb',
-     'secret', 'kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm',
-     'bearerToken', '9164|Z6Qg7uS91iRNt4jVrwFAZx4MkyJivl1IOTp97mjE9540f41b',
+     'appClient', 'TEST_APP_CLIENT',
+     'secret', 'TEST_SECRET',
+     'bearerToken', 'TEST_BEARER',
      'authLoginEndpoint', '/auth/login',
      'devicesEndpoint', '/devices',
      'lockEndpoint', '/devices/lock/{id}',
@@ -125,20 +126,21 @@ INSERT INTO payments_received
   (3, 1, 3, 2000.00, 'CASH', 'REC-33819', DATE_SUB(CURDATE(), INTERVAL 29 DAY), 'Cuota #3');
 
 -- -------------------- DISPOSITIVOS --------------------
+-- FASE 8: IDs y seriales ficticios (DEMO-*) — nunca valores que parezcan reales.
 INSERT INTO devices
   (id, client_id, tenant_id, inovaguard_id, device_name, brand, model, imei, serial_number,
    mdm_status, unlock_code, remote_lock_supported, last_mdm_sync_at, last_mdm_sync_note) VALUES
-  (1, 1, 1, '3168', 'S24-Carlos-Mendoza', 'Samsung', 'Galaxy S24 Ultra 256GB',
-   '358921098234101', 'RF8WA001S4V', 'LOCKED', '53645', 1,
+  (1, 1, 1, 'DEMO-DEVICE-000001', 'S24-Carlos-Mendoza', 'Samsung', 'Galaxy S24 Ultra 256GB',
+   'DEMO-IMEI-000001', 'DEMO-SERIAL-000001', 'LOCKED', '53645', 1,
    DATE_SUB(NOW(), INTERVAL 15 MINUTE), 'Hace 15 minutos (Automático por atraso)'),
-  (2, 2, 1, '4177', 'iPhone15-Mariana-V', 'Apple', 'iPhone 15 Pro 128GB',
-   '354891098234882', 'F17HK928Q1', 'UNLOCKED', NULL, 1,
+  (2, 2, 1, 'DEMO-DEVICE-000002', 'iPhone15-Mariana-V', 'Apple', 'iPhone 15 Pro 128GB',
+   'DEMO-IMEI-000002', 'DEMO-SERIAL-000002', 'UNLOCKED', NULL, 1,
    DATE_SUB(NOW(), INTERVAL 2 HOUR), 'Hace 2 horas (Comprobación de estado OK)'),
-  (3, 3, 1, '5102', 'Redmi-Rodolfo-Pena', 'Xiaomi', 'Redmi Note 13 Pro+ 5G',
-   '868123069182374', 'XIAO99812A', 'UNLOCKED', NULL, 1,
+  (3, 3, 1, 'DEMO-DEVICE-000003', 'Redmi-Rodolfo-Pena', 'Xiaomi', 'Redmi Note 13 Pro+ 5G',
+   'DEMO-IMEI-000003', 'DEMO-SERIAL-000003', 'UNLOCKED', NULL, 1,
    DATE_SUB(NOW(), INTERVAL 1 DAY), 'Hace 1 día (Desbloqueado al recibir pago)'),
-  (4, 4, 1, '2891', 'Edge50-Yomaira-R', 'Motorola', 'Edge 50 Pro 512GB',
-   '351928374650192', 'MOTO50PRO882', 'LOCKED', NULL, 1,
+  (4, 4, 1, 'DEMO-DEVICE-000004', 'Edge50-Yomaira-R', 'Motorola', 'Edge 50 Pro 512GB',
+   'DEMO-IMEI-000004', 'DEMO-SERIAL-000004', 'LOCKED', NULL, 1,
    DATE_SUB(NOW(), INTERVAL 3 DAY), 'Hace 3 días (Bloqueo automático - Cuota Atrasada #1)');
 
 -- -------------------- HISTORIAL DE ESTADO --------------------
@@ -154,13 +156,13 @@ INSERT INTO device_status (device_id, tenant_id, status, reason, source) VALUES
 -- -------------------- EVENTOS MDM (logs de actividad) --------------------
 INSERT INTO device_events
   (device_id, tenant_id, client_id, action, trigger_source, status, imei, details, created_at) VALUES
-  (1, 1, 1, 'LOCK', 'AUTOMATIC_OVERDUE', 'SUCCESS', '358921098234101',
+  (1, 1, 1, 'LOCK', 'AUTOMATIC_OVERDUE', 'SUCCESS', 'DEMO-IMEI-000001',
    'Cuota #1 en estado ATRASADO (>3 días). Mora fija RD$200 aplicada. Comando MDM Lock enviado.',
    NOW() - INTERVAL 1 HOUR),
-  (4, 1, 4, 'LOCK', 'AUTOMATIC_OVERDUE', 'SUCCESS', '351928374650192',
+  (4, 1, 4, 'LOCK', 'AUTOMATIC_OVERDUE', 'SUCCESS', 'DEMO-IMEI-000004',
    'Cuota #1 en estado ATRASADO (>3 días). Dispositivo bloqueado exitosamente vía API externa.',
    NOW() - INTERVAL 1 DAY),
-  (3, 1, 3, 'UNLOCK', 'AUTOMATIC_PAYMENT', 'SUCCESS', '868123069182374',
+  (3, 1, 3, 'UNLOCK', 'AUTOMATIC_PAYMENT', 'SUCCESS', 'DEMO-IMEI-000003',
    'Pago registrado para Cuota #3. Desbloqueo MDM ejecutado automáticamente.',
    NOW() - INTERVAL 2 DAY);
 

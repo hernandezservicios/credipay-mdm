@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { encrypt, decrypt, isEncrypted, generateEncryptionKey } from '../utils/crypto.ts';
 
-const SECRET = 'kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm';
+const SECRET = 'TEST_SECRET_VALUE_57p1VZ8E7dHx9bW2yT4s6uQ';
 
 describe('crypto (FASE 6 - AES-256-GCM)', () => {
   it('roundtrip: encrypt -> decrypt devuelve el original', () => {
@@ -37,7 +37,7 @@ describe('crypto (FASE 6 - AES-256-GCM)', () => {
 
   it('decrypt devuelve texto plano legado sin prefijo (compatibilidad retroactiva)', () => {
     expect(decrypt(SECRET)).toBe(SECRET);
-    expect(decrypt('9164|abc')).toBe('9164|abc');
+    expect(decrypt('legacy-plain-token')).toBe('legacy-plain-token');
   });
 
   it('lanza si el tag no coincide (tamper)', () => {

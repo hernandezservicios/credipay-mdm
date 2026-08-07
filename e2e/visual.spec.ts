@@ -592,7 +592,7 @@ test('F7: API keys - crear, probe por X-API-Key, inválida 401 y revocar', async
   expect(probe.data.permissions.length).toBeGreaterThan(0);
 
   const badRes = await request.get('/api/v1/api-keys/probe', {
-    headers: { 'X-API-Key': 'cpk_ffffffffffffffffffffffffffffffffffffffff' },
+    headers: { 'X-API-Key': 'cpk_TEST_INVALID_KEY_000000000000000000000000' },
   });
   expect(badRes.status()).toBe(401);
 

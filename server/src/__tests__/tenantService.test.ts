@@ -15,13 +15,13 @@ describe('parseMdmConfigValue', () => {
 
   it('parsea un string JSON (mysql2 con JSON.parse desactivado)', () => {
     const cfg = parseMdmConfigValue(
-      '{"enabled":true,"liveMode":true,"appClient":"d13cb763-1998-4cf8-9bb4-c6dbc8b513cb","secret":"kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm","bearerToken":"9164|abc"}'
+      '{"enabled":true,"liveMode":true,"appClient":"TEST_APP_CLIENT","secret":"TEST_SECRET","bearerToken":"TEST_BEARER"}'
     );
     expect(cfg.enabled).toBe(true);
     expect(cfg.liveMode).toBe(true);
-    expect(cfg.appClient).toBe('d13cb763-1998-4cf8-9bb4-c6dbc8b513cb');
-    expect(cfg.secret).toBe('kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm');
-    expect(cfg.bearerToken).toBe('9164|abc');
+    expect(cfg.appClient).toBe('TEST_APP_CLIENT');
+    expect(cfg.secret).toBe('TEST_SECRET');
+    expect(cfg.bearerToken).toBe('TEST_BEARER');
   });
 
   it('acepta un objeto ya parseado por mysql2 (regresión del bug JSON.parse("[object Object]"))', () => {

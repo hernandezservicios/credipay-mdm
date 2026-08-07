@@ -188,7 +188,7 @@ export const MdmApiConfigModal: React.FC<MdmApiConfigProps> = ({
                       type="text"
                       value={formState.appClient || ''}
                       onChange={(e) => setFormState({ ...formState, appClient: e.target.value })}
-                      placeholder="d13cb763-1998-4cf8-9bb4-c6dbc8b513cb"
+                      placeholder="TYP-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                     />
                   </div>
@@ -201,7 +201,7 @@ export const MdmApiConfigModal: React.FC<MdmApiConfigProps> = ({
                       type="password"
                       value={formState.secret || ''}
                       onChange={(e) => setFormState({ ...formState, secret: e.target.value })}
-                      placeholder="kjDBFuVXssuBJrj7rnHa5vJUk3DY4uDASs1Qdhrm"
+                      placeholder="TYP-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                     />
                   </div>
@@ -402,8 +402,8 @@ export const MdmApiConfigModal: React.FC<MdmApiConfigProps> = ({
                   El sistema está configurado y preparado para inyección con tu cuenta InovaGuard:
                 </p>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono bg-white p-3 rounded-lg border border-indigo-100">
-                  <div>App Client: <span className="text-indigo-700 font-bold">{formState.appClient || 'd13cb...'}</span></div>
-                  <div>Secret: <span className="text-indigo-700 font-bold">kjDBFuVX...uDASs1Qdhrm</span></div>
+                  <div>App Client: <span className="text-indigo-700 font-bold">{formState.appClient || 'TYP-...'}</span></div>
+                  <div>Secret: <span className="text-indigo-700 font-bold">••••••••••••••••</span></div>
                   <div>Base URL: <span className="text-indigo-700 font-bold">/api/v1/customer</span></div>
                   <div>Auth: <span className="text-indigo-700 font-bold">Bearer Token (POST /auth/login)</span></div>
                 </div>
@@ -412,7 +412,7 @@ export const MdmApiConfigModal: React.FC<MdmApiConfigProps> = ({
                   {`// 1. POST /auth/login (Obtención del Bearer Token)
 curl --location 'https://dashboard.inovaguardapp.com/api/v1/customer/auth/login' \\
 --data '{ "client": "${formState.appClient}", "secret": "${formState.secret}" }'
-// Respuesta: { "token": "9164|Z6Qg7uS91iRNt4jVrwFAZx4MkyJivl1IOTp97mjE9540f41b" }
+// Respuesta: { "token": "<bearer-token>" }
 
 // 2. GET /devices/lock/{id}  -> Bloqueo MDM remoto instantáneo
 // 3. GET /devices/unlock/{id} -> Desbloqueo MDM tras pago de cuota
