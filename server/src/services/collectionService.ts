@@ -13,9 +13,11 @@ import {
   generateAiMessage,
   pickReminderType,
   type AiClientProfile,
+  type AiMessageContext,
   type ReminderType,
   type RiskLevel,
 } from './aiMessagingService.js';
+import { getPlatformConfig } from './configService.js';
 import { dispatchReminderChannels } from './notifService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 
@@ -156,6 +158,13 @@ export async function runCollectionEngine(
   userId: number | null,
   source: RunSource = 'MANUAL'
 ): Promise<RunEngineReport> {
+  // FASE 5: la configuración (moneda + mora) se obtiene del tenant UNA sola vez
+  // por corrida; nunca se comparte entre tenants ni se hardcodea.
+  const platformConfig = await getPlatformConfig(tenantId);
+  const msgCtx: AiMessageContext = {
+    currency: platformConfig.currency,
+    overdue: platformConfig.overdueConfig,
+  };
   const conn = await pool.getConnection();
   const runId = await (async () => {
     await conn.beginTransaction();
@@ -224,7 +233,7 @@ export async function runCollectionEngine(
       );
       if (dup[0]) continue;
 
-      const message = generateAiMessage(type, profile);
+      const message = generateAiMessage(type, profile, msgCtx);
       await conn.query(
         `INSERT INTO collection_reminders
           (run_id, tenant_id, client_id, reminder_type, channel, status,
