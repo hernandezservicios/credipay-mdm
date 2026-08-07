@@ -97,7 +97,8 @@ import {
   generateInovaGuardUnlockCode,
   removeInovaGuardDevice,
 } from './services/inovaGuardApi';
-import { formatDate, resetMoneyConfig, setMoneyConfig } from './utils/formatters';
+import { formatDate, formatCurrencyRD, resetMoneyConfig, setMoneyConfig } from './utils/formatters';
+import { getOverdueConfig, overdueGraceDays, resetOverdueConfig, setOverdueConfig } from './utils/overdue';
 
 // ---------------------------------------------------------------------------
 // Helpers de mapeo servidor (snake_case + Date de mysql2) -> tipos del frontend
@@ -253,8 +254,9 @@ export default function App() {
     try {
       const res = await apiGetConfig();
       applyConfigCurrency(res.data);
+      setOverdueConfig(res.data.overdueConfig);
     } catch (err) {
-      console.warn('No se pudo cargar la configuración (moneda):', err);
+      console.warn('No se pudo cargar la configuración (moneda/mora):', err);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -692,6 +694,7 @@ export default function App() {
     }
     if (session.activeTenantId === null) {
       resetMoneyConfig();
+      resetOverdueConfig();
       return;
     }
     void reloadConfig();
@@ -713,6 +716,7 @@ export default function App() {
       console.warn('Error al cerrar sesión:', err);
     }
     resetMoneyConfig();
+    resetOverdueConfig();
     setSession(null);
     setClients([]);
     setLogs([]);
@@ -733,6 +737,7 @@ const handleExitTenant = async () => {
     try {
       await apiSwitchTenantExit();
       resetMoneyConfig();
+      resetOverdueConfig();
       setSession((prev) => (prev ? { ...prev, activeTenantId: null } : prev));
       setActiveTab('CLIENTS');
       setPortalTab('OVERVIEW');
@@ -1386,7 +1391,7 @@ const handleExitTenant = async () => {
             CrediPay MDM • Sistema Integral de Préstamos para Celulares con Bloqueo MDM en Pesos Dominicanos
           </p>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            4 Estados: Pendiente | Vencido (Día 0-2) | Atrasado (+3 días, +RD$200 mora fija & Bloqueo automático) | Pagado (Desbloqueo automático)
+             4 Estados: Pendiente | Vencido (Día 0-{Math.max(0, overdueGraceDays() - 1)}) | Atrasado (+{overdueGraceDays()} días, +{getOverdueConfig().type === 'FIXED' ? formatCurrencyRD(getOverdueConfig().fixed_amount) : `${getOverdueConfig().percentage_rate}%`} mora configurada & Bloqueo automático) | Pagado (Desbloqueo automático)
           </p>
         </div>
       </footer>

@@ -76,7 +76,4 @@ export const BANKS: string[] = [
   'Caja Tienda Principal',
 ];
 
-/** Mora fija tras superar los días de gracia (espejo de la config de mora del backend). */
-export const FIXED_PENALTY_AMOUNT = 200;
-
 export type LoanStatus = 'PENDING' | 'APPROVED' | 'ACTIVE' | 'PAID_OFF' | 'DEFAULTED' | 'REJECTED' | 'CANCELED';

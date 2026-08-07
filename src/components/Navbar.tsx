@@ -2,6 +2,7 @@ import React from 'react';
 import { Smartphone, Settings, Plus, RefreshCw, Cpu, Menu, LogOut, KeyRound, Sun, Moon, ArrowLeft } from 'lucide-react';
 import type { TenantRow } from '../services/api';
 import { TenantSwitcher } from './TenantSwitcher';
+import { overdueGraceDays } from '../utils/overdue';
 
 export type MainViewTab = 'DASHBOARD' | 'CLIENTS' | 'DEVICES' | 'LOANS' | 'CASH' | 'REPORTS' | 'FINANCE' | 'ANALYTICS' | 'CONFIG' | 'LOGS' | 'BILLING' | 'COLLECTIONS';
 
@@ -125,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="hidden xl:flex items-center bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
               <div
                 className="flex items-center space-x-2 text-slate-300"
-                title="Monitoreo que verifica las fechas de cuotas y aplica mora de $200 + Bloqueo automático a los 3 días de atraso"
+                title={`Monitoreo que verifica las fechas de cuotas y aplica mora configurada + Bloqueo automático a los ${overdueGraceDays()} días de atraso`}
               >
                 <Cpu className="w-4 h-4 text-emerald-400 animate-pulse" />
                 <span className="font-medium">

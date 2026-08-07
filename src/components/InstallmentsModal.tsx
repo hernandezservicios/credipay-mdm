@@ -3,7 +3,7 @@ import { ClientCredit } from '../types';
 import { CheckCircle, AlertTriangle, Clock, Lock, Unlock, DollarSign, Zap } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
 import { formatCurrencyRD, formatDate } from '../utils/formatters';
-import { FIXED_PENALTY_AMOUNT } from '../constants';
+import { getOverdueConfig, overdueGraceDays } from '../utils/overdue';
 
 interface InstallmentsModalProps {
   client: ClientCredit | null;
@@ -58,8 +58,9 @@ export const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ client, on
           <div className="flex items-center space-x-2">
             <Zap className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Regla Automática:</strong> Tras 3 días de vencimiento el estado cambia a <strong>ATRASADO</strong>, suma{' '}
-              <strong>{formatCurrencyRD(FIXED_PENALTY_AMOUNT)} pesos dominicanos fijos de mora</strong> y <strong>BLOQUEA el celular</strong> vía MDM. Al registrar el pago se <strong>DESBLOQUEA automáticamente</strong>.
+              <strong>Regla Automática:</strong> Tras {overdueGraceDays()} días de vencimiento el estado cambia a <strong>ATRASADO</strong>, suma{' '}
+              <strong>{getOverdueConfig().type === 'PERCENTAGE' ? `${getOverdueConfig().percentage_rate}% de mora` : `${formatCurrencyRD(getOverdueConfig().fixed_amount)} de mora`}</strong>{' '}
+              y <strong>BLOQUEA el celular</strong> vía MDM. Al registrar el pago se <strong>DESBLOQUEA automáticamente</strong>.
             </span>
           </div>
         </div>

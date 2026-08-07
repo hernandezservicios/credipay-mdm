@@ -4,6 +4,7 @@ import { Settings, CheckCircle, Send, Key, Save, Trash2 } from 'lucide-react';
 import { loginInovaGuard, getInovaGuardBalance } from '../services/inovaGuardApi';
 import { useConfirm } from './ConfirmDialog';
 import { ModalShell } from './ui/ModalShell';
+import { overdueGraceDays } from '../utils/overdue';
 
 interface MdmApiConfigProps {
   isOpen: boolean;
@@ -152,7 +153,7 @@ export const MdmApiConfigModal: React.FC<MdmApiConfigProps> = ({
                       onChange={(e) => setFormState({ ...formState, autoLockOnOverdue: e.target.checked })}
                       className="rounded text-emerald-600 focus:ring-emerald-500"
                     />
-                    <span>Bloquear automáticamente cuando cuota está <strong>ATRASADO</strong> (&gt;3 días)</span>
+                    <span>Bloquear automáticamente cuando cuota está <strong>ATRASADO</strong> (&gt;{overdueGraceDays()} días)</span>
                   </label>
                   <label className="flex items-center space-x-2 text-slate-700 dark:text-slate-300">
                     <input

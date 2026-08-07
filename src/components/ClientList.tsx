@@ -3,6 +3,7 @@ import { ClientCredit, InstallmentStatus } from '../types';
 import { Smartphone, Lock, Unlock, Search } from 'lucide-react';
 import { MdmActionDropdown } from './MdmActionDropdown';
 import { formatCurrencyRD } from '../utils/formatters';
+import { overdueGraceDays } from '../utils/overdue';
 
 interface ClientListProps {
   clients: ClientCredit[];
@@ -47,7 +48,7 @@ export const ClientList: React.FC<ClientListProps> = ({
       const penalty = overdue.reduce((sum, item) => sum + item.penaltyAmount, 0);
       return {
         status: 'ATRASADO',
-        label: `Atrasado (${overdue.length} cuotas >3 días) - Mora ${formatCurrencyRD(penalty)}`,
+        label: `Atrasado (${overdue.length} cuotas >${overdueGraceDays()} d) - Mora ${formatCurrencyRD(penalty)}`,
         badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
         overdueInstallmentsCount: overdue.length,
         penaltyTotal: penalty,
@@ -127,7 +128,7 @@ export const ClientList: React.FC<ClientListProps> = ({
               { id: 'ALL', label: 'Todos', color: 'slate' },
               { id: 'PENDIENTE', label: 'Pendiente', color: 'blue' },
               { id: 'VENCIDO', label: 'Vencido (0-2 d)', color: 'amber' },
-              { id: 'ATRASADO', label: 'Atrasado (+3 d / Mora RD$200)', color: 'rose' },
+              { id: 'ATRASADO', label: `Atrasado (+${overdueGraceDays()} d / Mora config)`, color: 'rose' },
               { id: 'PAGADO', label: 'Pagado', color: 'emerald' },
             ] as const
           ).map((item) => (

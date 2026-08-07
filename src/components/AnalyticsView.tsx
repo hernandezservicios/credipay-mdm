@@ -9,8 +9,8 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { ClientCredit } from '../types';
-import { FIXED_PENALTY_AMOUNT } from '../constants';
 import { formatCurrencyRD } from '../utils/formatters';
+import { getOverdueConfig, overdueStatusText } from '../utils/overdue';
 
 interface AnalyticsViewProps {
   clients: ClientCredit[];
@@ -89,7 +89,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
             </p>
           </div>
           <div className="mt-4 pt-4 border-t border-slate-700/60 flex justify-between text-xs text-slate-400">
-            <span>Promedio mora fija: {formatCurrencyRD(FIXED_PENALTY_AMOUNT)}</span>
+            <span>Promedio mora fija: {formatCurrencyRD(getOverdueConfig().fixed_amount)}</span>
             <span className="text-emerald-400 font-semibold">Alto Impacto</span>
           </div>
         </div>
@@ -124,7 +124,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
           </div>
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Mora cobrada en 100% casos:</span>
-            <span className="font-bold text-amber-600">+{formatCurrencyRD(FIXED_PENALTY_AMOUNT)} / cuota</span>
+            <span className="font-bold text-amber-600">{getOverdueConfig().type === 'FIXED' ? `+${formatCurrencyRD(getOverdueConfig().fixed_amount)} / cuota` : `+${getOverdueConfig().percentage_rate}% / cuota`}</span>
           </div>
         </div>
       </div>
@@ -174,13 +174,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clients }) => {
               </div>
             </div>
 
-            {/* Atrasado +3 días */}
+            {/* Atrasado +grace días */}
             <div className="space-y-1.5">
               <div className="flex justify-between font-semibold">
-                <span className="flex items-center text-rose-700">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-50 dark:bg-rose-500/100 mr-2"></span>
-                  Atrasado (+3 días, +{formatCurrencyRD(FIXED_PENALTY_AMOUNT)} mora & Bloqueado MDM)
-                </span>
+<span className="flex items-center text-rose-700">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-50 dark:bg-rose-500/100 mr-2"></span>
+                      {overdueStatusText('ATRASADO')}
+                    </span>
                 <span className="text-slate-900 dark:text-slate-100">{atrasadoCount} clientes ({atrasadoPct}%)</span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">

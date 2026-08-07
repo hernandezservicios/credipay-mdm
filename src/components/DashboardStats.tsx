@@ -89,7 +89,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
           </p>
         </div>
 
-        {/* Cuotas Atrasadas con mora de $200 */}
+        {/* Cuotas Atrasadas con mora configurada */}
         <div
           onClick={() => onOpenInstallmentsFilter('ATRASADO')}
           className="bg-white border border-amber-200 rounded-xl p-5 shadow-sm hover:border-amber-300 transition-colors cursor-pointer"

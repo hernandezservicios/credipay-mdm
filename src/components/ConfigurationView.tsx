@@ -32,6 +32,7 @@ import {
 import { ModalShell } from './ui/ModalShell';
 import { useConfirm } from './ConfirmDialog';
 import { setMoneyConfig } from '../utils/formatters';
+import { setOverdueConfig } from '../utils/overdue';
 
 export interface ConfigurationViewProps {
   onNotify?: (text: string, type: 'INFO' | 'LOCK' | 'UNLOCK') => void;
@@ -76,10 +77,12 @@ const TAB_ICONS: Record<SectionKey, ReactNode> = {
 };
 
 const OVERDUE_DEFAULTS: Record<string, unknown> = {
-  type: 'PERCENTAGE',
-  value: 0,
-  periodicity: 'DAILY',
-  grace_days: 0,
+  type: 'FIXED',
+  fixed_amount: 0,
+  percentage_base: 'BALANCE',
+  percentage_rate: 0,
+  grace_days: 3,
+  frequency: 'MONTHLY',
   max_amount: 0,
   cap_percent: 0,
 };
@@ -215,6 +218,7 @@ export const ConfigurationView: React.FC<ConfigurationViewProps> = ({ onNotify, 
       });
       const res = await apiUpdateConfigSection(sec, body);
       setConfig(res.data);
+      setOverdueConfig(res.data.overdueConfig);
       const c = res.data.currency;
       setMoneyConfig({
         code: String(c.code ?? 'DOP'),
