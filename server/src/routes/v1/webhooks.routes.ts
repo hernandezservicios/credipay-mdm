@@ -7,6 +7,7 @@ import {
   type AuthRequest,
 } from '../../middleware/auth.js';
 import { requireTenant, type TenantRequest } from '../../middleware/tenant.js';
+import { assertPlanLimit } from '../../services/planService.js';
 import { recordActivity, recordAudit } from '../../services/auditService.js';
 import {
   WEBHOOK_EVENTS,
@@ -48,6 +49,8 @@ router.post('/', async (req: TenantRequest, res) => {
   if (!body.success) {
     throw ApiError.badRequest('invalid_input', 'Datos del webhook inválidos');
   }
+  // SaaS (FASE 4): respetar el límite max_webhooks del plan.
+  await assertPlanLimit(req.ctx!.tenantId, 'webhooks');
   const id = await createWebhook(req.ctx!.tenantId, {
     name: body.data.name,
     url: body.data.url,

@@ -52,17 +52,6 @@ export function parseEvents(value: unknown): string[] {
   return [];
 }
 
-export async function getPlanMaxWebhooks(tenantId: number): Promise<number> {
-  const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT pl.max_webhooks FROM subscriptions s
-      JOIN plans pl ON pl.id = s.plan_id
-     WHERE s.tenant_id = ? AND s.status = 'ACTIVE'
-     LIMIT 1`,
-    [tenantId]
-  );
-  return Number(rows[0]?.max_webhooks ?? 10);
-}
-
 export async function listWebhooks(tenantId: number): Promise<WebhookRow[]> {
   const [rows] = await pool.query<WebhookRow[]>(
     `SELECT id, webhook_name, url, events, is_active, last_sent_at, created_at, updated_at
@@ -77,14 +66,6 @@ export async function listWebhooks(tenantId: number): Promise<WebhookRow[]> {
 export async function createWebhook(tenantId: number, input: WebhookInput): Promise<number> {
   if (!/^https?:\/\//i.test(input.url)) {
     throw ApiError.badRequest('invalid_url', 'La URL del webhook debe ser http(s)://');
-  }
-  const max = await getPlanMaxWebhooks(tenantId);
-  const [countRows] = await pool.query<RowDataPacket[]>(
-    'SELECT COUNT(*) AS c FROM webhooks WHERE tenant_id = ? AND deleted_at IS NULL',
-    [tenantId]
-  );
-  if (Number(countRows[0]?.c ?? 0) >= max) {
-    throw ApiError.badRequest('webhook_limit_reached', `Limite de webhooks alcanzado para el plan (${max})`);
   }
   const [res] = await pool.query<ResultSetHeader>(
     `INSERT INTO webhooks (tenant_id, webhook_name, url, secret, events, is_active)

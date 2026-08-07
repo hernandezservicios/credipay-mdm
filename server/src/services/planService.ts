@@ -68,15 +68,17 @@ export interface SubscriptionUsage {
   credits: number;
   devices: number;
   users: number;
+  webhooks: number;
 }
 
-export type PlanResource = 'clients' | 'credits' | 'devices' | 'users';
+export type PlanResource = 'clients' | 'credits' | 'devices' | 'users' | 'webhooks';
 
 const RESOURCE_COLUMN: Record<PlanResource, keyof ActiveSubscriptionRow> = {
   clients: 'max_clients',
   credits: 'max_credits',
   devices: 'max_devices',
   users: 'max_users',
+  webhooks: 'max_webhooks',
 };
 
 export const BILLING_CYCLE_LABEL: Record<BillingCycle, string> = {
@@ -152,29 +154,35 @@ export async function getActiveSubscription(tenantId: number): Promise<ActiveSub
 }
 
 export async function getSubscriptionUsage(tenantId: number): Promise<SubscriptionUsage> {
-  const [[clientRows], [creditRows], [deviceRows], [userRows]] = await Promise.all([
-    pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) AS total FROM clients WHERE tenant_id = ? AND deleted_at IS NULL',
-      [tenantId]
-    ),
-    pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) AS total FROM credits WHERE tenant_id = ? AND deleted_at IS NULL',
-      [tenantId]
-    ),
-    pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) AS total FROM devices WHERE tenant_id = ? AND deleted_at IS NULL',
-      [tenantId]
-    ),
-    pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) AS total FROM users WHERE tenant_id = ? AND deleted_at IS NULL',
-      [tenantId]
-    ),
-  ]);
+  const [[clientRows], [creditRows], [deviceRows], [userRows], [webhookRows]] =
+    await Promise.all([
+      pool.query<RowDataPacket[]>(
+        'SELECT COUNT(*) AS total FROM clients WHERE tenant_id = ? AND deleted_at IS NULL',
+        [tenantId]
+      ),
+      pool.query<RowDataPacket[]>(
+        'SELECT COUNT(*) AS total FROM credits WHERE tenant_id = ? AND deleted_at IS NULL',
+        [tenantId]
+      ),
+      pool.query<RowDataPacket[]>(
+        'SELECT COUNT(*) AS total FROM devices WHERE tenant_id = ? AND deleted_at IS NULL',
+        [tenantId]
+      ),
+      pool.query<RowDataPacket[]>(
+        'SELECT COUNT(*) AS total FROM users WHERE tenant_id = ? AND deleted_at IS NULL',
+        [tenantId]
+      ),
+      pool.query<RowDataPacket[]>(
+        'SELECT COUNT(*) AS total FROM webhooks WHERE tenant_id = ? AND deleted_at IS NULL',
+        [tenantId]
+      ),
+    ]);
   return {
     clients: clientRows[0].total,
     credits: creditRows[0].total,
     devices: deviceRows[0].total,
     users: userRows[0].total,
+    webhooks: webhookRows[0].total,
   };
 }
 

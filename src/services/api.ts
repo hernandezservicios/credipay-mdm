@@ -585,6 +585,7 @@ export interface SubscriptionUsage {
   credits: number;
   devices: number;
   users: number;
+  webhooks: number;
 }
 
 export interface BillingPaymentRow {

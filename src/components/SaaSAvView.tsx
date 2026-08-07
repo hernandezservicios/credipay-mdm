@@ -283,11 +283,12 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
             <h3 className="text-sm font-bold text-white">Uso actual vs Límites del Plan</h3>
             <span className="text-[10px] text-slate-400">∞ = ilimitado</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <Meter label="Clientes" used={usage.clients} max={plan.max_clients} icon={<Users className="w-3.5 h-3.5" />} />
             <Meter label="Créditos" used={usage.credits} max={plan.max_credits} icon={<FileText className="w-3.5 h-3.5" />} />
             <Meter label="Dispositivos" used={usage.devices} max={plan.max_devices} icon={<Smartphone className="w-3.5 h-3.5" />} />
             <Meter label="Usuarios" used={usage.users} max={plan.max_users} icon={<Users className="w-3.5 h-3.5" />} />
+            <Meter label="Webhooks" used={usage.webhooks} max={plan.max_webhooks} icon={<Repeat className="w-3.5 h-3.5" />} />
           </div>
         </div>
       )}
@@ -312,7 +313,8 @@ export const SaaSAvView: React.FC<SaaSAvViewProps> = ({
                 ((p.max_clients === 0 || usage.clients <= p.max_clients) &&
                   (p.max_credits === 0 || usage.credits <= p.max_credits) &&
                   (p.max_devices === 0 || usage.devices <= p.max_devices) &&
-                  (p.max_users === 0 || usage.users <= p.max_users));
+                  (p.max_users === 0 || usage.users <= p.max_users) &&
+                  (p.max_webhooks === 0 || usage.webhooks <= p.max_webhooks));
               return (
                 <div
                   key={p.id}

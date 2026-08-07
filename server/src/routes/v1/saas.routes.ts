@@ -349,7 +349,8 @@ router.post(
       (plan.max_clients === 0 || usage.clients <= plan.max_clients) &&
       (plan.max_credits === 0 || usage.credits <= plan.max_credits) &&
       (plan.max_devices === 0 || usage.devices <= plan.max_devices) &&
-      (plan.max_users === 0 || usage.users <= plan.max_users);
+      (plan.max_users === 0 || usage.users <= plan.max_users) &&
+      (plan.max_webhooks === 0 || usage.webhooks <= plan.max_webhooks);
     if (!underLimit) {
       throw ApiError.forbidden(
         'plan_usage_exceeds_limits',
