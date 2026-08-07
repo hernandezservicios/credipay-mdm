@@ -66,7 +66,7 @@ router.put('/config', requirePermission('mdm.config'), async (req: TenantRequest
     'Configuración MDM actualizada',
     req as AuthRequest
   );
-  res.json({ data: merged });
+  res.json({ data: redactMdmConfig(merged) });
 });
 
 // ---------------------------------------------------------------------------

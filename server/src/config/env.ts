@@ -18,6 +18,8 @@ const envSchema = z.object({
   APP_URL: z.string().default('http://localhost:4000'),
   WEB_ORIGIN: z.string().default('http://localhost:3000'),
   SESSION_SECRET: z.string().min(32),
+  // FASE 6: clave de cifrado AES-256-GCM (32+ chars; se deriva a 32 bytes vía sha256).
+  APP_ENCRYPTION_KEY: z.string().min(32, 'APP_ENCRYPTION_KEY es obligatoria (mínimo 32 caracteres)'),
   COOKIE_SECURE: z
     .string()
     .default('false')

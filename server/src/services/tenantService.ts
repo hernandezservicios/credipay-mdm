@@ -1,6 +1,7 @@
 import type { RowDataPacket } from 'mysql2';
 import { pool } from '../db/pool.js';
 import { ApiError } from '../utils/http.js';
+import { encrypt, decrypt, isEncrypted } from '../utils/crypto.js';
 
 export interface TenantRow extends RowDataPacket {
   id: number;
@@ -100,10 +101,45 @@ export function parseMdmConfigValue(
   }
 }
 
+// FASE 6 (Seguridad AES-256-GCM): campos sensibles que nunca se guardan en claro.
+const MDM_SECRET_KEYS = ['apiKey', 'appClient', 'secret', 'bearerToken'] as const;
+
+function encryptMdmSecrets(config: MdmConfig): MdmConfig {
+  const out: MdmConfig = { ...config };
+  for (const key of MDM_SECRET_KEYS) {
+    const value = out[key];
+    if (typeof value === 'string' && value && !isEncrypted(value)) {
+      out[key] = encrypt(value);
+    }
+  }
+  return out;
+}
+
+function decryptMdmSecrets(config: MdmConfig): MdmConfig {
+  const out: MdmConfig = { ...config };
+  for (const key of MDM_SECRET_KEYS) {
+    const value = out[key];
+    if (typeof value === 'string' && isEncrypted(value)) {
+      out[key] = decrypt(value);
+    }
+  }
+  return out;
+}
+
+export function encryptMdmConfigForTest(config: MdmConfig): MdmConfig {
+  return encryptMdmSecrets(config);
+}
+
+export function decryptMdmConfigForTest(config: MdmConfig): MdmConfig {
+  return decryptMdmSecrets(config);
+}
+
 export async function getMdmConfig(tenantId: number): Promise<MdmConfig> {
   const row = await getTenantSettings(tenantId);
   if (!row?.mdm_config) return { ...DEFAULT_MDM_CONFIG };
-  return parseMdmConfigValue(row.mdm_config);
+  // FASE 6: los valores legados en claro (sin prefijo enc:v1:) se devuelven tal
+  // cual; el siguiente updateMdmConfig los re-cifra automáticamente.
+  return decryptMdmSecrets(parseMdmConfigValue(row.mdm_config));
 }
 
 export async function updateMdmConfig(
@@ -112,10 +148,11 @@ export async function updateMdmConfig(
 ): Promise<MdmConfig> {
   const current = await getMdmConfig(tenantId);
   const merged: MdmConfig = { ...current, ...patch };
+  // FASE 6: las credenciales se cifran ANTES de persistir.
   await pool.query(
     `INSERT INTO tenant_settings (tenant_id, mdm_config) VALUES (?, ?)
      ON DUPLICATE KEY UPDATE mdm_config = VALUES(mdm_config)`,
-    [tenantId, JSON.stringify(merged)]
+    [tenantId, JSON.stringify(encryptMdmSecrets(merged))]
   );
   return merged;
 }

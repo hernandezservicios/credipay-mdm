@@ -20,7 +20,7 @@ import {
 import { getPlatformConfig, recordIntegrationStatus } from './configService.js';
 import { addCashMovement } from './cashService.js';
 import { lockInovaGuardDevice } from '../integrations/inovaGuard/index.js';
-import { DEFAULT_MDM_CONFIG, type MdmConfig } from './tenantService.js';
+import { DEFAULT_MDM_CONFIG, getMdmConfig, type MdmConfig } from './tenantService.js';
 
 export interface CreateLoanInput {
   clientId: number;
@@ -960,42 +960,12 @@ async function autoLockOverdueDevice(tenantId: number, creditId: number): Promis
   const device = rows[0] as { id: number; inovaguard_id: string; mdm_status: string } | undefined;
   if (!device) return;
 
-  const config = await getPlatformConfig(tenantId);
-  const mdmIntegration = config.integrations.find((i) => i.code === 'INOVAGUARD');
-  const [settingsRows] = await pool.query<RowDataPacket[]>(
-    'SELECT mdm_config FROM tenant_settings WHERE tenant_id = ?',
-    [tenantId]
-  );
-  let mdm: MdmConfig = {
-    ...DEFAULT_MDM_CONFIG,
-    provider: 'INOVAGUARD',
-    autoUnlockOnPaid: true,
-    autoLockOnOverdue: true,
-    enabled: false,
-    baseUrl: '',
-    apiKey: '',
-    appClient: '',
-    secret: '',
-    bearerToken: '',
-    authLoginEndpoint: '/auth/login',
-    devicesEndpoint: '/devices',
-    lockEndpoint: '/devices/lock/{id}',
-    unlockEndpoint: '/devices/unlock/{id}',
-    unlockCodeEndpoint: '/devices/unlock-code/{id}',
-    removeEndpoint: '/devices/remove/{id}',
-    qrEndpoint: '/devices/qr-enrollment',
-    balanceEndpoint: '/balance',
-    statusEndpoint: '/devices/find/{id}',
-    liveMode: false,
-  };
+  let mdm: MdmConfig;
   try {
-    const raw = settingsRows[0]?.mdm_config;
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (parsed && typeof parsed === 'object') mdm = { ...mdm, ...(parsed as object) };
+    mdm = await getMdmConfig(tenantId);
   } catch {
-    // config por defecto
+    mdm = { ...DEFAULT_MDM_CONFIG, provider: 'INOVAGUARD' };
   }
-  void mdmIntegration;
   if (!mdm.enabled || !mdm.autoLockOnOverdue) return;
 
   const res = await lockInovaGuardDevice(tenantId, mdm, device.inovaguard_id);

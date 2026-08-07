@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_MDM_CONFIG, parseMdmConfigValue } from '../services/tenantService.ts';
+import {
+  DEFAULT_MDM_CONFIG,
+  parseMdmConfigValue,
+  decryptMdmConfigForTest,
+  encryptMdmConfigForTest,
+} from '../services/tenantService.ts';
+import { isEncrypted } from '../utils/crypto.ts';
 
 describe('parseMdmConfigValue', () => {
   it('devuelve defaults si el valor es null/undefined', () => {
@@ -42,5 +48,56 @@ describe('parseMdmConfigValue', () => {
   it('JSON inválido -> defaults (sin excepción)', () => {
     const cfg = parseMdmConfigValue('{esto no es json');
     expect(cfg).toEqual(DEFAULT_MDM_CONFIG);
+  });
+});
+
+describe('cifrado de credenciales MDM (FASE 6)', () => {
+  const cfg = parseMdmConfigValue({
+    provider: 'INOVAGUARD',
+    enabled: true,
+    apiKey: 'api-123',
+    appClient: 'app-456',
+    secret: 'sec-789',
+    bearerToken: 'tok-abc',
+    baseUrl: 'https://example.com',
+  });
+
+  it('encryptMdmConfigForTest cifra las 4 credenciales con formato enc:v1:', () => {
+    const enc = encryptMdmConfigForTest(cfg);
+    expect(isEncrypted(enc.apiKey)).toBe(true);
+    expect(isEncrypted(enc.appClient)).toBe(true);
+    expect(isEncrypted(enc.secret)).toBe(true);
+    expect(isEncrypted(enc.bearerToken)).toBe(true);
+    expect(enc.baseUrl).toBe('https://example.com');
+    expect(enc.enabled).toBe(true);
+  });
+
+  it('roundtrip cifrado -> descifrado devuelve los secretos originales', () => {
+    const enc = encryptMdmConfigForTest(cfg);
+    const dec = decryptMdmConfigForTest(enc);
+    expect(dec.apiKey).toBe('api-123');
+    expect(dec.appClient).toBe('app-456');
+    expect(dec.secret).toBe('sec-789');
+    expect(dec.bearerToken).toBe('tok-abc');
+    expect(dec.baseUrl).toBe('https://example.com');
+  });
+
+  it('es idempotente: no re-cifra valores ya cifrados', () => {
+    const once = encryptMdmConfigForTest(cfg);
+    const twice = encryptMdmConfigForTest(once);
+    expect(twice.apiKey).toBe(once.apiKey);
+    expect(twice.secret).toBe(once.secret);
+  });
+
+  it('valores legados en claro pasan tal cual por decrypt (compatibilidad)', () => {
+    const dec = decryptMdmConfigForTest(cfg);
+    expect(dec.apiKey).toBe('api-123');
+    expect(dec.secret).toBe('sec-789');
+  });
+
+  it('no cifra credenciales vacías (placeholders siguen vacíos)', () => {
+    const empty = encryptMdmConfigForTest({ ...DEFAULT_MDM_CONFIG });
+    expect(empty.apiKey).toBe('');
+    expect(empty.secret).toBe('');
   });
 });

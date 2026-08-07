@@ -8,6 +8,7 @@ import {
   getIntegrationLog,
   getPlatformConfig,
   listLoanProducts,
+  redactIntegrationsForApi,
   updatePlatformConfig,
   upsertLoanProduct,
 } from '../../services/configService.js';
@@ -18,7 +19,7 @@ router.use(authRequired, requireTenant, csrfProtect);
 
 router.get('/', async (req: TenantRequest, res) => {
   const config = await getPlatformConfig(req.ctx!.tenantId);
-  res.json({ data: config });
+  res.json({ data: redactIntegrationsForApi(config) });
 });
 
 router.put('/:section', requirePermission('config.manage'), async (req: TenantRequest, res) => {
@@ -27,6 +28,16 @@ router.put('/:section', requirePermission('config.manage'), async (req: TenantRe
     throw ApiError.badRequest('invalid_section', 'Sección de configuración inválida');
   }
   const body = (req.body ?? {}) as Record<string, unknown>;
+  // FASE 6: nunca persistir el placeholder '********' sobre un secreto real.
+  if (section === 'integrations' && Array.isArray(body.integrations)) {
+    body.integrations = body.integrations.map((it) => {
+      const clean = { ...(it as Record<string, unknown>) };
+      for (const key of ['apiKey', 'secret', 'token']) {
+        if (clean[key] === '********') delete clean[key];
+      }
+      return clean;
+    });
+  }
   const config = await updatePlatformConfig(req.ctx!.tenantId, section, body);
   void recordAudit(
     { tenantId: req.ctx!.tenantId, userId: req.auth!.userId, action: 'CONFIG_UPDATED', entityType: 'config', entityId: section, newValues: body },
@@ -39,7 +50,7 @@ router.put('/:section', requirePermission('config.manage'), async (req: TenantRe
     `Configuración actualizada (${section})`,
     req as AuthRequest
   );
-  res.json({ data: config });
+  res.json({ data: redactIntegrationsForApi(config) });
 });
 
 // Log de errores de integraciones

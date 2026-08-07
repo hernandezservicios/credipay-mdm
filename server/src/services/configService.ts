@@ -544,6 +544,26 @@ export async function getIntegrationLog(tenantId: number): Promise<unknown[]> {
   return Array.isArray(log.entries) ? log.entries : [];
 }
 
+// FASE 6 (Seguridad): los secretos de integraciones nunca salen del backend en
+// las respuestas HTTP; solo se indica si están configurados ('********').
+// NOTA: getPlatformConfig() NO redacta internamente porque
+// recordIntegrationStatus() re-persiste el listado completo; el redactado se
+// aplica únicamente a nivel de ruta.
+const INTEGRATION_SECRET_KEYS = ['apiKey', 'secret', 'token'] as const;
+
+export function redactIntegrationsForApi(config: PlatformConfig): PlatformConfig {
+  return {
+    ...config,
+    integrations: config.integrations.map((it) => {
+      const out = { ...it } as unknown as Record<string, unknown>;
+      for (const key of INTEGRATION_SECRET_KEYS) {
+        if (out[key]) out[key] = '********';
+      }
+      return out as unknown as IntegrationConfig;
+    }),
+  };
+}
+
 export async function recordIntegrationStatus(
   tenantId: number,
   code: string,
