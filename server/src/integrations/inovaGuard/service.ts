@@ -2,6 +2,7 @@ import type { MdmConfig } from '../../services/tenantService.js';
 import {
   commandUrl,
   fetchInovaGuard,
+  invalidateTenantTokens,
   type FetchResult,
 } from './client.js';
 import {
@@ -41,9 +42,25 @@ const SNAPSHOT_TTL_MS = 60_000;
 const snapshots = new Map<number, InovaGuardSnapshot>();
 const dirty = new Set<number>();
 const inFlight = new Map<number, Promise<InovaGuardSnapshot>>();
+// FASE 7: generación por tenant. Se incrementa en invalidateTenant(); si un
+// snapshot en curso (inflight) termina con una generación vieja, se descarta
+// para no repoblar la caché después de una rotación de credenciales.
+const generations = new Map<number, number>();
 
 export function invalidateInovaGuardCache(tenantId: number): void {
   dirty.add(tenantId);
+}
+
+// FASE 7: rotación de credenciales / invalidación total del tenant.
+// Limpia: Bearer Token, Refresh Token (si existiera), Snapshot, Dirty,
+// Reintentos en vuelo (inflight) e información sincronizada temporal en caché.
+// Solo afecta al tenant indicado; los demás tenants quedan intactos.
+export function invalidateTenant(tenantId: number): void {
+  invalidateTenantTokens(tenantId);
+  snapshots.delete(tenantId);
+  dirty.delete(tenantId);
+  inFlight.delete(tenantId);
+  generations.set(tenantId, (generations.get(tenantId) ?? 0) + 1);
 }
 
 async function loadSnapshot(
@@ -52,6 +69,7 @@ async function loadSnapshot(
   force: boolean
 ): Promise<InovaGuardSnapshot> {
   const cached = snapshots.get(tenantId);
+  const generation = generations.get(tenantId) ?? 0;
   const isFresh = cached && Date.now() - cached.fetchedAt < SNAPSHOT_TTL_MS;
   if (!force && isFresh && !dirty.has(tenantId)) return cached!;
 
@@ -70,8 +88,12 @@ async function loadSnapshot(
         isSimulated: devRes.isSimulated || balRes.isSimulated || licRes.isSimulated,
         fetchedAt: Date.now(),
       };
-      snapshots.set(tenantId, snapshot);
-      dirty.delete(tenantId);
+      // FASE 7: si hubo invalidación (nueva generación) mientras se resolvía,
+      // el resultado es obsoleto y NO debe repoblar la caché.
+      if ((generations.get(tenantId) ?? 0) === generation) {
+        snapshots.set(tenantId, snapshot);
+        dirty.delete(tenantId);
+      }
       return snapshot;
     });
     inFlight.set(tenantId, promise);

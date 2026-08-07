@@ -2,6 +2,7 @@ import type { RowDataPacket } from 'mysql2';
 import { pool } from '../db/pool.js';
 import { ApiError } from '../utils/http.js';
 import { encrypt, decrypt, isEncrypted } from '../utils/crypto.js';
+import { invalidateTenant } from '../integrations/inovaGuard/index.js';
 
 export interface TenantRow extends RowDataPacket {
   id: number;
@@ -148,11 +149,18 @@ export async function updateMdmConfig(
 ): Promise<MdmConfig> {
   const current = await getMdmConfig(tenantId);
   const merged: MdmConfig = { ...current, ...patch };
+  // FASE 7: si cambió alguna credencial InovaGuard, se rotan e invalidan todos
+  // los estados cacheados del tenant (token, snapshot, inflight, dirty) para
+  // forzar un nuevo login y nueva fotografía sin reiniciar el servidor.
+  const credentialsChanged = MDM_SECRET_KEYS.some((key) => current[key] !== merged[key]);
   // FASE 6: las credenciales se cifran ANTES de persistir.
   await pool.query(
     `INSERT INTO tenant_settings (tenant_id, mdm_config) VALUES (?, ?)
      ON DUPLICATE KEY UPDATE mdm_config = VALUES(mdm_config)`,
     [tenantId, JSON.stringify(encryptMdmSecrets(merged))]
   );
+  if (credentialsChanged) {
+    invalidateTenant(tenantId);
+  }
   return merged;
 }

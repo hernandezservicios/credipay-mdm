@@ -12,6 +12,8 @@ export {
   commandUrl,
   storeToken,
   clearTokens,
+  invalidateTenantTokens,
+  getStoredToken,
 } from './client.js';
 export {
   getInovaGuardDevices,
@@ -24,6 +26,7 @@ export {
   removeInovaGuardDevice,
   getInovaGuardQrEnrollment,
   invalidateInovaGuardCache,
+  invalidateTenant,
 } from './service.js';
 export { redactMdmConfig, type RedactedMdmConfig } from './redact.js';
 export type { FetchResult } from './client.js';

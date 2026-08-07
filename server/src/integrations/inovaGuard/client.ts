@@ -107,3 +107,16 @@ export function storeToken(tenantId: number, token: string): void {
 export function clearTokens(): void {
   tokens.clear();
 }
+
+// FASE 7: elimina únicamente el Bearer Token del tenant indicado. No afecta a
+// otros tenants. El refresh token no existe en el flujo actual de InovaGuard
+// (auto-login único vía /auth/login); si en el futuro se añade, debe limpiarse
+// aquí también.
+export function invalidateTenantTokens(tenantId: number): void {
+  tokens.delete(tenantId);
+}
+
+// Exposición acotada para diagnóstico/test: devuelve el Bearer activo (si lo hay).
+export function getStoredToken(tenantId: number): string | undefined {
+  return tokens.get(tenantId);
+}
