@@ -28,6 +28,7 @@ import {
   simulateLoanPayment,
 } from '../../modules/loans/paymentApplier.js';
 import { normalizePaymentMethod } from '../../services/paymentService.js';
+import { assertPlanLimit } from '../../services/planService.js';
 
 const router = Router();
 router.use(authRequired, requireTenant, csrfProtect);
@@ -53,6 +54,8 @@ router.post('/quote', requirePermission('loans.view'), async (req: TenantRequest
 });
 
 router.post('/', requirePermission('loans.manage'), async (req: TenantRequest, res) => {
+  // SaaS (FASE 4): el préstamo crea un crédito → aplica el límite del plan.
+  await assertPlanLimit(req.ctx!.tenantId, 'credits');
   const status = req.body.status === 'PENDING' ? ('PENDING' as const) : ('ACTIVE' as const);
   const input = {
     clientId: Number(req.body.clientId),

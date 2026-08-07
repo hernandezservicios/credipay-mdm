@@ -9,6 +9,7 @@ import {
 } from '../../middleware/auth.js';
 import { pool } from '../../db/pool.js';
 import { recordActivity, recordAudit } from '../../services/auditService.js';
+import { assertPlanLimit } from '../../services/planService.js';
 import {
   buildResetLink,
   requestPasswordReset,
@@ -140,6 +141,10 @@ router.post('/', requirePermission('users.create'), async (req: AuthRequest, res
   if (dup.length > 0) throw ApiError.badRequest('email_in_use', 'El correo ya está registrado');
 
   const dbTenantId = tenantId > 0 ? tenantId : null;
+  // SaaS (FASE 4): respetar el límite max_users del plan del tenant destino.
+  if (dbTenantId !== null) {
+    await assertPlanLimit(dbTenantId, 'users');
+  }
   const roleSlugs =
     (Array.isArray(body.roles)
       ? body.roles.filter((r: unknown): r is string => typeof r === 'string')
