@@ -10,7 +10,7 @@ import {
 import { pool } from '../../db/pool.js';
 import { recordActivity, recordAudit } from '../../services/auditService.js';
 import { getPlanById, nextPeriodEnd } from '../../services/planService.js';
-import { DEFAULT_MDM_CONFIG } from '../../services/tenantService.js';
+import { DEFAULT_MDM_CONFIG, revokeTenantSessions } from '../../services/tenantService.js';
 import { ApiError } from '../../utils/http.js';
 
 const router = Router();
@@ -50,20 +50,6 @@ async function uniqueSlug(base: string): Promise<string> {
     if (chk.length === 0) return trySlug;
     n++;
   }
-}
-
-async function revokeTenantSessions(tenantId: number): Promise<void> {
-  await pool.query(
-    `UPDATE sessions s
-        JOIN users u ON u.id = s.user_id AND u.tenant_id = ?
-        SET s.revoked_at = NOW(), s.expires_at = NOW()
-      WHERE s.revoked_at IS NULL`,
-    [tenantId]
-  );
-  await pool.query(
-    'UPDATE sessions SET tenant_id = NULL WHERE tenant_id = ? AND revoked_at IS NULL',
-    [tenantId]
-  );
 }
 
 router.get('/', requirePermission('tenants.view'), async (req: AuthRequest, res) => {
@@ -137,6 +123,30 @@ router.get('/:id', requirePermission('tenants.view'), async (req: AuthRequest, r
       ORDER BY u.id LIMIT 1`,
     [tenantId]
   );
+  const [historyRows] = await pool.query<RowDataPacket[]>(
+    `SELECT id, event_type, description, data, created_at
+       FROM subscription_history
+      WHERE tenant_id = ?
+      ORDER BY id DESC LIMIT 30`,
+    [tenantId]
+  );
+  const [paymentsRows] = await pool.query<RowDataPacket[]>(
+    `SELECT id, amount, currency_code, status, payment_method, reference,
+            description, paid_at, created_at
+       FROM payments
+      WHERE tenant_id = ? AND deleted_at IS NULL
+      ORDER BY id DESC LIMIT 10`,
+    [tenantId]
+  );
+  const [auditRows] = await pool.query<RowDataPacket[]>(
+    `SELECT al.id, al.action, al.entity_type, al.entity_id, al.old_values,
+            al.new_values, al.created_at, COALESCE(u.name, 'Sistema') AS user_name
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.user_id
+      WHERE al.tenant_id = ?
+      ORDER BY al.id DESC LIMIT 20`,
+    [tenantId]
+  );
 
   res.json({
     data: {
@@ -144,6 +154,9 @@ router.get('/:id', requirePermission('tenants.view'), async (req: AuthRequest, r
       settings: settingsRows[0] ?? null,
       subscription: subRows[0] ?? null,
       admin: adminRows[0] ?? null,
+      history: historyRows,
+      payments: paymentsRows,
+      auditLogs: auditRows,
     },
   });
 });
@@ -701,6 +714,23 @@ router.post('/:id/switch', requirePermission('tenants.view'), async (req: AuthRe
   if (!tenant) throw ApiError.notFound('Tenant no encontrado');
   if (tenant.status !== 'ACTIVE' && tenant.status !== 'TRIAL') {
     throw ApiError.forbidden('tenant_suspended', 'El tenant está suspendido o pendiente');
+  }
+
+  // FASE 10 (auditoría SaaS): si la empresa tiene una suscripción vencida,
+  // suspendida o cancelada, el Super Admin no puede "entrar" a operar con ella.
+  const [subRows] = await pool.query<RowDataPacket[]>(
+    `SELECT id, status FROM subscriptions
+      WHERE tenant_id = ? AND deleted_at IS NULL AND status IN
+        ('TRIAL','ACTIVE','PAST_DUE','SUSPENDED','EXPIRED','CANCELED')
+      ORDER BY id DESC LIMIT 1`,
+    [tenantId]
+  );
+  const sub = subRows[0];
+  if (sub && !['TRIAL', 'ACTIVE', 'PAST_DUE'].includes(String(sub.status))) {
+    throw ApiError.forbidden(
+      'subscription_inactive',
+      `La suscripción de la empresa está ${String(sub.status).toLowerCase()}. Renueva o reactiva el plan antes de entrar.`
+    );
   }
 
   await pool.query(

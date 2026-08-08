@@ -13,20 +13,24 @@ import {
   CalendarClock,
   CreditCard,
   Plus,
+  Info,
 } from 'lucide-react';
 import {
   apiChangePlan,
   apiDeleteTenant,
   apiExtendSubscription,
+  apiGetTenantDetail,
   apiRenewSubscription,
   apiReactivateTenant,
   apiSuspendTenant,
   errorMessage,
   type PlanRow,
   type PlatformTenantRow,
+  type TenantDetailRow,
 } from '../services/api';
 import { useConfirm } from './ConfirmDialog';
 import { ModalShell } from './ui/ModalShell';
+import { TenantDetailModal } from './TenantDetailModal';
 import { formatDate, formatCurrencyRD } from '../utils/formatters';
 
 const CYCLE_LABEL: Record<string, string> = {
@@ -92,6 +96,20 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
   const [suspendReason, setSuspendReason] = useState('');
   const [extendDays, setExtendDays] = useState('30');
   const [working, setWorking] = useState(false);
+  const [detailTenant, setDetailTenant] = useState<TenantDetailRow | null>(null);
+  const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
+
+  const openDetail = async (tenantId: number) => {
+    setDetailLoadingId(tenantId);
+    try {
+      const res = await apiGetTenantDetail(tenantId);
+      setDetailTenant(res.data);
+    } catch (err) {
+      onNotify(`❌ No se pudo cargar el detalle: ${errorMessage(err)}`, 'LOCK');
+    } finally {
+      setDetailLoadingId(null);
+    }
+  };
 
   const doChangePlan = async (t: PlatformTenantRow) => {
     const pid = Number(newPlanId);
@@ -207,7 +225,11 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
   };
 
   const canEnter = (t: PlatformTenantRow) =>
-    t.tenant_status === 'ACTIVE' || t.tenant_status === 'TRIAL';
+    (t.tenant_status === 'ACTIVE' || t.tenant_status === 'TRIAL') &&
+    (!t.subscription_status ||
+      t.subscription_status === 'TRIAL' ||
+      t.subscription_status === 'ACTIVE' ||
+      t.subscription_status === 'PAST_DUE');
 
   return (
     <div className="space-y-6">
@@ -399,10 +421,23 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
               </div>
 
               <button
+                onClick={() => void openDetail(t.tenant_id)}
+                disabled={detailLoadingId === t.tenant_id}
+                className="mt-2 flex items-center justify-center space-x-1.5 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold transition-colors disabled:opacity-50"
+              >
+                {detailLoadingId === t.tenant_id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Info className="w-3.5 h-3.5" />
+                )}
+                <span>Ver detalles</span>
+              </button>
+
+              <button
                 onClick={() => canEnter(t) && onEnter(t.tenant_id)}
                 disabled={!canEnter(t)}
                 className="mt-2 flex items-center justify-center space-x-1.5 w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 dark:bg-indigo-500/100 text-white text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title={canEnter(t) ? 'Entrar a la empresa' : 'No se puede entrar: empresa no activa'}
+                title={canEnter(t) ? 'Entrar a la empresa' : 'No se puede entrar: empresa no activa o suscripción vencida'}
               >
                 <ArrowRight className="w-3.5 h-3.5" />
                 <span>Entrar a la empresa</span>
@@ -498,6 +533,8 @@ export const PlatformAdminView: React.FC<PlatformAdminViewProps> = ({
           </div>
         </ModalShell>
       )}
+
+      {detailTenant && <TenantDetailModal tenant={detailTenant} onClose={() => setDetailTenant(null)} />}
     </div>
   );
 };

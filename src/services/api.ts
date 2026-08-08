@@ -684,6 +684,34 @@ export interface TenantDetailRow {
     status: string;
     last_login_at: string | null;
   } | null;
+  history: Array<{
+    id: number;
+    event_type: string;
+    description: string;
+    data: string | null;
+    created_at: string;
+  }>;
+  payments: Array<{
+    id: number;
+    amount: string | number;
+    currency_code: string;
+    status: string;
+    payment_method: string | null;
+    reference: string | null;
+    description: string | null;
+    paid_at: string | null;
+    created_at: string;
+  }>;
+  auditLogs: Array<{
+    id: number;
+    action: string;
+    entity_type: string | null;
+    entity_id: string | null;
+    old_values: string | null;
+    new_values: string | null;
+    created_at: string;
+    user_name: string;
+  }>;
 }
 
 export interface PlatformUserRow {

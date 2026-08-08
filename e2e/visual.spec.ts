@@ -442,6 +442,75 @@ test('SaaS: Panel Comercial del Super Admin lista empresas y entra de la lista',
   expect(errors).toEqual([]);
 });
 
+test('SaaS: detalle de empresa muestra suscripción, pagos, historial y auditoría', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await loginGlobal(page, SUPER_ADMIN.email, 'NuevaClaveE2E2026!');
+
+  await page.getByRole('button', { name: /Empresas/ }).click();
+  const card = page
+    .locator('div.bg-slate-900.border.border-slate-800.rounded-2xl.p-5', {
+      hasText: 'Financiera Alpha',
+    })
+    .first();
+  const detailBtn = card.getByRole('button', { name: 'Ver detalles' });
+  await expect(detailBtn).toBeVisible();
+  await detailBtn.click();
+
+  const dialog = page.getByRole('dialog', { name: /Detalle — Financiera Alpha/ });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await expect(dialog.getByText('Suscripción', { exact: true }).first()).toBeVisible();
+  await expect(dialog.getByText(/Historial de suscripción/)).toBeVisible();
+  await expect(dialog.getByText(/Últimos pagos/)).toBeVisible();
+  await expect(dialog.getByText(/Auditoría/)).toBeVisible();
+  await expect(dialog.getByText(/Administrador de la empresa/)).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+test('SaaS: switch bloqueado cuando la suscripción está vencida (EXPIRED)', async ({ request }) => {
+  const subRaw = execSync(
+    dbClient(
+      "SELECT s.id FROM subscriptions s WHERE s.tenant_id = 5 AND s.deleted_at IS NULL AND s.status IN ('TRIAL','ACTIVE','PAST_DUE') ORDER BY s.id DESC LIMIT 1"
+    )
+  )
+    .toString()
+    .trim();
+  test.skip(!subRaw, 'No existe suscripción activa para el tenant de prueba');
+
+  // La suite puede haber rotado la contraseña del Super Admin en el test
+  // anterior (mustChangePassword); probamos ambas variantes.
+  let loginRes = await request.post('/api/v1/auth/login', {
+    data: { email: SUPER_ADMIN.email, password: SUPER_ADMIN.password, remember: false },
+  });
+  if (!loginRes.ok()) {
+    loginRes = await request.post('/api/v1/auth/login', {
+      data: { email: SUPER_ADMIN.email, password: 'NuevaClaveE2E2026!', remember: false },
+    });
+  }
+  expect(loginRes.ok()).toBeTruthy();
+  const state = await request.storageState();
+  const csrf = state.cookies.find((c) => c.name === 'csrf')?.value;
+
+  const prevStatus = execSync(dbClient(`SELECT status FROM subscriptions WHERE id = ${subRaw};`))
+    .toString()
+    .trim();
+  try {
+    execSync(dbClient(`UPDATE subscriptions SET status = 'EXPIRED' WHERE id = ${subRaw};`));
+    const res = await request.post('/api/v1/tenants/5/switch', {
+      headers: { 'X-CSRF-Token': csrf ?? '' },
+    });
+    expect(res.status()).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe('subscription_inactive');
+  } finally {
+    execSync(dbClient(`UPDATE subscriptions SET status = '${prevStatus}' WHERE id = ${subRaw};`));
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Fase 6: Motor de cobranza automática + IA de mensajería
 // ---------------------------------------------------------------------------

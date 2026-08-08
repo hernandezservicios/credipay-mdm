@@ -213,6 +213,23 @@ export async function login(input: {
     throw ApiError.forbidden('email_not_verified', 'Verifique su correo electrónico antes de iniciar sesión');
   }
 
+  // FASE 10 (auditoría SaaS): las cuentas de una empresa SUSPENDIDA no pueden
+  // iniciar sesión (independientemente de su estado individual).
+  if (user.tenant_id !== null) {
+    const [tenantRows] = await pool.query<TenantRow[]>(
+      'SELECT id, name, slug, status FROM tenants WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+      [user.tenant_id]
+    );
+    const tenant = tenantRows[0];
+    if (!tenant || tenant.status === 'SUSPENDED') {
+      await recordFail('TENANT_SUSPENDED');
+      throw ApiError.forbidden(
+        'tenant_suspended',
+        'La empresa a la que pertenece su cuenta está suspendida. Contacte al administrador de la plataforma.'
+      );
+    }
+  }
+
   const ok = await bcrypt.compare(input.password, user.password_hash);
   if (!ok) {
     await recordFail('INVALID_CREDENTIALS');
@@ -337,6 +354,22 @@ export async function completeTotpLogin(
   const user = userRows[0];
   if (!user || user.two_factor_enabled !== 1 || !user.two_factor_secret) {
     throw ApiError.forbidden('two_factor_disabled', 'El 2FA ya no está activo');
+  }
+
+  // FASE 10 (auditoría SaaS): validar también el estado de la empresa del
+  // usuario antes de completar el login en dos pasos.
+  if (user.tenant_id !== null) {
+    const [tenantRows] = await pool.query<TenantRow[]>(
+      'SELECT id, name, slug, status FROM tenants WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+      [user.tenant_id]
+    );
+    const tenant = tenantRows[0];
+    if (!tenant || tenant.status === 'SUSPENDED') {
+      throw ApiError.forbidden(
+        'tenant_suspended',
+        'La empresa a la que pertenece su cuenta está suspendida. Contacte al administrador de la plataforma.'
+      );
+    }
   }
 
   const verified =

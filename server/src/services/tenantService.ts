@@ -71,6 +71,23 @@ export interface TenantSettingsRow extends RowDataPacket {
   notifications: string | null;
 }
 
+/** Revoca todas las sesiones activas de los usuarios de un tenant
+ *  (utilizado en suspensión manual, suspensión automática del scheduler
+ *  y eliminación de la empresa). */
+export async function revokeTenantSessions(tenantId: number): Promise<void> {
+  await pool.query(
+    `UPDATE sessions s
+        JOIN users u ON u.id = s.user_id AND u.tenant_id = ?
+        SET s.revoked_at = NOW(), s.expires_at = NOW()
+      WHERE s.revoked_at IS NULL`,
+    [tenantId]
+  );
+  await pool.query(
+    'UPDATE sessions SET tenant_id = NULL WHERE tenant_id = ? AND revoked_at IS NULL',
+    [tenantId]
+  );
+}
+
 export async function getTenant(tenantId: number): Promise<TenantRow> {
   const [rows] = await pool.query<TenantRow[]>(
     'SELECT id, name, slug, domain, status, currency_code, country_code, language_code, timezone FROM tenants WHERE id = ?',

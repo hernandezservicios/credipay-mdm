@@ -18,6 +18,7 @@ import { runBackup } from './services/backupService.js';
 import { runOverdueEngine } from './services/loanService.js';
 import { deliverDelivery } from './services/webhookService.js';
 import { recordAudit } from './services/auditService.js';
+import { revokeTenantSessions } from './services/tenantService.js';
 
 const TICK_BASE_MS = 60_000;
 
@@ -103,13 +104,31 @@ async function runDailyOverdueEngine(): Promise<void> {
 
 /**
  * Expiración automática de suscripciones (diaria):
- *  - ACTIVE con auto_renew=0 y período vencido  -> EXPIRED (el tenant sigue activo).
- *  - TRIAL con trial_ends_at vencido            -> suscripción EXPIRED.
- *  - PAST_DUE que excede la gracia (3 días)     -> suscripción SUSPENDED.
- * Cada cambio se registra en subscription_history y audit_logs.
+ *  - ACTIVE con auto_renew=0 y período vencido  -> suscripción EXPIRED y el
+ *    tenant se marca SUSPENDED (acceso bloqueado hasta renovar/reactivar).
+ *  - TRIAL con trial_ends_at vencido            -> suscripción EXPIRED y el
+ *    tenant se marca SUSPENDED.
+ *  - PAST_DUE que excede la gracia (3 días)     -> suscripción SUSPENDED y
+ *    el tenant también se marca SUSPENDED.
+ * Cada cambio se registra en subscription_history y audit_logs, y las
+ * sesiones de acceso del tenant se revocan.
  */
 async function expireSubscriptions(): Promise<void> {
   const now = new Date();
+
+  /** FASE 10 (auditoría SaaS): suspende el tenant y revoca sus sesiones
+   *  cuando la suscripción queda vencida/suspendida, bloqueando el acceso
+   *  hasta que el Super Admin la reactive o renueve. */
+  const suspendTenantOnExpiry = async (tenantId: number, reason: string): Promise<void> => {
+    await pool.query(
+      `UPDATE tenants
+          SET status = 'SUSPENDED', suspended_at = NOW(), suspended_by = NULL,
+              suspended_reason = ?, updated_at = NOW()
+        WHERE id = ? AND deleted_at IS NULL`,
+      [reason, tenantId]
+    );
+    await revokeTenantSessions(tenantId);
+  };
 
   const [noRenewExpired] = await pool.query<RowDataPacket[]>(
     `SELECT s.id AS subscription_id, s.tenant_id, pl.name AS plan_name, pl.slug AS plan_slug
@@ -141,6 +160,18 @@ async function expireSubscriptions(): Promise<void> {
       entityType: 'subscription',
       entityId: String(sub.subscription_id),
       newValues: { planName: sub.plan_name, trigger: 'auto_renew_off' },
+    });
+    await suspendTenantOnExpiry(
+      sub.tenant_id,
+      'Suscripción vencida sin renovación. Contacta al Super Administrador para reactivar.'
+    );
+    void recordAudit({
+      tenantId: sub.tenant_id,
+      userId: null,
+      action: 'TENANT_SUSPENDED_BILLING',
+      entityType: 'tenant',
+      entityId: String(sub.tenant_id),
+      newValues: { planName: sub.plan_name, trigger: 'subscription_expired' },
     });
   }
 
@@ -177,6 +208,18 @@ async function expireSubscriptions(): Promise<void> {
       entityId: String(row.subscription_id),
       newValues: { planName: row.plan_name, trigger: 'trial_ended' },
     });
+    await suspendTenantOnExpiry(
+      row.tenant_id,
+      'Prueba gratuita finalizada. Activa un plan para continuar operando.'
+    );
+    void recordAudit({
+      tenantId: row.tenant_id,
+      userId: null,
+      action: 'TENANT_SUSPENDED_BILLING',
+      entityType: 'tenant',
+      entityId: String(row.tenant_id),
+      newValues: { planName: row.plan_name, trigger: 'trial_expired' },
+    });
   }
 
   const [pastDueSuspended] = await pool.query<RowDataPacket[]>(
@@ -207,6 +250,18 @@ async function expireSubscriptions(): Promise<void> {
       action: 'SUBSCRIPTION_SUSPENDED',
       entityType: 'subscription',
       entityId: String(sub.subscription_id),
+      newValues: { planName: sub.plan_name, trigger: 'grace_exceeded' },
+    });
+    await suspendTenantOnExpiry(
+      sub.tenant_id,
+      'Suscripción suspendida por falta de pago (período de gracia excedido).'
+    );
+    void recordAudit({
+      tenantId: sub.tenant_id,
+      userId: null,
+      action: 'TENANT_SUSPENDED_BILLING',
+      entityType: 'tenant',
+      entityId: String(sub.tenant_id),
       newValues: { planName: sub.plan_name, trigger: 'grace_exceeded' },
     });
   }
