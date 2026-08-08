@@ -26,6 +26,25 @@ export function requestMeta(req: Request, override?: Partial<RequestMeta>): Requ
   };
 }
 
+// FASE 9 (auditoría): los valores de auditoría nunca persisten secretos en claro.
+const SENSITIVE_KEYS = new Set([
+  'apiKey', 'secret', 'token', 'bearerToken', 'appClient', 'password',
+  'password_hash', 'currentPassword', 'newPassword', 'dev_password',
+  'webhookSecret', 'publishableKey', 'sellerId', 'merchantCode', 'MYSQL_PWD',
+]);
+
+function sanitizeAuditValues(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeAuditValues);
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      out[key] = SENSITIVE_KEYS.has(key) ? '********' : sanitizeAuditValues(val);
+    }
+    return out;
+  }
+  return value;
+}
+
 export async function recordAudit(input: AuditInput, req?: Request): Promise<void> {
   try {
     await pool.query(
@@ -39,11 +58,11 @@ export async function recordAudit(input: AuditInput, req?: Request): Promise<voi
         input.action,
         input.entityType ?? null,
         input.entityId ?? null,
-        input.oldValues ? JSON.stringify(input.oldValues) : null,
-        input.newValues ? JSON.stringify(input.newValues) : null,
+        input.oldValues ? JSON.stringify(sanitizeAuditValues(input.oldValues)) : null,
+        input.newValues ? JSON.stringify(sanitizeAuditValues(input.newValues)) : null,
         req ? getClientIp(req) : null,
         req ? (req.headers['user-agent'] as string | undefined) ?? null : null,
-        input.metadata ? JSON.stringify(input.metadata) : null,
+        input.metadata ? JSON.stringify(sanitizeAuditValues(input.metadata)) : null,
       ]
     );
   } catch (err) {

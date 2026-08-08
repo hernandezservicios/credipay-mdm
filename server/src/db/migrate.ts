@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import type { RowDataPacket } from 'mysql2';
 import { pool } from './pool.js';
 import { runMigrations } from './runMigrations.js';
+import { env } from '../config/env.js';
 
 interface IdRow extends RowDataPacket {
   id: number;
@@ -106,11 +107,16 @@ export async function ensureSeedUsers(): Promise<void> {
     console.log(`  [creado] ${u.email} (${u.description})`);
   }
 
-  console.log('\n=== CREDENCIALES INICIALES ===');
-  console.log('Todos los usuarios comparten esta contraseÃ±a temporal:');
-  console.log(`  ContraseÃ±a: ${password}`);
-  console.log('Deben cambiarla en el primer inicio de sesiÃ³n (must_change_password).');
-  console.log('============================================\n');
+// FASE 9: la contraseña temporal solo se muestra en entornos de desarrollo.
+  if (env.NODE_ENV !== 'production') {
+    console.log('\n=== CREDENCIALES INICIALES ===');
+    console.log('Todos los usuarios comparten esta contraseÃ±a temporal:');
+    console.log(`  ContraseÃ±a: ${password}`);
+    console.log('Deben cambiarla en el primer inicio de sesiÃ³n (must_change_password).');
+    console.log('============================================\n');
+  } else {
+    console.log('Usuarios semilla creados con contraseÃ±a temporal (no mostrada en producciÃ³n).');
+  }
 }
 
 async function main() {

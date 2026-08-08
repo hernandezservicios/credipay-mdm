@@ -121,7 +121,13 @@ function decryptMdmSecrets(config: MdmConfig): MdmConfig {
   for (const key of MDM_SECRET_KEYS) {
     const value = out[key];
     if (typeof value === 'string' && isEncrypted(value)) {
-      out[key] = decrypt(value);
+      // FASE 9 (auditoría): si el descifrado falla (clave rotada o valor corrupto)
+      // devolvemos cadena vacía en vez de romper todo el flujo de configuración.
+      try {
+        out[key] = decrypt(value);
+      } catch {
+        out[key] = '';
+      }
     }
   }
   return out;

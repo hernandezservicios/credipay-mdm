@@ -23,6 +23,11 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 router.post('/run', async (req: AuthRequest, res) => {
+  // FASE 9 (auditoría): el dump usa mysqldump sobre la BD COMPLETA. Permitirlo a un
+  // tenant filtraría datos de TODOS los tenants. Solo el Super Admin global (tenantId null).
+  if (req.auth!.tenantId !== null) {
+    throw ApiError.forbidden('backups_platform_only', 'El respaldo es una operación de plataforma (Super Admin global)');
+  }
   const type = req.body?.type === 'SCHEMA' || req.body?.type === 'DATA' ? req.body.type : 'FULL';
   const backup = await runBackup(type, req.auth!.tenantId);
   void recordAudit(

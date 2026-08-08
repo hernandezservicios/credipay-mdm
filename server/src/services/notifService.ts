@@ -47,7 +47,8 @@ function channelEnabled(channel: string, config: { whatsapp?: boolean; sms?: boo
 
 function logDevSend(channel: string, vars: Record<string, unknown>): void {
   if (channel === 'WHATSAPP') {
-    console.log(`[notif:dev][WHATSAPP] -> ${vars.client || ''} | ${vars.message || ''}`);
+    // FASE 9: solo cliente, nunca el contenido del mensaje (evita PII en logs).
+    console.log(`[notif:dev][WHATSAPP] -> ${vars.client || ''}`);
   }
 }
 

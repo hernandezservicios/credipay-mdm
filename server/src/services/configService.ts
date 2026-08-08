@@ -9,6 +9,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { pool } from '../db/pool.js';
 import { ApiError } from '../utils/http.js';
 import { getTenant, getTenantSettings, type TenantSettingsRow } from './tenantService.js';
+import { decrypt, encrypt, isEncrypted } from '../utils/crypto.js';
 import {
   DEFAULT_OVERDUE_CONFIG,
   type OverdueConfig,
@@ -285,7 +286,8 @@ export async function getPlatformConfig(tenantId: number): Promise<PlatformConfi
     loanConfig: load('loanConfig'),
     overdueConfig: overdue,
     paymentConfig: load('paymentConfig'),
-    integrations: normalizeIntegrations(parseJson(raw?.['integrations'] as string | null)),
+    // FASE 9: descifrar secretos al leer (valores legados en claro pasan intactos).
+    integrations: decryptIntegrationSecrets(normalizeIntegrations(parseJson(raw?.['integrations'] as string | null))),
     currency: await loadCurrency(tenant.currency_code),
   };
 }
@@ -361,6 +363,40 @@ function normalizeIntegrations(value: unknown): IntegrationConfig[] {
   return [];
 }
 
+// FASE 9 (auditoría): los secretos de `integrations` se cifran AES-256-GCM en
+// reposo (igual que mdm_config en FASE 6). `encrypt`/`decrypt` son idempotentes
+// con texto claro legado, por lo que valores históricos siguen funcionando.
+const INTEGRATION_SECRET_KEYS_FULL = ['apiKey', 'secret', 'token'] as const;
+
+function encryptIntegrationSecrets(list: IntegrationConfig[]): IntegrationConfig[] {
+  return list.map((it) => {
+    const out = { ...it } as unknown as Record<string, unknown>;
+    for (const key of INTEGRATION_SECRET_KEYS_FULL) {
+      const v = out[key];
+      if (typeof v === 'string' && v && !isEncrypted(v)) out[key] = encrypt(v);
+    }
+    return out as unknown as IntegrationConfig;
+  });
+}
+
+function decryptIntegrationSecrets(list: IntegrationConfig[]): IntegrationConfig[] {
+  return list.map((it) => {
+    const out = { ...it } as unknown as Record<string, unknown>;
+    for (const key of INTEGRATION_SECRET_KEYS_FULL) {
+      const v = out[key];
+      if (typeof v === 'string' && v && isEncrypted(v)) {
+        // FASE 9 (auditoría): valor corrupto o clave rotada => cadena vacía.
+        try {
+          out[key] = decrypt(v);
+        } catch {
+          out[key] = '';
+        }
+      }
+    }
+    return out as unknown as IntegrationConfig;
+  });
+}
+
 export async function updatePlatformConfig(
   tenantId: number,
   section: ConfigSection,
@@ -407,6 +443,11 @@ export async function updatePlatformConfig(
   }
   if (section === 'generalConfig') {
     for (const k of LEGACY_GENERAL_KEYS) delete cleanPatch[k];
+  }
+
+  // FASE 9 (auditoría): secretos de integraciones nunca en texto plano en BD.
+  if (section === 'integrations' && Array.isArray(cleanPatch.integrations)) {
+    cleanPatch.integrations = encryptIntegrationSecrets(cleanPatch.integrations as IntegrationConfig[]);
   }
 
   await pool.query<RowDataPacket[]>(

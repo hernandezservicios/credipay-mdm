@@ -542,7 +542,9 @@ function buildQuery(tenantId: number, key: string, opts: ReportOptions): ReportQ
     case 'dispositivos-bloqueados':
       return {
         headers: ['id', 'device_name', 'brand', 'model', 'imei', 'unlock_code', 'client', 'last_sync'],
-        sql: `SELECT d.id, d.device_name, d.brand, d.model, d.imei, d.unlock_code,
+        // FASE 9 (auditoría): el unlock_code se redacta (solo últimos 4 dígitos).
+        sql: `SELECT d.id, d.device_name, d.brand, d.model, d.imei,
+                     CONCAT('••••', RIGHT(COALESCE(d.unlock_code, ''), 4)) AS unlock_code,
                      cl.full_name AS client, d.last_mdm_sync_at AS last_sync
                 FROM devices d LEFT JOIN clients cl ON cl.id = d.client_id
                WHERE d.tenant_id = ? AND d.deleted_at IS NULL AND d.mdm_status = 'LOCKED'

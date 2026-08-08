@@ -94,8 +94,8 @@ export async function sendTransactionalEmail(input: SendEmailInput): Promise<Sen
 
   const tr = getTransporter();
   if (!tr) {
+    // FASE 9: no imprimir el cuerpo completo (evita PII/tokens de reseteo en logs).
     console.log(`[email:dev] Para: ${input.to} | Asunto: ${template.subject}`);
-    console.log(`[email:dev] ${template.bodyText}`);
     return { status: 'DEV_UNCONFIGURED' };
   }
 
@@ -118,8 +118,8 @@ export async function sendPlainEmail(input: {
 }): Promise<SendEmailResult> {
   const tr = getTransporter();
   if (!tr) {
+    // FASE 9: sin cuerpo en logs (PII).
     console.log(`[email:dev] Para: ${input.to} | Asunto: ${input.subject}`);
-    console.log(`[email:dev] ${input.text ?? ''}`);
     return { status: 'DEV_UNCONFIGURED' };
   }
   const info = await tr.sendMail({

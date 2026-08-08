@@ -17,8 +17,8 @@ const DB_DUMP = path.join(process.env.TEMP || 'C:\\Windows\\Temp', 'credipay_mdm
 const ADMIN = { email: 'demo.admin@credipay.local', password: 'Fase2Test2026!' };
 const SUPER_ADMIN = { email: 'admin@credipay.local', password: '7xs8G8GJrTze9S' };
 const OPERADOR = { email: 'demo.operador@credipay.local', password: 'Fase2Test2026!' };
-const CLIENT_LOCKED = 'Yomaira Rosario Jiménez';
-const CLIENT_UNLOCKED = 'Carlos Andrés Mendoza';
+const CLIENT_LOCKED = 'Carmen Valenzuela';
+const CLIENT_UNLOCKED = 'Carlos Mendoza';
 
 test.beforeAll(() => {
   execSync(`"${MYSQLDUMP}" --single-transaction --routines -u root credipay_mdm > "${DB_DUMP}"`, {
@@ -38,18 +38,26 @@ async function login(page: Page, email: string, password: string) {
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: 'Entrar a la Consola' }).click();
-  await expect(page.getByRole('heading', { name: /Cartera de Clientes/ })).toBeVisible({
+  await expect(page.getByRole('heading', { name: /Dashboard/ })).toBeVisible({
     timeout: 30_000,
   });
 }
 
-// Super Admin global sin empresa activa: el panel por defecto es el Comercial
+// La cartera de clientes (tarjetas con Acciones MDM) vive en la vista CLIENTS.
+async function openCartera(page: Page) {
+  await page.getByRole('button', { name: /Créditos & Cobranza/ }).click();
+  await expect(page.getByText('Cartera de Clientes & Control MDM')).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
+// Super Admin global sin empresa activa: el panel por defecto es el Resumen de Plataforma
 async function loginGlobal(page: Page, email: string, password: string) {
   await page.goto('/');
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: 'Entrar a la Consola' }).click();
-  await expect(page.getByText('Panel Comercial — Empresas & Suscripciones')).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Resumen de Plataforma' })).toBeVisible({
     timeout: 30_000,
   });
 }
@@ -68,12 +76,13 @@ test('Login Super Admin y cartera real desde la API', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await login(page, ADMIN.email, ADMIN.password);
+  await openCartera(page);
 
   await expect(page.getByText(ADMIN.email)).toBeVisible();
-  for (const name of ['Yomaira Rosario Jiménez', 'Rodolfo Peña Castro', 'Mariana Valenzuela Ortiz', 'Carlos Andrés Mendoza']) {
+  for (const name of ['Carlos Mendoza', 'Mariana Santana', 'Lucia Castillo', 'Ana Nunez']) {
     await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
   }
-  await expect(page.getByText(/4 clientes/).first()).toBeVisible();
+  await expect(page.getByText(/Ver Cuotas & Cobrar/).first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -90,7 +99,7 @@ test('Super Admin: cambio de contraseña obligatorio (mustChangePassword)', asyn
   await pws.nth(1).fill(newPw);
   await pws.nth(2).fill(newPw);
   await page.getByRole('button', { name: 'Actualizar y Continuar' }).click();
-  await expect(page.getByText('Panel Comercial — Empresas & Suscripciones')).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Resumen de Plataforma' })).toBeVisible({
     timeout: 30_000,
   });
 });
@@ -99,6 +108,7 @@ test('Flujo MDM: Bloquear -> Desbloquear -> Código offline -> Logs', async ({ p
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await login(page, ADMIN.email, ADMIN.password);
+  await openCartera(page);
 
   const c = card(page, CLIENT_UNLOCKED);
   await c.getByRole('button', { name: /Acciones MDM/ }).click();
@@ -126,53 +136,78 @@ test('Flujo MDM: Bloquear -> Desbloquear -> Código offline -> Logs', async ({ p
   expect(errors).toEqual([]);
 });
 
-test('Pago en cascada (cuota -> PAGADO) sobre cliente con dispositivo bloqueado', async ({ page }) => {
+test('Pago en cascada: cobro confirmado desbloquea el dispositivo bloqueado', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await login(page, ADMIN.email, ADMIN.password);
+  await openCartera(page);
 
   const c = card(page, CLIENT_LOCKED);
   await c.getByRole('button', { name: 'Ver Cuotas & Cobrar' }).click();
   await expect(page.getByText('Historial de Cuotas y Cobranza')).toBeVisible();
-  await page.getByRole('button', { name: /Registrar Pago/ }).first().click();
+  await expect(page.getByText('BLOQUEADO MDM')).toBeVisible();
+  await page.getByRole('button', { name: 'Cerrar Ventana' }).click();
 
-  await expect(page.getByText('Registrar Pago en Cascada & Desbloquear')).toBeVisible();
-  await page.locator('input[placeholder="Efectivo del cliente"]').fill('4000');
-  await page.getByRole('button', { name: 'Confirmar Pago & Desbloquear' }).click();
-  await confirmDialog(page, 'Sí, Confirmar Pago');
+  await page.getByRole('button', { name: /Solicitudes, desembolsos y acuerdos/ }).click();
+  await expect(page.getByRole('heading', { name: /Ciclo de Vida de Préstamos/ })).toBeVisible({ timeout: 30_000 });
 
-  await expect(page.getByText('Pago en Cascada Registrado')).toBeVisible();
-  await expect(page.getByText('Cuotas Completadas')).toBeVisible();
-  await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  const loanRow = page.locator('tbody tr', { hasText: CLIENT_LOCKED }).first();
+  await loanRow.getByRole('button', { name: 'Cobrar' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
 
-  await expect(page.getByText(/PAGADO/).first()).toBeVisible();
+  await dialog.getByPlaceholder('0.00').first().fill('999999');
+  await dialog.getByRole('button', { name: /Simular distribución/ }).click();
+  await expect(dialog.getByText(/Distribución propuesta/)).toBeVisible({ timeout: 30_000 });
+
+  await dialog.getByRole('button', { name: /Confirmar cobro/ }).click();
+  await expect(toast(page).getByText(/Cobro registrado: recibo #/)).toBeVisible({ timeout: 30_000 });
+  await dialog.getByText('Cerrar', { exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  await openCartera(page);
+  const c2 = card(page, CLIENT_LOCKED);
+  await c2.getByRole('button', { name: 'Ver Cuotas & Cobrar' }).click();
+  await expect(page.getByText(/PAGADO/).first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Cerrar Ventana' }).click();
 
   expect(errors).toEqual([]);
 });
 
-test('Nuevo préstamo: cliente + crédito + dispositivo desde la UI', async ({ page }) => {
+test('Nuevo préstamo: cliente existente + crédito desde el wizard', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await login(page, ADMIN.email, ADMIN.password);
 
-  const name = 'Cliente E2E Verificación';
   await page.getByRole('button', { name: 'Nuevo Préstamo' }).click();
-  await expect(page.getByText('Nuevo Crédito & Inscripción CrediPay MDM (RD$)')).toBeVisible();
-  await page.locator('input[placeholder="Ej: Laura Sofía Torres"]').fill(name);
-  await page.locator('input[placeholder="Ej: 001-9283741-2"]').fill('001-9999999-9');
-  await page.locator('input[placeholder="+1 809-555-0101"]').fill('+1 809-555-0199');
-  await page.locator('input[placeholder="Ej: Galaxy A55 5G 256GB"]').fill('E2E Phone 128GB');
-  await page.locator('input[placeholder="358920198234001"]').fill('666666666666666');
-  await page.getByRole('button', { name: 'Registrar Cliente y Préstamo' }).click();
-  await confirmDialog(page, 'Sí, Registrar Crédito');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
 
-  await expect(toast(page).getByText(new RegExp(`Nuevo crédito y celular .* registrados para ${name}`))).toBeVisible();
+  await dialog.getByPlaceholder('Buscar por nombre…').fill('Mariana');
+  await dialog.getByRole('button', { name: /Mariana Santana/ }).click();
+  await expect(dialog.getByText('Mariana Santana')).toBeVisible();
 
-  const search = page.getByPlaceholder(/Buscar por cliente/);
-  await search.fill(name);
-  await expect(card(page, name)).toBeVisible();
-  await expect(card(page, name).getByText('E2E Phone 128GB')).toBeVisible();
+  await dialog.locator('select').first().selectOption({ index: 1 });
+
+  const numbers = dialog.locator('input[type="number"]');
+  await numbers.nth(0).fill('1000');
+  await numbers.nth(1).fill('24');
+  await numbers.nth(2).fill('6');
+  await numbers.nth(3).fill('0');
+
+  await dialog.getByRole('button', { name: 'COTIZAR' }).click();
+  await expect(dialog.getByText(/Vista previa de la cotización/)).toBeVisible({ timeout: 30_000 });
+
+  await dialog.getByRole('button', { name: 'CREAR PRÉSTAMO' }).click();
+  await expect(toast(page).getByText(/Préstamo creado: CR-/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  const loansTab = page.getByRole('button', { name: /Préstamos/ }).last();
+  await loansTab.click();
+  await expect(page.getByText(/Ciclo de Vida de Préstamos/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Mariana Santana', { exact: false }).first()).toBeVisible({
+    timeout: 30_000,
+  });
 
   expect(errors).toEqual([]);
 });
@@ -193,7 +228,7 @@ test('Config MDM: probar conexión y guardar en el servidor', async ({ page }) =
   await confirmDialog(page, 'Sí, Guardar');
   await expect(toast(page).getByText(/Configuración MDM guardada en el servidor/)).toBeVisible();
 
-  await modal.getByRole('button').first().click();
+  await modal.getByRole('button', { name: 'Cerrar Panel' }).click();
   await expect(modal).not.toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -206,8 +241,8 @@ test('Vistas DEVICES, FINANCE, ANALYTICS y LOGS renderizan', async ({ page }) =>
   await page.getByRole('button', { name: /Parque Dispositivos/ }).click();
   await expect(page.getByText('Parque de Dispositivos InovaGuard MDM')).toBeVisible({ timeout: 30_000 });
 
-  await page.getByRole('button', { name: /Caja & Flujo Cobros/ }).click();
-  await expect(page.getByText('Caja & Flujo de Cobros CrediPay MDM')).toBeVisible();
+  await page.getByRole('button', { name: /Caja & Flujo/ }).click();
+  await expect(page.getByText('Historial de Cajas')).toBeVisible();
 
   await page.getByRole('button', { name: /Estadísticas & KPIs/ }).click();
   await expect(page.getByText('Estadísticas & Efectividad del Bloqueo CrediPay MDM')).toBeVisible();
@@ -276,15 +311,16 @@ test('Búsqueda sin guiones: cédula y teléfono con guiones localizan clientes'
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await login(page, ADMIN.email, ADMIN.password);
+  await openCartera(page);
 
   const search = page.getByPlaceholder(/Buscar por cliente/);
-  await search.fill('001-18-29384-5');
-  await expect(card(page, 'Carlos Andrés Mendoza')).toBeVisible();
-  await expect(card(page, 'Mariana Valenzuela Ortiz')).toHaveCount(0);
+  await search.fill('001-11000000-1');
+  await expect(card(page, 'Carlos Mendoza')).toBeVisible();
+  await expect(card(page, 'Mariana Santana')).toHaveCount(0);
 
-  await search.fill('809-555-88 21');
-  await expect(card(page, 'Mariana Valenzuela Ortiz')).toBeVisible();
-  await expect(card(page, 'Carlos Andrés Mendoza')).toHaveCount(0);
+  await search.fill('809-555-204 6');
+  await expect(card(page, 'Julio Espinal')).toBeVisible();
+  await expect(card(page, 'Carlos Mendoza')).toHaveCount(0);
 
   expect(errors).toEqual([]);
 });
@@ -296,15 +332,22 @@ test('Tenant switch: Super Admin global ve la cartera tras cambiar de empresa', 
   // obligatorio" (los tests corren en orden secuencial, workers=1).
   await loginGlobal(page, SUPER_ADMIN.email, 'NuevaClaveE2E2026!');
 
-  const switcher = page.getByRole('button', { name: 'Plataforma (sin empresa)' });
-  await expect(switcher).toBeVisible();
-  await switcher.click();
-  await page.getByRole('button', { name: 'CrediPay Principal' }).click();
-
-  await expect(page.getByText('Yomaira Rosario Jiménez', { exact: true }).first()).toBeVisible({
+  await page.getByRole('button', { name: /Empresas/ }).click();
+  const tenantCard = page
+    .locator('div.bg-slate-900.border.border-slate-800.rounded-2xl.p-5', {
+      hasText: 'Financiera Alpha',
+    })
+    .first();
+  await tenantCard.getByRole('button', { name: 'Entrar a la empresa' }).click();
+  await expect(page.getByRole('heading', { name: /Motor de Bloqueo MDM/ })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole('button', { name: 'CrediPay Principal' })).toBeVisible();
+
+  await openCartera(page);
+  await expect(page.getByText('Carlos Mendoza', { exact: true }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByRole('button', { name: 'Financiera Alpha' })).toBeVisible();
 
   expect(errors).toEqual([]);
 });
@@ -323,8 +366,7 @@ test('SaaS: vista Suscripción con historial y cambio de plan', async ({ page })
   await page.getByRole('button', { name: /Suscripción & Planes/ }).click();
   await expect(page.getByText('Suscripción & Planes CrediPay MDM')).toBeVisible({ timeout: 30_000 });
 
-  await expect(page.getByText('Empresa', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('REC-SAAS-000001', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Básico/).first()).toBeVisible();
   await expect(page.getByText(/Uso actual vs Límites del Plan/).first()).toBeVisible();
 
   await page.getByRole('button', { name: /Cambiar de Plan/ }).click();
@@ -351,7 +393,7 @@ test('SaaS límite de plan: alcanzar max_clients devuelve 403 plan_limit_reached
 
   const planIdRaw = execSync(
     dbClient(
-      "SELECT MAX(pl.id) FROM subscriptions s JOIN plans pl ON pl.id = s.plan_id WHERE s.tenant_id = 1 AND s.deleted_at IS NULL AND s.status IN ('TRIAL','ACTIVE','PAST_DUE')"
+      "SELECT MAX(pl.id) FROM subscriptions s JOIN plans pl ON pl.id = s.plan_id WHERE s.tenant_id = 5 AND s.deleted_at IS NULL AND s.status IN ('TRIAL','ACTIVE','PAST_DUE')"
     )
   )
     .toString()
@@ -359,7 +401,7 @@ test('SaaS límite de plan: alcanzar max_clients devuelve 403 plan_limit_reached
   const planId = parseInt(planIdRaw, 10);
 
   const countRaw = execSync(
-    dbClient('SELECT COUNT(*) FROM clients WHERE tenant_id = 1 AND deleted_at IS NULL')
+    dbClient('SELECT COUNT(*) FROM clients WHERE tenant_id = 5 AND deleted_at IS NULL')
   )
     .toString()
     .trim();
@@ -384,18 +426,16 @@ test('SaaS: Panel Comercial del Super Admin lista empresas y entra de la lista',
   page.on('pageerror', (e) => errors.push(String(e)));
   await loginGlobal(page, SUPER_ADMIN.email, 'NuevaClaveE2E2026!');
 
-  await expect(page.getByText('Panel Comercial — Empresas & Suscripciones')).toBeVisible({
-    timeout: 30_000,
-  });
+  await page.getByRole('button', { name: /Empresas/ }).click();
   const card = page
     .locator('div.bg-slate-900.border.border-slate-800.rounded-2xl.p-5', {
-      hasText: 'CrediPay Principal',
+      hasText: 'Financiera Alpha',
     })
     .first();
   await expect(card.getByRole('button', { name: 'Entrar a la empresa' })).toBeVisible();
 
   await card.getByRole('button', { name: 'Entrar a la empresa' }).click();
-  await expect(page.getByRole('heading', { name: /Cartera de Clientes/ })).toBeVisible({
+  await expect(page.getByRole('heading', { name: /Motor de Bloqueo MDM/ })).toBeVisible({
     timeout: 30_000,
   });
 
@@ -412,7 +452,7 @@ test('F6: Motor IA genera recordatorio desde una cuota atrasada y se marca como 
 
   execSync(
     dbClient(
-      `SET @cid = (SELECT id FROM clients WHERE tenant_id = 1 AND deleted_at IS NULL ORDER BY id LIMIT 1);
+      `SET @cid = (SELECT id FROM clients WHERE tenant_id = 5 AND deleted_at IS NULL ORDER BY id LIMIT 1);
        SET @iid = (SELECT ci.id FROM credit_installments ci
                     JOIN credits c ON c.id = ci.credit_id
                    WHERE c.client_id = @cid AND ci.status = 'PENDIENTE' AND ci.deleted_at IS NULL

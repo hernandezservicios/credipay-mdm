@@ -44,7 +44,7 @@ app.use(cookieParser());
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 600,
+  limit: Number(process.env.GLOBAL_API_RATE_LIMIT) || 600,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   handler: (_req, res) => {

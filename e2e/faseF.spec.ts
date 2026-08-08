@@ -98,20 +98,22 @@ test('Fase F: cobro simulado (simulate) muestra distribución y llave de idempot
     timeout: 30_000,
   });
   await page.getByRole('button', { name: /Cobrar/ }).first().click();
-  await expect(page.getByText(/Saldo pendiente/).first()).toBeVisible({ timeout: 30_000 });
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/Saldo pendiente/i)).toBeVisible({ timeout: 30_000 });
 
-  const monto = page.getByPlaceholder('0.00').first();
+  const monto = dialog.getByPlaceholder('0.00').first();
   await expect(monto).toBeVisible();
   await monto.fill('500');
 
-  await page.getByRole('button', { name: /Simular distribución/ }).click();
-  await expect(page.getByText(/Distribución propuesta/).first()).toBeVisible({
+  await dialog.getByRole('button', { name: /Simular distribución/ }).click();
+  await expect(dialog.getByText(/Distribución propuesta/).first()).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText(/Llave de idempotencia/).first()).toBeVisible();
+  await expect(dialog.getByText(/Llave de idempotencia/).first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
-  await expect(page.getByText('Saldo pendiente').first()).not.toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   expect(errors).toEqual([]);
 });

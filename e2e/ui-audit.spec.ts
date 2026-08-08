@@ -12,7 +12,7 @@ import path from 'path';
  * REQUIERE: Vite en :3000 (proxy /api -> :4000) y API+DB vivos.
  */
 
-const ADMIN = { email: 'admin@alpha.com', password: '12345678' };
+const ADMIN = { email: 'demo.admin@credipay.local', password: 'Fase2Test2026!' };
 
 const VIEWS: Array<{ nav: string; marker: string | RegExp; kind: 'h2' | 'text'; file: string }> = [
   { nav: 'Dashboard', marker: /Dashboard/, kind: 'h2', file: 'dashboard' },
@@ -60,7 +60,10 @@ test('Matriz viewport x tema x vista: sin overflow, sin errores JS, capturas', a
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${String(e)}`));
   page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
+    if (m.type() !== 'error') return;
+    // El app valida la sesión al arrancar (GET /auth/me sin cookie) -> 401 esperado.
+    if (m.text().includes('status of 401')) return;
+    errors.push(`console.error: ${m.text()}`);
   });
 
   const project = test.info().project.name;
